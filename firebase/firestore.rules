@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 가족방: 20자 이상 무작위 번호를 아는 기기(익명 로그인)만 읽고 쓸 수 있다
+    match /families/{fid} {
+      allow get, create, update: if request.auth != null && fid.size() >= 20;
+      allow list, delete: if false;
+      match /{rest=**} {
+        allow read, write: if request.auth != null && fid.size() >= 20;
+      }
+    }
+  }
+}
