@@ -107,7 +107,7 @@ const ML = {
 
   /* 초2 1학기 */
   place3(){ const n = rnd(101, 999), h = Math.floor(n / 100), t = Math.floor(n / 10) % 10, o = n % 10;
-    if (Math.random() < .5) return eqQ(`math:p3:${n}`, 'place', `100이 ${h}개, 10이 ${t}개, 1이 ${o}개`, `백이 ${h}개, 십이 ${t}개, 일이 ${o}개인 수는?`, n, `백의 자리에 ${h}, 십의 자리에 ${t}, 일의 자리에 ${o}를 써요`, `${n}`, { prompt:'모두 얼마일까요?', small:true });
+    if (Math.random() < .5) return eqQ(`math:p3:${n}`, 'place', `100이 ${h}개, 10이 ${t}개, 1이 ${o}개`, `백이 ${h}개, 십이 ${t}개, 일이 ${o}개인 수는?`, n, `백의 자리에 ${h}, 십의 자리에 ${t}, 일의 자리에 ${numJosa(o, '을', '를')} 써요`, `${n}`, { prompt:'모두 얼마일까요?', small:true });
     const which = pick([['백', h], ['십', t], ['일', o]]);
     return eqQ(`math:pd:${n}${which[0]}`, 'place', `${n}`, `${n}에서 ${which[0]}의 자리 숫자는?`, which[1], '왼쪽부터 백, 십, 일의 자리예요', `${n}의 ${which[0]}의 자리 숫자는 ${which[1]}`, { prompt:`${which[0]}의 자리 숫자는?` }); },
   cmp3(){ let a = rnd(100, 999), b = rnd(100, 999); if (Math.random() < .5) b = Math.floor(a / 100) * 100 + rnd(0, 99); while (b === a) b = rnd(100, 999);
@@ -118,12 +118,12 @@ const ML = {
     return eqQ(`math:sb:${a}-${b}`, 'sub', `${a} − ${b} = ${Q}`, `${a} 빼기 ${b}는?`, a - b, `일의 자리 ${a % 10}에서 ${b % 10}을 뺄 수 없으면 십의 자리에서 10을 빌려 와요`, `${a} − ${b} = ${a - b}`, { prompt:'뺄셈을 해요' }); },
   groups(){ const g = rnd(2, 5), each = rnd(2, 5); const [e, name] = pick(COUNT_THINGS);
     return { key:`math:gr:${g}x${each}${e}`, type:'groups', prompt:`${name} ${each}개씩 ${g}묶음은 모두 몇 개일까요?`, say:`${each}개씩 ${g}묶음은 모두 몇 개일까?`, vis:{k:'groups', e, g, each}, input:'numpad', ans:g * each, hint:`${each}씩 뛰어 세어 봐요: ${Array.from({ length:g }, (_, i) => each * (i + 1)).join(', ')}`, explain:`${each}의 ${g}배는 ${g * each}` }; },
-  times2(){ const a = rnd(2, 5), b = rnd(2, 5); return eqQ(`math:bae:${a}x${b}`, 'bae', `${a}의 ${b}배`, `${a}의 ${b}배는 얼마일까?`, a * b, `${a}를 ${b}번 더해요: ${Array(b).fill(a).join(' + ')}`, `${a}의 ${b}배 = ${a * b}`, { prompt:'몇의 몇 배는 얼마일까요?' }); },
+  times2(){ const a = rnd(2, 5), b = rnd(2, 5); return eqQ(`math:bae:${a}x${b}`, 'bae', `${a}의 ${b}배`, `${a}의 ${b}배는 얼마일까?`, a * b, `${numJosa(a, '을', '를')} ${b}번 더해요: ${Array(b).fill(a).join(' + ')}`, `${a}의 ${b}배 = ${a * b}`, { prompt:'몇의 몇 배는 얼마일까요?' }); },
 
   /* 초2 2학기 */
   gugu(){ const a = rnd(2, 9), b = rnd(1, 9); return eqQ(`math:gg:${a}x${b}`, 'gugu', `${a} × ${b} = ${Q}`, `${a} 곱하기 ${b}는?`, a * b, `${a}단을 외워 봐요: ${Array.from({ length:Math.min(b, 9) }, (_, i) => a * (i + 1)).join(', ')}`, `${a} × ${b} = ${a * b}`, { prompt:'곱셈구구' }); },
   guguWord(){ const a = rnd(3, 9), b = rnd(2, 9); const [e, name] = pick(COUNT_THINGS);
-    return eqQ(`math:gw:${a}x${b}${e}`, 'guguword', `${e} 한 접시에 ${a}개씩, ${b}접시`, `한 접시에 ${a}개씩 ${b}접시면 ${name}는 모두 몇 개일까?`, a * b, `${a} × ${b}를 계산해요`, `${a} × ${b} = ${a * b}`, { prompt:'모두 몇 개일까요?', small:true }); },
+    return eqQ(`math:gw:${a}x${b}${e}`, 'guguword', `${e} 한 접시에 ${a}개씩, ${b}접시`, `한 접시에 ${a}개씩 ${b}접시면 ${name}는 모두 몇 개일까?`, a * b, `${a} × ${numJosa(b, '을', '를')} 계산해요`, `${a} × ${b} = ${a * b}`, { prompt:'모두 몇 개일까요?', small:true }); },
   place4(){ const n = rnd(1001, 9999), th = Math.floor(n / 1000), h = Math.floor(n / 100) % 10, t = Math.floor(n / 10) % 10, o = n % 10;
     return eqQ(`math:p4:${n}`, 'place', `1000이 ${th}개, 100이 ${h}개<br>10이 ${t}개, 1이 ${o}개`, `천이 ${th}개, 백이 ${h}개, 십이 ${t}개, 일이 ${o}개인 수는?`, n, '천, 백, 십, 일의 자리에 차례로 써요', `${n}`, { prompt:'모두 얼마일까요?', small:true }); },
   clock5(){ const h = rnd(1, 12); let m = rnd(1, 11) * 5; if (m === 30) m = 25; const lab = (hh, mm) => `${hh}시 ${mm}분`;
@@ -142,8 +142,8 @@ const ML = {
     return eqQ(`math:s3:${a}-${b}`, 'sub', `${a} − ${b} = ${Q}`, `${a} 빼기 ${b}는?`, a - b, '일의 자리부터 빼고, 모자라면 윗자리에서 10을 빌려 와요', `${a} − ${b} = ${a - b}`, { prompt:'뺄셈을 해요', small:true }); },
   div(){ const d = rnd(2, 9), q = rnd(2, 9); return eqQ(`math:dv:${d * q}/${d}`, 'div', `${d * q} ÷ ${d} = ${Q}`, `${d * q} 나누기 ${d}는?`, q, `${d}단 곱셈구구에서 ${d * q}가 나오는 곳을 찾아요`, `${d} × ${q} = ${d * q}이니까 ${d * q} ÷ ${d} = ${q}`, { prompt:'나눗셈을 해요' }); },
   divWord(){ const d = rnd(2, 6), q = rnd(2, 8); const [e, name] = pick(COUNT_THINGS);
-    return eqQ(`math:dw:${d * q}/${d}${e}`, 'divword', `${e} ${d * q}개를 ${d}명이 똑같이`, `${name} ${d * q}개를 ${d}명이 똑같이 나누면 한 명에 몇 개씩일까?`, q, `${d * q} ÷ ${d}를 계산해요`, `${d * q} ÷ ${d} = ${q}`, { prompt:'한 명에 몇 개씩일까요?', small:true }); },
-  mul21(){ const a = rnd(12, 49), b = rnd(2, 9); return eqQ(`math:m21:${a}x${b}`, 'mul', `${a} × ${b} = ${Q}`, `${a} 곱하기 ${b}는?`, a * b, `${a % 10} × ${b}와 ${a - a % 10} × ${b}를 따로 계산해서 더해요`, `${a} × ${b} = ${a * b}`, { prompt:'곱셈을 해요' }); },
+    return eqQ(`math:dw:${d * q}/${d}${e}`, 'divword', `${e} ${d * q}개를 ${d}명이 똑같이`, `${name} ${d * q}개를 ${d}명이 똑같이 나누면 한 명에 몇 개씩일까?`, q, `${d * q} ÷ ${numJosa(d, '을', '를')} 계산해요`, `${d * q} ÷ ${d} = ${q}`, { prompt:'한 명에 몇 개씩일까요?', small:true }); },
+  mul21(){ const a = rnd(12, 49), b = rnd(2, 9); return eqQ(`math:m21:${a}x${b}`, 'mul', `${a} × ${b} = ${Q}`, `${a} 곱하기 ${b}는?`, a * b, `${a % 10} × ${b}와 ${a - a % 10} × ${numJosa(b, '을', '를')} 따로 계산해서 더해요`, `${a} × ${b} = ${a * b}`, { prompt:'곱셈을 해요' }); },
   fracPic(){ const n = pick([2, 3, 4, 5, 6, 8]), k = rnd(1, n - 1); const ans = `${k}/${n}`; const c = new Set([ans]);
     for (const x of shuffle([`${n - k}/${n}`, `${k}/${n + 1}`, `${n}/${k}`, `${k + 1}/${n}`])) { if (c.size >= 3) break; if (x !== ans && !/\/0$/.test(x)) c.add(x); }
     return { key:`math:fp:${k}/${n}`, type:'frac', prompt:'색칠한 부분을 분수로 나타내요', say:'색칠한 부분은 전체의 얼마일까?', vis:{k:'frac', n, part:k}, input:'choice', cols:3, frac:true, opts:shuffle([...c]), ans, hint:`전체를 똑같이 ${n}칸으로 나눴어요. 색칠한 칸은 몇 칸일까요?`, explain:`${n}칸 중 ${k}칸이니까 ${n}분의 ${k}` }; },
@@ -224,15 +224,19 @@ const BOARD_SUB = {
 function levelLabel(subj){ return subj === 'eng' ? ENG_LEVELS[lv('eng')].split(' ')[0] : LEVELS[lv(subj)]; }
 function boardSub(k){
   if (k === 'rev') return '전에 틀린 문제 다시 풀기';
+  if (currOn(k)) { const d = day(), b = d.boards[k];
+    if (b && b.waitLec) return '오늘은 복습하는 날 · 새 강의는 다음 날';
+    const lec = !b || !b.done ? planLecture(d) : null;
+    const tag = lec && lec.s === k && !lec.done ? `📺 ${lectInfo(k, lec.n).no}강 보는 날 · ` : '';
+    return `${tag}${currLabel(k)}${k === 'eng' ? ' + 받아쓰기' : ''}`; }
   if (k === 'eng') return `${levelLabel('eng')} · ${BOARD_SUB.eng[lv('eng')]} + 받아쓰기`;
-  if (k === 'math' && mathCurrOn()) return `${CURRICULUM.title} · ${currLabel()}`;
   return `${levelLabel(k)} · ${BOARD_SUB[k][lv(k)]}`;
 }
 /* 최근 7일 정답률로 엄마에게 단계 바꾸기 제안 */
 function levelAdvice(){
   const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), -i));
   const out = [];
-  ['kor','math','eng'].filter(s => !(s === 'math' && mathCurrOn())).forEach(s => {
+  ['kor','math','eng'].filter(s => !currOn(s)).forEach(s => {
     let c = 0, n = 0, boards = 0;
     keys.forEach(k => { const b = S.days[k] && S.days[k].boards[s]; if (b && b.done && (b.lvl === undefined || b.lvl === lv(s))) { c += b.correct; n += b.n || b.qs.length; boards++; } });
     if (boards < 2 || n < 15) return;

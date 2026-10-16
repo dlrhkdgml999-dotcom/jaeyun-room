@@ -48,14 +48,16 @@ function shapeSVG(id, size = 88, opt = {}){
 }
 
 /* 쌓기나무: 한 줄로 놓인 기둥들 (모두 보이게) */
-function cubesSVG(heights){
+function cubesSVG(heights, opt = {}){
   const s = 26, dx = 13, dy = 9; let svg = '';
   const W = heights.length * s + dx + 10, maxH = Math.max(...heights), H = maxH * s + dy + 10;
   heights.forEach((h, i) => { for (let j = 0; j < h; j++) {
     const x = 5 + i * s, y = H - 5 - (j + 1) * s;
-    svg += `<polygon points="${x},${y} ${x + dx},${y - dy} ${x + s + dx},${y - dy} ${x + s},${y}" fill="#FFE9A8" stroke="${C.ink}" stroke-width="1.6"/>`;
-    svg += `<polygon points="${x + s},${y} ${x + s + dx},${y - dy} ${x + s + dx},${y + s - dy} ${x + s},${y + s}" fill="${C.butterD}" stroke="${C.ink}" stroke-width="1.6"/>`;
-    svg += `<rect x="${x}" y="${y}" width="${s}" height="${s}" fill="${C.butter}" stroke="${C.ink}" stroke-width="1.6"/>`;
+    const hi = opt.hi && opt.hi[0] === i && opt.hi[1] === j;
+    const [top, side, front] = hi ? ['#FFC2D4', C.pinkD, C.pink] : ['#FFE9A8', C.butterD, C.butter];
+    svg += `<polygon points="${x},${y} ${x + dx},${y - dy} ${x + s + dx},${y - dy} ${x + s},${y}" fill="${top}" stroke="${C.ink}" stroke-width="1.6"/>`;
+    svg += `<polygon points="${x + s},${y} ${x + s + dx},${y - dy} ${x + s + dx},${y + s - dy} ${x + s},${y + s}" fill="${side}" stroke="${C.ink}" stroke-width="1.6"/>`;
+    svg += `<rect x="${x}" y="${y}" width="${s}" height="${s}" fill="${front}" stroke="${C.ink}" stroke-width="1.6"/>`;
   } });
   return `<svg class="draw" viewBox="0 -${dy} ${W} ${H + dy}" width="${Math.min(W * 2.2, 380)}" style="max-width:100%;height:auto" role="img" aria-label="쌓기나무">${svg}</svg>`;
 }
@@ -77,6 +79,37 @@ function clipsSVG(n, label){
   if (label) svg += `<text x="${10 + n * cw / 2}" y="22" font-size="13" text-anchor="middle" fill="${C.ink}" font-family="Jua, sans-serif">${label}</text>`;
   for (let i = 0; i < n; i++) { const x = 10 + i * cw; svg += `<rect x="${x + 2}" y="38" width="${cw - 4}" height="14" rx="7" fill="none" stroke="${C.skyD}" stroke-width="3"/><rect x="${x + 7}" y="42" width="${cw - 14}" height="6" rx="3" fill="none" stroke="${C.skyD}" stroke-width="2"/>`; }
   return `<svg class="draw" viewBox="0 0 ${W} 58" width="${Math.min(W * 1.3, 520)}" style="max-width:100%;height:auto" role="img" aria-label="클립 ${n}개 길이">${svg}</svg>`;
+}
+
+/* 칠교판: 정사각형 하나를 일곱 조각으로 (삼각형 5, 사각형 2) */
+const TANGRAM = [
+  { n:1, k:'tri',  pts:[[0,0],[100,0],[50,50]],          c:'#FF8FB1' },
+  { n:2, k:'tri',  pts:[[0,0],[50,50],[0,100]],          c:'#8CC9FF' },
+  { n:3, k:'tri',  pts:[[100,0],[100,50],[75,25]],       c:'#FFE08A' },
+  { n:4, k:'quad', pts:[[50,50],[75,25],[100,50],[75,75]], c:'#7FD8BE' },
+  { n:5, k:'tri',  pts:[[50,50],[75,75],[25,75]],        c:'#C3ADF2' },
+  { n:6, k:'quad', pts:[[0,100],[25,75],[75,75],[50,100]], c:'#FFB38A' },
+  { n:7, k:'tri',  pts:[[100,50],[100,100],[50,100]],    c:'#F7A8C8' },
+];
+function tangramSVG(o = {}){
+  const size = o.size || 210;
+  const body = TANGRAM.map(p => {
+    const cx = p.pts.reduce((s, q) => s + q[0], 0) / p.pts.length, cy = p.pts.reduce((s, q) => s + q[1], 0) / p.pts.length;
+    const dim = o.hi && o.hi !== p.n;
+    return `<polygon points="${p.pts.map(q => q.join(',')).join(' ')}" fill="${dim ? '#F4EEF1' : p.c}" stroke="${C.ink}" stroke-width="1.8" stroke-linejoin="round"/>` +
+      (o.nums ? `<circle cx="${cx}" cy="${cy}" r="6.5" fill="#fff" stroke="${C.ink}" stroke-width="1"/><text x="${cx}" y="${cy + 3.3}" font-size="9" text-anchor="middle" font-family="Jua, sans-serif" fill="${C.ink}">${p.n}</text>` : '');
+  }).join('');
+  return `<svg class="draw" viewBox="-3 -3 106 106" width="${size}" height="${size}" role="img" aria-label="칠교판">${body}</svg>`;
+}
+/* 작은 삼각형 두 조각을 붙여 만든 모양 */
+function twoTriSVG(kind, size = 90){
+  const shapes = {
+    square:[[[0,0],[60,0],[0,60]], [[60,0],[60,60],[0,60]]],
+    tri:[[[0,60],[60,60],[60,0]], [[60,0],[60,60],[120,60]]],
+    para:[[[0,60],[40,0],[40,60]], [[40,0],[80,0],[40,60]]],
+  }[kind];
+  const W = kind === 'tri' ? 120 : kind === 'para' ? 80 : 60;
+  return `<svg class="draw" viewBox="-4 -4 ${W + 8} 68" width="${size * (W + 8) / 68}" height="${size}" aria-hidden="true">${shapes.map((p, i) => `<polygon points="${p.map(q => q.join(',')).join(' ')}" fill="${i ? '#C3ADF2' : '#FFE08A'}" stroke="${C.ink}" stroke-width="2.5" stroke-linejoin="round"/>`).join('')}</svg>`;
 }
 
 /* 묶음 그림 (곱셈) */

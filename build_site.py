@@ -6,7 +6,7 @@ site = root / 'dist' / 'site'
 site.mkdir(parents=True, exist_ok=True)
 
 css = (src / 'style.css').read_text()
-order = ['content.js', 'content2.js', 'voices.js', 'app.js', 'levels.js', 'draw.js', 'curriculum.js', 'curr_ui.js', 'sync.js', 'pen.js', 'boot.js']
+order = ['content.js', 'content2.js', 'voices.js', 'app.js', 'levels.js', 'draw.js', 'curriculum.js', 'kor_curr.js', 'eng_curr.js', 'currcore.js', 'curr_ui.js', 'sync.js', 'pen.js', 'boot.js']
 js = '\n'.join((src / f).read_text() for f in order)
 cfg = (root / 'firebase' / 'firebase-config.js').read_text().replace('const firebaseConfig', 'window.FIREBASE_CONFIG')
 version = time.strftime('%Y%m%d%H%M%S')

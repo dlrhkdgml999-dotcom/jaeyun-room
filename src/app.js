@@ -25,7 +25,7 @@ function freshState(){
     praise:null, voices:{}, notes:[], kidNotes:[],
     alarms:{on:[true,true,true,true,true,true,true], time:['10:00','16:00','16:00','16:00','16:00','16:00','10:00'], nudge:true},
     adultTab:'mom', local:null,
-    level:{ kor:1, math:1, eng:0 }, mathMode:'curr', curr:null,
+    level:{ kor:1, math:1, eng:0 }, mathMode:'curr', curr:null, currs:{}, modes:{ kor:'curr', eng:'curr' }, ebsOn:{ math:true, kor:true }, lastLec:null,
     tts:{ preset:'tori', voice:'', pitch:1.35, rate:.86, enVoice:'' },
     gift:{ name:'', goal:30, round:1, start:null, achieved:null, history:[] }, giftAch:{}, grades:{},
   };
@@ -574,7 +574,7 @@ VIEWS.home = () => {
     </div>
     <button class="gift-card ${giftAch() ? 'won' : ''}" data-a="go" data-v="gift">${giftBox(58, giftAch() ? 'hop' : '')}
       <span style="flex:1;display:grid;gap:6px">${giftAch() ? `<span class="disp" style="font-size:21px">오빠 선물 받는 날! 오빠한테 자랑하자!</span>` : `<span class="disp" style="font-size:19px">오빠 선물까지 <b style="color:var(--pink-deep);font-weight:400">${g.goal - gd}일</b> 남았어!</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span><span class="muted" style="font-size:14px">공부 다 한 날 ${gd} / ${g.goal}일</span>`}</span></button>
-    ${mathCurrOn() ? mapTileHTML() : ''}
+    ${mapTileHTML()}
     ${nextItem ? `<div class="next-item"><div class="row"><span class="disp" style="font-size:18px">스티커 ${nextItem.need - total}개 더 모으면 '${esc(nextItem.name)}'!</span></div><div class="meter"><i style="width:${Math.round((total - prevNeed) / (nextItem.need - prevNeed) * 100)}%"></i></div></div>` : ''}
     <div class="home-nav">
       <button class="nav-tile" data-a="go" data-v="room"><span class="ic" style="background:var(--pink-pale)">🎀</span>꾸미기</button>
@@ -591,13 +591,8 @@ let RUN = null;
 function makeBoard(k){
   const n = countFor(k);
   let qs;
-  if (k === 'rev') qs = genReview(n);
-  else if (k === 'math' && mathCurrOn()) {
-    const c = curr();
-    qs = genCurriculumMath(n);
-    if (!c.test) { const due = dueWrong('math'); const old = takeDue(due, Math.min(3, Math.floor(n / 6))); old.forEach((q, i) => qs.splice(Math.min(qs.length, 4 + i * 5), 0, q)); }
-    return { qs, idx:0, correct:0, secs:0, done:false, phase:'q', intro:false, startedAt:Date.now(), cur:{ test:c.test, unit:c.unit, lesson: c.test ? null : currentLesson().id, items:[] } };
-  }
+  if (k === 'rev') { const lec = planLecture(day()); qs = genReview(lec ? Math.max(8, Math.round(n * .55)) : n); }
+  else if (k !== 'rev' && currOn(k)) return makeCurrBoard(k, n);
   else {
     // 과목 판에도 그 과목에서 전에 틀린 문제를 조금(4문제 중 1개꼴) 섞는다
     // 밀린 복습이 많으면 새 문제를 줄이고 틀린 문제를 절반까지 늘린다
@@ -623,10 +618,10 @@ VIEWS.intro = k => {
       <button class="speak-btn" data-a="mom" data-v="${meta.mom}" aria-label="다시 듣기">${ICON.speak}</button>
     </div>`}
     ${Object.values(day().boards).filter(x => x.intro || x.done).length <= 1 && !resume ? `<p class="eye-tip">👀 태블릿은 팔 길이만큼 떨어뜨리고, 허리 펴고 앉아요!</p>` : ''}
-    ${k === 'math' && b.cur ? lessonIntroHTML(b) : ''}
+    ${b.cur ? lessonIntroHTML(b) : b.waitLec ? waitLecHTML(k) : ''}
     <p class="muted">${k === 'eng' ? `영어 ${b.qs.length}문제 + 받아쓰기 10개` : k === 'rev' ? (dueCnt ? `전에 틀린 문제 ${dueCnt}개를 다시 풀어요` : `여러 과목을 골고루 ${b.qs.length}문제 풀어요`) : `${b.qs.length}문제`}</p>
     ${stageHTML(160, { expr:'happy', size:120 })}
-    <button class="btn big" data-a="begin">${resume ? '이어서 하기' : b.cur && !b.cur.test && !b.cardsSeen ? '개념 배우러 가기' : '시작!'}</button>
+    <button class="btn big" data-a="begin">${resume ? '이어서 하기' : b.cur && !b.cur.test && !b.cardsSeen ? (boardHasLecture(b) && !b.lecSkip ? '📺 강의 보러 가기' : '개념 배우러 가기') : '시작!'}</button>
   </section>`;
   if (!resume && !b.intro) {
     b.intro = true; save();
@@ -678,13 +673,14 @@ function optLabel(q, o){
   if (q.optHtml && q.optHtml[o]) return q.optHtml[o];
   if (q.frac) return fracHTML(o);
   if (q.eng && q.pic) return engVis(o, false);
-  if (q.sayOpts) return `<span style="flex:1">${esc(o)}</span><span class="say" data-a="sayopt" data-v="${esc(o)}" role="button" aria-label="${esc(o)} 듣기">${ICON.speak}</span>`;
+  if (q.sayOpts) return `<span style="flex:1">${esc(o)}</span><span class="say" data-a="sayopt" data-v="${esc(o)}" data-l="${q.subj === 'kor' ? 'ko-KR' : 'en-US'}" role="button" aria-label="${esc(o)} 듣기">${ICON.speak}</span>`;
   return esc(o);
 }
 function inputHTML(q){
   if (q.input === 'choice') {
     const long = q.opts.some(o => String(o).length > 5);
-    return `<div class="options ${q.cols === 3 && !long ? 'cols3' : q.cols === 2 ? 'cols2' : ''}">${q.opts.map((o, i) => `<button class="opt ${q.pic ? 'pic-opt' : ''} ${long && !q.sayOpts ? 'text-long' : ''} ${!long && q.cols === 3 && q.opts.some(o => String(o).length >= 4) ? 'four' : ''}" ${q.big ? 'style="font-size:44px;min-height:96px"' : ''} data-a="ans" data-i="${i}">${optLabel(q, o)}</button>`).join('')}</div>`;
+    const c3 = q.cols === 3 && !long && !q.sayOpts;
+    return `<div class="options ${c3 ? 'cols3' : q.cols === 2 && !q.sayOpts ? 'cols2' : ''}">${q.opts.map((o, i) => `<button class="opt ${q.pic ? 'pic-opt' : ''} ${long && !q.sayOpts ? 'text-long' : ''} ${c3 && q.opts.some(o => String(o).length >= 4 || (/[가-힣]/.test(o) && String(o).length >= 3)) ? 'four' : ''}" ${q.big ? 'style="font-size:44px;min-height:96px"' : ''} data-a="ans" data-i="${i}">${optLabel(q, o)}</button>`).join('')}</div>`;
   }
   if (q.input === 'numpad') {
     return `<div class="answer-box"><span class="slot" id="slot">${esc(RUN.typed || '')}</span></div>
@@ -848,7 +844,7 @@ function finishBoard(k){
   b.done = true; b.endedAt = Date.now();
   const st = pick(STICKERS); d.earned.push(st); S.stickers.push({ e:st, d:todayKey() });
   const mins = Math.max(1, Math.round(b.secs / 60));
-  if (k === 'math' && b.cur) b.cur.result = judgeCurriculum(b);
+  if (b.cur) b.cur.result = judgeCurriculum(b);
   b.n = b.qs.length; b.qs = [];   // 끝난 판의 문제 목록은 지워서 폰 저장 공간을 아낀다
   notify('oppa', `재윤이가 ${josa(BNAME[k], "을", "를")} 끝냈어요 · ${b.n}문제 중 ${b.correct}개 한 번에 정답 · ${mins}분`);
   let allDone = false;
@@ -872,7 +868,7 @@ VIEWS.reward = ({ k, st, allDone }) => {
     <h1>${BNAME[k]} 끝!</h1>
     <div class="big-sticker">${st}</div>
     <p class="score-line">${qn}문제 중 <b style="color:var(--pink-deep)">${b.correct}개</b> 한 번에 맞았어!<br><span class="muted">재윤이 스티커북에 쏙!</span></p>
-    ${k === 'math' && b.cur && b.cur.result ? lessonResultHTML(b.cur.result) : ''}
+    ${b.cur && b.cur.result ? lessonResultHTML(b.cur.result) : ''}
     ${allDone ? `<p class="score-line" style="color:var(--mint-deep)">오늘 공부 다 끝! 보너스 스티커도 받았어 ${d.earned[d.earned.length - 1]}</p>` : ''}
     ${newItems.length ? `<div class="next-item" style="align-self:stretch;border-color:var(--pink);background:var(--pink-pale)"><span class="disp" style="font-size:20px">새 꾸미기 선물: ${newItems.map(i => esc(i.name)).join(', ')}!</span><button class="btn small" data-a="go" data-v="room" style="justify-self:center">지금 꾸미러 가기</button></div>` : ''}
     <div class="bubble" style="display:flex;align-items:center;gap:10px"><span style="font-size:28px">💗</span><span>${esc(MOM_LINES[0].text)}</span><button class="speak-btn" style="width:48px;height:48px" data-a="mom" data-v="m1" aria-label="엄마 목소리 다시 듣기">${ICON.speak}</button></div>
@@ -1047,7 +1043,7 @@ function levelPanel(){
   return `<div class="panel"><h3>난이도 (학년 · 학기)</h3>
     ${adv.map(a => { const max = a.s === 'eng' ? 2 : 5, to = clamp(lv(a.s) + a.dir, 0, max), lab = a.s === 'eng' ? ENG_LEVELS[to].split(' ')[0] : LEVELS[to];
       return `<div class="lvl-tip ${a.dir > 0 ? 'up' : 'down'}"><span style="flex:1">${a.dir > 0 ? `${josa(NAMES[a.s], '을', '를')} 최근 ${Math.round(a.r * 100)}% 한 번에 맞혔어요. 너무 쉬운가 봐요!` : `${josa(NAMES[a.s], '은', '는')} ${Math.round(a.r * 100)}%만 한 번에 맞혔어요. 조금 어려워해요.`}</span><button class="btn small ${a.dir > 0 ? 'mint' : 'ghost'}" data-a="lvlset" data-v="${a.s}|${to}">${esc(lab)}로 ${a.dir > 0 ? '올리기' : '내리기'}</button></div>`; }).join('')}
-    ${row('kor')}${mathCurrOn() ? '' : row('math')}${row('eng')}
+    ${['kor','math','eng'].filter(x => !currOn(x)).map(row).join('') || '<p class="muted" style="font-size:15px">세 과목 모두 진도 방식이에요. 기초 복습(30%)은 아래 단계에서 나와요.</p>' + row('kor')}
     <p class="muted" style="font-size:14px">받아쓰기는 국어 단계를 따라가요. 바꾸면 다음에 시작하는 판부터 적용돼요. 한 번에 90% 넘게 맞히는 날이 이어지면 여기서 올리자고 알려 드려요.</p>
   </div>`;
 }
@@ -1074,7 +1070,7 @@ VIEWS.adult = () => {
   let body = '';
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
-    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + mathCurrPanel() + levelPanel() + `
+    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
       <div class="panel"><h3>받아쓰기 채점</h3>
         ${pend.length ? pend.map(([k, dy]) => { const dt = Object.assign({}, dy.dict, gradeOf(k)); const marks = (dt.marks && dt.marks.length ? dt.marks : dt.words.map(() => null));
           return `<div class="panel" style="padding:12px;background:var(--bg);border:0">
@@ -1198,19 +1194,35 @@ function confetti(){
 const ACT = {
   start(){ S.started = true; S.firstDay = S.firstDay || todayKey(); giftStart(); save(); SFX.tap(); go('home'); },
   home(){ go('home'); },
-  go(el){ go(el.dataset.v, el.dataset.lesson ? { lesson:el.dataset.lesson } : undefined); },
+  go(el){ go(el.dataset.v, el.dataset.lesson ? { lesson:el.dataset.lesson } : el.dataset.s ? { s:el.dataset.s } : undefined); },
   board(el){
     const k = el.dataset.k, d = day();
     if (boardState(k, d) === 'done') { speak(`${josa(BNAME[k], "은", "는")} 오늘 다 했어!`); toast(`${josa(BNAME[k], "은", "는")} 오늘 다 했어요!`); return; }
     if (!d.boards[k]) { d.boards[k] = makeBoard(k); if (Object.keys(d.boards).length === 1) notify('mom', '재윤이가 오늘 공부를 시작했어요'); save(); }
     RUN = { k, b:d.boards[k] }; go('intro', k);
   },
-  begin(){ const b = RUN.b; SFX.tap(); if (b.phase === 'dict') return go('dict'); if (b.cur && !b.cur.test && !b.cardsSeen && b.idx === 0) return go('cards', { lesson:b.cur.lesson, fromBoard:true }); go('q'); },
+  begin(){ const b = RUN.b; SFX.tap(); if (b.phase === 'dict') return go('dict');
+    if (b.cur && !b.cur.test && !b.cardsSeen && b.idx === 0) { if (boardHasLecture(b) && !b.lecSkip) return openLecture(b.cur.subj, b.cur.lec); return go('cards', { lesson:b.cur.lesson, fromBoard:true }); }
+    go('q'); },
+  lecopt(el){ const [s, n] = el.dataset.v.split('|'); openLecture(s, +n, true); },
+  lecdone(el){ const w = LECW; if (!w) return go('home'); const mins = Math.round((Date.now() - w.at) / 60000), li = lectInfo(w.s, w.n);
+    if (mins < 10 && !el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 끝까지 다 봤어요!'; speak(`벌써 다 봤어? ${li.no}강은 ${li.mins}분짜리야. 끝까지 봤으면 한 번 더 눌러 줘!`); return; }
+    if (w.opt) { const c = curr(w.s); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins }; notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save(); }
+    else markLectureSeen(w.s, w.n, mins);
+    LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
+    SFX.sticker(); afterLecture(w.opt); },
+  lecfail(){ const w = LECW; LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
+    notify('mom', '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
+    const b = RUN && RUN.b; if (b && b.cur) { b.lecSkip = true; save(); }
+    speak('괜찮아! 엄마한테 알려 둘게. 오늘은 토리랑 개념을 배우자!');
+    if (w && !w.opt && b && b.cur && !b.done && !b.cur.test) return go('cards', { lesson:b.cur.lesson, fromBoard:true });
+    if (RUN) return go('intro', RUN.k); go('home'); },
+  ebstoggle(el){ const s = el.dataset.v; S.ebsOn = S.ebsOn || {}; S.ebsOn[s] = !ebsOn(s); save(); const y = scrollY; go('adult'); scrollTo(0, y); },
   mom(el){ playMom(el.dataset.v); },
   m2(){ const d = day(); d.m2 = true; save(); playMom('m2'); },
   kidnote(){ S.kidNotes.shift(); save(); go('home'); },
   replay(){ if (RUN && RUN.q) replayWord(RUN.q); },
-  sayopt(el, ev){ ev.stopPropagation(); speak(el.dataset.v, 'en-US'); },
+  sayopt(el, ev){ ev.stopPropagation(); ++SEQ; speak(el.dataset.v, el.dataset.l || 'en-US'); },
   ans(el){ const q = RUN.q; if (el.classList.contains('wrong') || el.classList.contains('dim')) return; answer(q.opts[+el.dataset.i]); },
   num(el){
     if (RUN.locked) return; const v = el.dataset.v; SFX.tap();
@@ -1228,8 +1240,7 @@ const ACT = {
   unbuild(el){ if (RUN.locked) return; const i = +el.dataset.i; if (RUN.built[i] == null) return; RUN.built = RUN.built.slice(0, i); rerenderInput(); },
   nextq(){ nextQ(); },
   eyetoggle(){ S.eyeBreak = S.eyeBreak === false ? true : false; save(); const y = scrollY; go('adult'); scrollTo(0, y); },
-  lecture(){ const c = curr(); const link = (c.links || {})[c.unit]; if (link) lectureGuard(link); },
-  eyedone(){ go('home'); },
+  eyedone(el){ const v = el.dataset.v; if (v === 'lesson' && RUN && RUN.b && RUN.b.cur) return go('cards', { lesson:RUN.b.cur.lesson, fromBoard:true }); if (v === 'intro' && RUN) return go('intro', RUN.k); go('home'); },
   async joinrole(el){ const m = $('#joinmsg'); if (m) m.textContent = '연결하는 중이에요…'; const ok = await Sync.join(JOIN_FID, el.dataset.v).catch(e => { console.warn(e); return false; });
     if (!ok) { if (m) m.textContent = '연결하지 못했어요. 인터넷이 되는지, 링크가 맞는지 확인해 주세요.'; return; }
     history.replaceState(null, '', location.pathname); toast('가족과 연결됐어요!'); if (el.dataset.v === 'kid') go('home'); else { S.adultTab = el.dataset.v; go('adult'); } },
@@ -1238,10 +1249,9 @@ const ACT = {
     toast('가족방을 만들었어요. 링크를 카톡으로 보내 주세요'); go('adult'); },
   famcopy(){ const v = familyLink(); try { navigator.clipboard.writeText(v).then(() => toast('링크를 복사했어요'), () => { $('#famlink').select(); toast('링크를 길게 눌러 복사해 주세요'); }); } catch (e) { $('#famlink').select(); } },
   famrole(){ JOIN_FID = S.local.fid; go('join'); },
-  cardsay(){ const l = lessonById(CARDS.lesson); speak(l.cards[CARDS.i].say); },
+  cardsay(){ const l = lessonById(CARDS.lesson); sayParts(l.cards[CARDS.i].say); },
   cardmove(el){ CARDS.i = clamp(CARDS.i + +el.dataset.v, 0, lessonById(CARDS.lesson).cards.length - 1); SFX.tap(); go('cards'); },
-  cardsdone(){ if (CARDS.fromBoard && RUN && RUN.b) { RUN.b.cardsSeen = true; save(); go('q'); } else go('map'); },
-  savelink(){ const v = $('#ebslink').value.trim(); if (v && !/^https?:\/\//.test(v)) { toast('https:// 로 시작하는 주소를 넣어 주세요'); return; } const c = curr(); c.links = c.links || {}; if (v) c.links[c.unit] = v; else delete c.links[c.unit]; save(); toast(v ? '강의 주소를 저장했어요' : '강의 주소를 지웠어요'); },
+  cardsdone(){ if (CARDS.fromBoard && RUN && RUN.b) { RUN.b.cardsSeen = true; save(); go('q'); } else go('map', { s:lessonById(CARDS.lesson).subj }); },
   lvlset(el){ const [k, v] = el.dataset.v.split('|'); S.level[k] = +v; save(); toast('난이도를 바꿨어요. 다음 판부터 적용돼요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ttspreset(el){ const pr = TTS_PRESETS[el.dataset.v]; S.tts.preset = el.dataset.v; S.tts.pitch = pr.pitch; S.tts.rate = pr.rate; save(); const y = scrollY; go('adult'); scrollTo(0, y); ttsSample(); },
   ttsvoice(el){ S.tts.voice = el.dataset.v; save(); const y = scrollY; go('adult'); scrollTo(0, y); ttsSample(); },
@@ -1319,10 +1329,13 @@ document.addEventListener('change', async ev => {
     $('#pv').textContent = S.tts.pitch.toFixed(2); $('#rv').textContent = S.tts.rate.toFixed(2); ttsSample();
   } else if (el.dataset.ch === 'dictmode') {
     S.dictMode = el.value; save(); toast('받아쓰기 쓰는 곳을 바꿨어요');
-  } else if (el.dataset.ch === 'mmode') {
-    S.mathMode = el.value; save(); toast(el.value === 'curr' ? '수학을 단원 진도로 바꿨어요' : '수학을 자유 연습으로 바꿨어요'); const y = scrollY; go('adult'); scrollTo(0, y);
+  } else if (el.dataset.ch === 'cmode') {
+    const s = el.dataset.v; if (s === 'math') S.mathMode = el.value; else { S.modes = S.modes || {}; S.modes[s] = el.value; }
+    save(); toast(`${SUBJ_NAME[s]}: ${el.value === 'curr' ? '진도 방식' : '자유 연습'}으로 바꿨어요. 다음에 시작하는 판부터 적용돼요`); const y = scrollY; go('adult'); scrollTo(0, y);
+  } else if (el.dataset.ch === 'pace') {
+    S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
   } else if (el.dataset.ch === 'cjump') {
-    const [u, l, t] = el.value.split('|').map(Number); const c = curr(); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`진도를 옮겼어요: ${currLabel()}`); const y = scrollY; go('adult'); scrollTo(0, y);
+    const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'level') {
     S.level[el.dataset.v] = +el.value; save(); toast(`${{kor:'국어',math:'수학',eng:'영어'}[el.dataset.v]}: ${el.options[el.selectedIndex].text}로 바꿨어요`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'altime') { S.alarms.time[+el.dataset.v] = el.value; save(); }
