@@ -130,7 +130,7 @@ function makeCurrBoard(k, n){
   const d = day(), lec = planLecture(d), need = dueLecture(k);
   const base = { idx:0, correct:0, secs:0, done:false, phase: k === 'eng' ? 'eng' : 'q', intro:false, startedAt:Date.now() };
   // 강의 보는 날은 다른 판을 줄여서 하루 1시간 안팎으로
-  if (lec && lec.s !== k) n = Math.max(8, Math.round(n * .65));
+  if (lec && lec.s !== k) n = Math.max(7, Math.round(n * .5));
   const c0 = curr(k);
   if (!CURRS[k].units[c0.unit]) return Object.assign(base, { qs:baseGen(k, n), finished:true });   // 이 과목 진도를 다 끝낸 뒤
   if (need && !(lec && lec.s === k)) {
@@ -138,7 +138,7 @@ function makeCurrBoard(k, n){
     return Object.assign(base, { qs:genCurrReview(k, Math.min(n, 12)), waitLec:true });
   }
   const c = curr(k), isLec = !!(lec && lec.s === k);
-  const qs = genCurriculum(k, isLec ? Math.min(n, 8) : n);
+  const qs = genCurriculum(k, isLec ? Math.min(n, 5) : n);   // 강의 날은 교재로 같이 풀었으니 앱은 5문제만
   if (!c.test) { const due = dueWrong(k); const old = takeDue(due, Math.min(isLec ? 1 : 3, Math.floor(n / 6))); old.forEach((q, i) => qs.splice(Math.min(qs.length, 4 + i * 5), 0, q)); }
   const cl = currentLesson(k);
   return Object.assign(base, { qs, cur:{ subj:k, test:c.test, unit:c.unit, lesson: c.test || !cl ? null : cl.id, items:[], lec: isLec ? lec.n : null } });

@@ -596,7 +596,7 @@ let RUN = null;
 function makeBoard(k){
   const n = countFor(k);
   let qs;
-  if (k === 'rev') { const lec = planLecture(day()); qs = genReview(lec ? Math.max(8, Math.round(n * .55)) : n); }
+  if (k === 'rev') { const lec = planLecture(day()); qs = genReview(lec ? Math.max(6, Math.round(n * .4)) : n); }
   else if (k !== 'rev' && currOn(k)) return makeCurrBoard(k, n);
   else {
     // 과목 판에도 그 과목에서 전에 틀린 문제를 조금(4문제 중 1개꼴) 섞는다
