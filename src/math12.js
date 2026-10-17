@@ -80,7 +80,9 @@ Object.assign(LESSON_GEN, {
     if (Math.random() < .7) return cq(`c12:sh${name}`, 'shape3', `${josa(name, '은', '는')} 어떤 모양일까요?`, `${name}의 앞모습은 어떤 모양일까?`, `<div class="pic">${e}</div><div class="muted">${esc(name)}</div>`, Object.keys(SHAPE3), sh, '테두리를 손가락으로 따라 그려 봐요', `${name} → ${sh} 모양`, { pic:true, optHtml:shape3Opts() });
     const others = Object.keys(SHAPE3).filter(x => x !== sh).map(x => pick(SHAPE_THINGS[x])[1]);
     return cq(`c12:shf${sh}${name}`, 'shape3', `${sh} 모양인 물건을 골라요`, `${sh === '○' ? '동그라미' : sh === '△' ? '세모' : '네모'} 모양인 물건을 골라 봐요`, `<div style="width:96px;margin:auto">${shapeSVG(SHAPE3[sh], 96)}</div>`, [name, ...others], name, '물건의 테두리를 떠올려 봐요', `${josa(name, '은', '는')} ${sh} 모양`, { cols:1 }); },
-  'm3-2'(){ const v = rnd(0, 2);
+  'm3-2'(){ const v = rnd(0, 3);
+    if (v === 3) { const sh = pick(['△', '□']), k = rnd(2, 4), per = sh === '△' ? 3 : 4, what = pick(['뾰족한 곳', '곧은 선']);
+      return nq(`c12:fsum${sh}${k}${what}`, 'shape3', `${sh} 모양 ${k}개의 ${josa(what, '은', '는')} 모두 몇 개일까요?`, null, `<div class="row" style="justify-content:center;gap:8px;flex-wrap:wrap">${Array.from({ length:k }, () => shapeSVG(SHAPE3[sh], 96, { marks: what === '뾰족한 곳' })).join('')}</div>`, per * k, `${sh} 모양 하나에 ${what} ${per}개. ${Array(k).fill(per).join(' + ')}`, `${Array(k).fill(per).join(' + ')} = ${per * k}`); }
     if (v === 0) { const [p, a, h] = pick([['뾰족한 곳이 없는 모양은?', '○', '둥근 부분만 있어요'], ['뾰족한 곳이 3군데인 모양은?', '△', '뾰족한 곳을 세어 봐요'], ['뾰족한 곳이 4군데인 모양은?', '□', '뾰족한 곳을 세어 봐요'], ['곧은 선이 없는 모양은?', '○', '둥근 선만 있어요'], ['곧은 선이 3개인 모양은?', '△', '곧은 선을 세어 봐요'], ['곧은 선이 4개인 모양은?', '□', '곧은 선을 세어 봐요'], ['굴리면 잘 굴러가는 모양은?', '○', '둥근 모양이 잘 굴러가요']]);
       return cq(`c12:ft${p}`, 'shape3', p, null, null, Object.keys(SHAPE3), a, h, `${p} → ${a} 모양`, { pic:true, optHtml:shape3Opts() }); }
     if (v === 1) { const [sh, what, n] = pick([['△', '뾰족한 곳', 3], ['□', '뾰족한 곳', 4], ['△', '곧은 선', 3], ['□', '곧은 선', 4], ['○', '뾰족한 곳', 0], ['○', '곧은 선', 0]]);
