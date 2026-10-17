@@ -543,6 +543,7 @@ VIEWS.welcome = () => {
 /* ----- 홈 ----- */
 VIEWS.home = () => {
   if (!S.started) return VIEWS.welcome();
+  maybeWeeklyReport();
   const d = day(), nb = nextBoard(d), total = S.stickers.length;
   const doneCount = BOARDS.filter(b => boardState(b.k, d) === 'done').length;
   const al = alarmInfo();
@@ -1071,7 +1072,7 @@ VIEWS.adult = () => {
   let body = '';
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
-    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
+    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + reportPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
       <div class="panel"><h3>받아쓰기 채점</h3>
         ${pend.length ? pend.map(([k, dy]) => { const dt = Object.assign({}, dy.dict, gradeOf(k)); const marks = (dt.marks && dt.marks.length ? dt.marks : dt.words.map(() => null));
           return `<div class="panel" style="padding:12px;background:var(--bg);border:0">
@@ -1102,7 +1103,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = weekReportPanel() + `
+    body = reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -1134,7 +1135,7 @@ VIEWS.adult = () => {
       ${reviewPanel()}
       ${notesPanel('oppa', '오빠 알림함')}`;
   } else {
-    body = familyPanel() + `
+    body = familyPanel() + mailPanel() + `
       <div class="panel"><h3>토리 목소리</h3>
         <p class="muted" style="font-size:15px">폰에 들어 있는 음성으로 읽어 줘요. 재윤이가 좋아하는 소리로 골라 주세요.</p>
         <div class="list">${Object.entries(TTS_PRESETS).map(([k, pr]) => `<button class="li" style="text-align:left;${S.tts.preset === k ? 'outline:3px solid var(--pink)' : ''}" data-a="ttspreset" data-v="${k}"><span class="grow">${pr.name}</span>${S.tts.preset === k ? '<span class="pill">사용 중</span>' : ''}</button>`).join('')}</div>
@@ -1274,6 +1275,14 @@ const ACT = {
   dictsay(){ ++SEQ; const dt = day().dict; speak(dt.words[dt.idx], 'ko-KR', .8); },
   dictnext(){ if (Date.now() - (window.__dictShown || 0) < 900) return; const dt = day().dict; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } dt.pen = dt.pen || []; dt.pen[dt.idx] = penImage(); } SFX.tap(); dt.idx++; if (penMode() && dt.idx >= dt.words.length) { composePen(dt).then(img => { dt.photo = img; dt.pen = null; save(); go('photo'); }); return; } save(); go(dt.idx >= dt.words.length ? 'photo' : 'dict'); },
   penclear(){ setupPen(); },
+  repshare(el){ const r = el.dataset.v && S.reports[el.dataset.v] ? S.reports[el.dataset.v] : buildWeekReport(mondayOf(todayKey())); const text = reportText(r);
+    if (navigator.share) navigator.share({ title:reportTitle(r), text }).catch(() => {}); else { try { navigator.clipboard.writeText(text).then(() => toast('복사했어요. 카톡에 붙여 넣어 주세요')); } catch (e) { toast('복사가 안 됐어요'); } } },
+  mailsave(){ const mom = $('#mmom').value.trim(), oppa = $('#moppa').value.trim(); const ok = x => !x || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
+    if (!ok(mom) || !ok(oppa) || (!mom && !oppa)) { toast('메일 주소를 확인해 주세요'); return; }
+    S.mail = Object.assign({}, S.mail || {}, { mom, oppa }); if (!S.mail.key) S.mail.key = newFid().slice(0, 16); save(); toast('저장했어요. 아래 순서대로 설정해 주세요'); const y = scrollY; go('adult'); scrollTo(0, y); },
+  mailcopy(){ const t = $('#mailcode').value; try { navigator.clipboard.writeText(t).then(() => toast('코드를 복사했어요'), () => { $('#mailcode').select(); }); } catch (e) { $('#mailcode').select(); } },
+  mailurl(){ const u = $('#murl').value.trim(); if (u && !/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(u)) { toast('https://script.google.com/macros/s/…/exec 모양의 주소를 넣어 주세요'); return; } S.mail = Object.assign({}, S.mail || {}, { url:u }); save(); toast(u ? 'URL을 저장했어요' : 'URL을 지웠어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
+  mailtest(){ const ok = sendReportMail(buildWeekReport(mondayOf(todayKey())), true); toast(ok ? '테스트 메일을 보냈어요. 1분 안에 메일함을 확인해 주세요' : 'URL을 먼저 저장해 주세요'); },
   revnext(){ reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
   revbad(){ const q = REV.q; if (!q) return; S.reviewNotes = S.reviewNotes || []; S.reviewNotes.push({ lesson:REV.lesson, prompt:q.prompt + (q.vis && q.vis.html ? ' / ' + q.vis.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) : '') + (q.listen ? ' / 듣기: ' + q.listen : ''), opts:(q.opts || []).join(', '), ans:String(q.ans), memo:($('#revmemo') || {}).value || '' }); saveLocal(); toast('표시했어요'); reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
   revcopy(){ const t = reviewText(); try { navigator.clipboard.writeText(t).then(() => toast('복사했어요. Claude에게 붙여 넣어 주세요'), () => toast('복사가 안 됐어요')); } catch (e) { toast('복사가 안 됐어요'); } },
@@ -1349,6 +1358,8 @@ document.addEventListener('change', async ev => {
     S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
   } else if (el.dataset.ch === 'revlesson') {
     REV.lesson = el.value; reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y);
+  } else if (el.dataset.ch === 'repsel') {
+    REP_SEL = el.value; const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'cjump') {
     const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); Sync.touch(s === 'math' ? 'curr' : 'currs'); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'level') {
