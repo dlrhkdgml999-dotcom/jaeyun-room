@@ -473,7 +473,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261017092131";
+window.APP_VERSION = "20261017094738";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -1497,6 +1497,7 @@ function nextQ(){
   b.idx++;
   save();
   if (b.idx >= b.qs.length) {
+    if (writeTaskFor(b)) return go('write');
     if (k === 'eng' && b.phase === 'eng') { b.phase = 'dict'; const d = day(); if (!d.dict) d.dict = { words:pickDict(10), idx:0, photo:null, graded:false, marks:null, sent:false }; save(); return go('dict'); }
     return finishBoard(k);
   }
@@ -1789,7 +1790,7 @@ VIEWS.adult = () => {
   let body = '';
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
-    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
+    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
       <div class="panel"><h3>받아쓰기 채점</h3>
         ${pend.length ? pend.map(([k, dy]) => { const dt = Object.assign({}, dy.dict, gradeOf(k)); const marks = (dt.marks && dt.marks.length ? dt.marks : dt.words.map(() => null));
           return `<div class="panel" style="padding:12px;background:var(--bg);border:0">
@@ -1820,7 +1821,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = `
+    body = weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -1849,6 +1850,7 @@ VIEWS.adult = () => {
         <div class="subj-acc">${[['kor','국어','var(--pink)'],['math','수학','var(--sky-deep)'],['eng','영어','var(--mint-deep)'],['rev','복습','var(--lav-deep)']].map(([s, l, c]) => { const p = acc[s][1] ? Math.round(acc[s][0] / acc[s][1] * 100) : 0; return `<div class="r"><span>${l}</span><span class="m"><i style="width:${p}%;background:${c}"></i></span><span style="text-align:right;font-variant-numeric:tabular-nums">${acc[s][1] ? p + '%' : '-'}</span></div>`; }).join('')}</div>
       </div>
       <div class="panel"><h3>자주 틀리는 문제</h3>${top.length ? `<div class="list">${top.map(w => `<div class="li"><span class="grow">${esc(qText(w))}</span><span class="pill">${w.misses}번</span></div>`).join('')}</div>` : '<p class="muted">아직 없어요</p>'}<p class="muted" style="font-size:14px">복습 판에서 두 번 연속 맞히면 목록에서 빠져요. 지금 복습 대기 ${S.wrong.filter(w => w.subj !== 'dict').length}문제.</p></div>
+      ${reviewPanel()}
       ${notesPanel('oppa', '오빠 알림함')}`;
   } else {
     body = familyPanel() + `
@@ -1920,7 +1922,7 @@ const ACT = {
     if (!d.boards[k]) { d.boards[k] = makeBoard(k); if (Object.keys(d.boards).length === 1) notify('mom', '재윤이가 오늘 공부를 시작했어요'); save(); }
     RUN = { k, b:d.boards[k] }; go('intro', k);
   },
-  begin(){ const b = RUN.b; SFX.tap(); if (b.phase === 'dict') return go('dict');
+  begin(){ const b = RUN.b; SFX.tap(); if (b.phase === 'dict') return go('dict'); if (b.idx >= b.qs.length) return writeTaskFor(b) ? go('write') : afterWrite();
     if (b.cur && !b.cur.test && !b.cardsSeen && b.idx === 0) { if (boardHasLecture(b) && !b.lecSkip) return openLecture(b.cur.subj, b.cur.lec); return go('cards', { lesson:b.cur.lesson, fromBoard:true }); }
     go('q'); },
   lecopt(el){ const [s, n] = el.dataset.v.split('|'); openLecture(s, +n, true); },
@@ -1991,6 +1993,15 @@ const ACT = {
   dictsay(){ ++SEQ; const dt = day().dict; speak(dt.words[dt.idx], 'ko-KR', .8); },
   dictnext(){ if (Date.now() - (window.__dictShown || 0) < 900) return; const dt = day().dict; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } dt.pen = dt.pen || []; dt.pen[dt.idx] = penImage(); } SFX.tap(); dt.idx++; if (penMode() && dt.idx >= dt.words.length) { composePen(dt).then(img => { dt.photo = img; dt.pen = null; save(); go('photo'); }); return; } save(); go(dt.idx >= dt.words.length ? 'photo' : 'dict'); },
   penclear(){ setupPen(); },
+  revnext(){ reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  revbad(){ const q = REV.q; if (!q) return; S.reviewNotes = S.reviewNotes || []; S.reviewNotes.push({ lesson:REV.lesson, prompt:q.prompt + (q.vis && q.vis.html ? ' / ' + q.vis.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) : '') + (q.listen ? ' / 듣기: ' + q.listen : ''), opts:(q.opts || []).join(', '), ans:String(q.ans), memo:($('#revmemo') || {}).value || '' }); saveLocal(); toast('표시했어요'); reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  revcopy(){ const t = reviewText(); try { navigator.clipboard.writeText(t).then(() => toast('복사했어요. Claude에게 붙여 넣어 주세요'), () => toast('복사가 안 됐어요')); } catch (e) { toast('복사가 안 됐어요'); } },
+  revclear(){ S.reviewNotes = []; saveLocal(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  writeclear(){ const w = WRITE_TASKS[RUN.b.cur.lesson]; setupPen(w.lines + 1); },
+  writesay(){ const w = WRITE_TASKS[RUN.b.cur.lesson]; speak(w.prompt); },
+  writedone(){ if (RUN.b.wrote) return; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } saveWrite(penImage()); } else { const have = (day().writes || {})[RUN.k]; if (!have || !have.img) return; saveWrite(have.img); } SFX.sticker(); speak('멋지다! 엄마한테 보냈어!'); afterWrite(); },
+  writeskip(){ if (RUN.b.wrote) return; saveWrite(null, true); afterWrite(); },
+  writefb(el){ const parts = el.dataset.v.split('|'), good = parts.pop() === '1', key = parts.join('|'); const inp = document.getElementById('wfb-' + key); S.writeFb = S.writeFb || {}; S.writeFb[key] = { good, text:(inp && inp.value.trim()) || '', at:Date.now() }; applyWriteFb(); save(); toast('재윤이에게 한마디를 보냈어요'); notify('oppa', `엄마가 재윤이 글에 ${good ? '💗 칭찬' : '✏️ 다시 써 보자'}를 남겼어요`); const y = scrollY; go('adult'); scrollTo(0, y); },
   sendphoto(){ const d = day(); if (d.boards.eng && d.boards.eng.done) return; d.dict.sent = true; notify('mom', '📒 재윤이가 받아쓰기 사진을 보냈어요. 채점해 주세요!'); save(); finishBoard('eng'); },
   skipphoto(){ const d = day(); if (d.boards.eng && d.boards.eng.done) return; d.dict.sent = true; notify('mom', '📒 재윤이가 받아쓰기를 끝냈어요 (사진 없음). 공책을 보고 채점해 주세요'); save(); finishBoard('eng'); },
   roomtab(el){ ROOM_TAB = el.dataset.v; go('room'); },
@@ -2036,7 +2047,9 @@ document.addEventListener('click', ev => {
 });
 document.addEventListener('change', async ev => {
   const el = ev.target;
-  if (el.id === 'photoIn' && el.files && el.files[0]) {
+  if (el.id === 'writeIn' && el.files && el.files[0]) {
+    try { const d = day(); d.writes = d.writes || {}; const w = WRITE_TASKS[RUN.b.cur.lesson]; d.writes[RUN.k] = { lesson:RUN.b.cur.lesson, prompt:w.prompt, img:await compressImage(el.files[0]), at:Date.now() }; save(); go('write'); } catch (e) { toast('사진을 불러오지 못했어요. 다시 찍어 주세요'); }
+  } else if (el.id === 'photoIn' && el.files && el.files[0]) {
     try { day().dict.photo = await compressImage(el.files[0]); save(); go('photo'); } catch (e) { toast('사진을 불러오지 못했어요. 다시 찍어 주세요'); }
   } else if (el.dataset.ch === 'audio' && el.files && el.files[0]) {
     const f = el.files[0];
@@ -2053,6 +2066,8 @@ document.addEventListener('change', async ev => {
     save(); toast(`${SUBJ_NAME[s]}: ${el.value === 'curr' ? '진도 방식' : '자유 연습'}으로 바꿨어요. 다음에 시작하는 판부터 적용돼요`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'pace') {
     S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
+  } else if (el.dataset.ch === 'revlesson') {
+    REV.lesson = el.value; reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'cjump') {
     const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); Sync.touch(s === 'math' ? 'curr' : 'currs'); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'level') {
@@ -3703,7 +3718,7 @@ VIEWS.eyebreak = (next) => {
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
 const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch'];
-const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift'];
+const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
 function linked(){ return !!(S.local && S.local.fid); }
@@ -3768,7 +3783,7 @@ const Sync = {
   },
   afterRemote(){
     this.applying = true;
-    if (applyGrades()) this.schedule();
+    if (applyGrades() | applyWriteFb()) this.schedule();
     saveLocal();
     this.applying = false;
     refreshIfIdle();
@@ -3902,13 +3917,13 @@ function familyPanel(){
 /* ===================== 펜으로 받아쓰기 (태블릿) ===================== */
 function penMode(){ const m = S.dictMode || 'auto'; if (m === 'pen') return true; if (m === 'paper') return false; return Math.min(screen.width, screen.height) >= 600; }
 let PEN = { drawn:false };
-function setupPen(){
+function setupPen(nLines){
   const cv = $('#pen'); if (!cv) return;
   const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
   x.fillStyle = '#fff'; x.fillRect(0, 0, r.width, r.height);
-  x.strokeStyle = '#CDEBE0'; x.lineWidth = 2; [r.height * .33, r.height * .66].forEach(y => { x.beginPath(); x.moveTo(0, y); x.lineTo(r.width, y); x.stroke(); });
+  const nl = nLines || 3; x.strokeStyle = '#CDEBE0'; x.lineWidth = 2; for (let i = 1; i < nl; i++) { const y = r.height * i / nl; x.beginPath(); x.moveTo(0, y); x.lineTo(r.width, y); x.stroke(); }
   x.strokeStyle = '#3A2530'; x.lineWidth = 4.5; x.lineCap = 'round'; x.lineJoin = 'round';
   PEN = { drawn:false, down:false };
   const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
@@ -3930,6 +3945,125 @@ function composePen(dt){
       img.onerror = () => { if (--left === 0) res(cv.toDataURL('image/jpeg', .62)); }; img.src = src;
     });
   });
+}
+
+/* ===================== 직접 써 보기 (쓰기 차시) ===================== */
+/* 차시마다 한두 문장을 펜(태블릿)이나 공책(사진)으로 써서 엄마에게 보낸다 */
+const WRITE_TASKS = {
+  'k1-3':{ prompt:'나를 소개하는 문장을 두 줄 써 봐요', guide:'나는 ○○○이에요.\n나는 ○○를 좋아해요.', lines:2 },
+  'k2-3':{ prompt:'"토끼"를 넣어서 문장을 하나 만들어 봐요', guide:'예) 토끼가 당근을 먹어요.', lines:1 },
+  'k3-1':{ prompt:'"꽃이 피었어요."를 꾸며 주는 말을 넣어 더 자세하게 써 봐요', guide:'예) 노란 꽃이 활짝 피었어요.', lines:1 },
+  'k3-4':{ prompt:'오늘 있었던 일을 일기로 세 줄 써 봐요', guide:'① 오늘 한 일\n② 그때 있었던 일\n③ 내 마음 (기뻤다, 속상했다…)', lines:3 },
+  'k5-2':{ prompt:'오늘 내 마음을 나타내는 말을 넣어 한 문장 써 봐요', guide:'예) 오빠가 놀아 줘서 기뻤어요.', lines:1 },
+  'k6-3':{ prompt:'내 생각과 까닭을 함께 써 봐요', guide:'나는 ○○가 좋아요.\n왜냐하면 ○○ 때문이에요.', lines:2 },
+  'k7-2':{ prompt:'친구에게 고운 말로 한 문장 써 봐요', guide:'예) 도와줘서 고마워. 너는 정말 좋은 친구야.', lines:1 },
+  'k8-2':{ prompt:'이야기 속 인물에게 하고 싶은 말을 써 봐요', guide:'예) 생쥐야, 약속을 지켜서 멋져!', lines:2 },
+  'e6-1':{ prompt:'따라 써 봐요: It is a cat.', guide:'It is a cat.', lines:1, en:true },
+  'e6-2':{ prompt:'따라 써 봐요: I like apples.', guide:'I like apples.', lines:1, en:true },
+  'e6-3':{ prompt:'따라 써 봐요: I can swim.', guide:'I can swim.', lines:1, en:true },
+};
+function writeTaskFor(b){ return b && b.cur && !b.cur.test && b.cur.lesson && WRITE_TASKS[b.cur.lesson] && !b.wrote ? WRITE_TASKS[b.cur.lesson] : null; }
+let WRITE = null;
+VIEWS.write = () => {
+  const b = RUN.b, w = writeTaskFor(b) || WRITE_TASKS[b.cur.lesson], k = RUN.k, d = day(), have = (d.writes || {})[k];
+  const pen = penMode();
+  app().innerHTML = `<section class="screen">
+    <div class="q-top"><button class="icon-btn" data-a="home" aria-label="나가기">${ICON.close}</button><span class="disp" style="flex:1;font-size:20px">✏️ 직접 써 보기</span></div>
+    <div class="q-card">
+      <div class="q-head"><p class="q-prompt">${esc(w.prompt)}</p><button class="speak-btn" data-a="writesay" aria-label="다시 듣기">${ICON.speak}</button></div>
+      <div class="passage" style="${w.en ? "font-family:'Helvetica Neue',Arial,sans-serif;font-size:26px" : ''}">${esc(w.guide).replace(/\n/g, '<br>')}</div>
+      ${pen ? `<div class="pen-wrap"><canvas id="pen" class="pen-canvas" style="height:${w.lines * 110 + 40}px" aria-label="쓰는 칸"></canvas><button class="btn ghost small" data-a="writeclear">지우고 다시 쓰기</button></div>`
+        : have && have.img ? `<img class="photo-prev" src="${have.img}" alt="쓴 글 사진">` : `<div class="note-paper"><span class="muted">공책에 또박또박 쓰고, 다 쓰면 사진을 찍어요</span></div>`}
+    </div>
+    ${pen ? `<button class="btn big mint" data-a="writedone">다 썼어요! 엄마에게 보내기</button>`
+      : `<label class="btn ${have && have.img ? 'ghost' : 'mint'} big file-btn">${have && have.img ? '다시 찍기' : '📷 사진 찍기'}<input type="file" accept="image/*" capture="environment" id="writeIn"></label>${have && have.img ? `<button class="btn big" data-a="writedone">엄마에게 보내기</button>` : ''}`}
+    <button class="grown-up" data-a="writeskip">오늘은 다음에 쓸게요</button>
+  </section>`;
+  if (pen) setupPen(w.lines + 1);
+  speak(w.prompt + '. 천천히, 또박또박 써 봐!');
+};
+function afterWrite(){
+  const b = RUN.b, k = RUN.k; b.wrote = true; save();
+  if (k === 'eng' && b.phase === 'eng') { b.phase = 'dict'; const d = day(); if (!d.dict) d.dict = { words:pickDict(10), idx:0, photo:null, graded:false, marks:null, sent:false }; save(); return go('dict'); }
+  finishBoard(k);
+}
+function saveWrite(img, skipped){
+  const d = day(), b = RUN.b, w = WRITE_TASKS[b.cur.lesson];
+  d.writes = d.writes || {};
+  d.writes[RUN.k] = { lesson:b.cur.lesson, prompt:w.prompt, img:img || null, skipped:!!skipped, at:Date.now() };
+  if (!skipped) notify('mom', `✏️ 재윤이가 쓴 글이 왔어요: "${w.prompt}" 엄마 메뉴에서 보고 한마디 남겨 주세요`);
+  else notify('mom', `✏️ 재윤이가 오늘 쓰기("${w.prompt}")를 다음으로 미뤘어요`);
+}
+/* 엄마 반응을 재윤이 태블릿에서 한 번만 알려 준다 */
+function applyWriteFb(){
+  if (!canWriteKid()) return false;
+  let changed = false;
+  Object.entries(S.writeFb || {}).forEach(([key, fb]) => {
+    const [dk, k] = key.split('|'), wr = S.days[dk] && S.days[dk].writes && S.days[dk].writes[k];
+    if (!wr || wr.fbShown) return;
+    wr.fbShown = true; changed = true;
+    S.kidNotes.unshift({ text: fb.good ? `엄마가 재윤이 글을 봤어! ${fb.text ? '"' + fb.text + '"' : '정말 잘 썼어! 💗'}` : `엄마가 재윤이 글을 봤어. ${fb.text ? '"' + fb.text + '"' : '다음엔 조금 더 또박또박 써 보자!'}`, at:Date.now() });
+  });
+  if (changed) S.kidNotes = S.kidNotes.slice(0, 10);
+  return changed;
+}
+/* 엄마 메뉴: 재윤이가 쓴 글 */
+function writesPanel(){
+  const items = Object.entries(S.days).flatMap(([dk, dy]) => Object.entries(dy.writes || {}).map(([k, w]) => ({ dk, k, w }))).sort((a, b) => b.w.at - a.w.at).slice(0, 5);
+  return `<div class="panel"><h3>✏️ 재윤이가 쓴 글</h3>
+    ${items.length ? items.map(({ dk, k, w }) => { const key = `${dk}|${k}`, fb = (S.writeFb || {})[key];
+      return `<div class="panel" style="padding:12px;background:var(--bg);border:0">
+        <div class="row"><b class="disp" style="font-size:17px;font-weight:400;flex:1">${shortDate(dk)} · ${esc(w.prompt)}</b>${fb ? `<span class="pill ok">${fb.good ? '💗 칭찬함' : '✏️ 다시 써 보자'}</span>` : w.skipped ? '<span class="pill no">미룸</span>' : '<span class="pill wait">아직 안 봄</span>'}</div>
+        ${w.img ? `<img src="${w.img}" alt="재윤이가 쓴 글" style="width:100%;border-radius:12px;background:#fff">` : w.skipped ? '<p class="muted">이날은 쓰기를 다음으로 미뤘어요.</p>' : ''}
+        ${w.img && !fb ? `<div class="field"><input type="text" id="wfb-${esc(key)}" maxlength="40" placeholder="한마디 (예: 글씨가 정말 반듯해졌어!)"></div>
+          <div class="row" style="flex-wrap:wrap"><button class="btn mint small" data-a="writefb" data-v="${esc(key)}|1">💗 잘 썼어</button><button class="btn ghost small" data-a="writefb" data-v="${esc(key)}|0">✏️ 다시 써 보자</button></div>` : ''}
+      </div>`; }).join('') : '<p class="muted">국어 쓰기 차시(나를 소개하기, 일기 등)와 영어 문장 차시에서 재윤이가 직접 쓴 글이 여기로 와요.</p>'}
+  </div>`;
+}
+
+/* ===================== 오빠 메뉴: 주간 리포트 · 문제 검토 ===================== */
+function weekReportPanel(){
+  const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), i - 6)), from = keys[0];
+  const rows = SUBJS.map(s => {
+    const c = curr(s), passed = Object.values(c.done).filter(d => d.pass && d.date >= from).length;
+    const medals = c.medals.filter(m => m.date >= from).length, lecs = Object.entries(c.seen || {}).filter(([, v]) => v.d >= from);
+    const mins = lecs.reduce((a, [, v]) => a + (v.mins || 0), 0);
+    return `<div class="li" style="flex-wrap:wrap"><span class="grow"><b class="disp" style="font-weight:400">${SUBJ_NAME[s]}</b> · ${esc(currLabel(s))}</span>
+      <span class="pill ok">통과 ${passed}차시</span>${medals ? `<span class="pill ok">🏅 ${medals}</span>` : ''}${CURRS[s].ebs ? `<span class="pill ${lecs.length ? 'ok' : 'wait'}">📺 ${lecs.length}편${mins ? ` · ${mins}분` : ''}</span>` : ''}</div>`;
+  }).join('');
+  const writes = keys.flatMap(k => Object.values((S.days[k] || {}).writes || {}).map(w => Object.assign({ k }, w))).filter(w => w.img);
+  const dictScores = keys.map(k => gradeOf(k)).filter(g => g.graded).map(g => g.score);
+  return `<div class="panel"><h3>이번 주 재윤이 (${shortDate(from)} ~ ${shortDate(keys[6])})</h3>
+    <div class="list">${rows}</div>
+    <p style="font-size:15px">받아쓰기 ${dictScores.length ? `${dictScores.length}번 · 평균 ${Math.round(dictScores.reduce((a, b) => a + b, 0) / dictScores.length * 10) / 10}점` : '채점된 것 없음'} · 직접 쓴 글 ${writes.length}편</p>
+    ${writes.length ? `<div class="row" style="gap:8px;overflow-x:auto">${writes.slice(-3).map(w => `<img src="${w.img}" alt="재윤이가 쓴 글" style="height:90px;border-radius:10px;border:2px solid var(--line);background:#fff">`).join('')}</div>` : ''}
+  </div>`;
+}
+/* 문제 검토: 오빠가 차시별 문제를 넘겨 보며 이상한 것을 표시 → 복사해서 Claude에게 */
+let REV = { lesson:'1-1', q:null };
+function reviewQ(){ try { REV.q = lessonQ(lessonById(REV.lesson)); } catch (e) { REV.q = null; } }
+function reviewPanel(){
+  if (!REV.q) reviewQ();
+  const q = REV.q, notes = S.reviewNotes || [];
+  const opts = SUBJS.map(s => `<optgroup label="${SUBJ_NAME[s]}">${CURRS[s].all.map(l => `<option value="${l.id}" ${l.id === REV.lesson ? 'selected' : ''}>${l.unit.n}-${l.li + 1} ${esc(l.title)}</option>`).join('')}</optgroup>`).join('');
+  const ans = q ? (q.input === 'choice' ? q.opts.map(o => `<span class="pill ${String(o) === String(q.ans) ? 'ok' : ''}">${String(o) === String(q.ans) ? '✔ ' : ''}${q.optHtml && q.optHtml[o] && !q.sayOpts ? q.optHtml[o] : esc(o)}</span>`).join(' ') : `<span class="pill ok">정답: ${esc(q.ans)}</span>`) : '';
+  return `<div class="panel"><h3>문제 검토 (오빠용)</h3>
+    <p class="muted" style="font-size:14px">차시를 골라 문제를 넘겨 보다가 이상한 문제는 "이상해요"를 눌러 주세요. 다 보면 "검토 내용 복사"를 눌러 Claude에게 붙여 넣으면 고쳐요. 여기서 본 건 재윤이 기록에 안 들어가요.</p>
+    <div class="field"><select id="revlesson" data-ch="revlesson" aria-label="검토할 차시">${opts}</select></div>
+    ${q ? `<div class="q-card" style="padding:14px">
+      <p class="q-prompt" style="font-size:19px">${esc(q.prompt)}</p>
+      ${q.vis ? `<div class="q-visual" style="transform:scale(.85);transform-origin:top center">${visHTML(q)}</div>` : ''}
+      ${q.listen ? `<p class="muted" style="font-size:14px">🔊 읽어 주는 말: ${esc(q.listen)}</p>` : ''}
+      <div class="row" style="flex-wrap:wrap;gap:6px">${ans}</div>
+      <p class="muted" style="font-size:13px">힌트: ${esc(q.hint || '')}<br>풀이: ${esc(String(q.explain || ''))}</p>
+    </div>` : '<p class="muted">이 차시는 문제를 만들 수 없어요</p>'}
+    <div class="field"><input type="text" id="revmemo" maxlength="80" placeholder="이상한 점 한 줄 (선택)"></div>
+    <div class="row" style="flex-wrap:wrap"><button class="btn small mint" data-a="revnext">괜찮아요 · 다음 문제</button><button class="btn small" data-a="revbad">이상해요</button></div>
+    ${notes.length ? `<p style="font-size:15px">표시한 문제 <b>${notes.length}</b>개</p><div class="row" style="flex-wrap:wrap"><button class="btn sky small" data-a="revcopy">검토 내용 복사</button><button class="btn ghost small" data-a="revclear">목록 비우기</button></div>` : ''}
+  </div>`;
+}
+function reviewText(){
+  return (S.reviewNotes || []).map((n, i) => `${i + 1}. [${n.lesson}] ${n.prompt} | 보기: ${n.opts} | 정답: ${n.ans}${n.memo ? ` | 메모: ${n.memo}` : ''}`).join('\n');
 }
 
 /* 첫 화면 (모든 내용이 준비된 뒤에) */

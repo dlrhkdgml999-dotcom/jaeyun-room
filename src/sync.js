@@ -7,7 +7,7 @@
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
 const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch'];
-const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift'];
+const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
 function linked(){ return !!(S.local && S.local.fid); }
@@ -72,7 +72,7 @@ const Sync = {
   },
   afterRemote(){
     this.applying = true;
-    if (applyGrades()) this.schedule();
+    if (applyGrades() | applyWriteFb()) this.schedule();
     saveLocal();
     this.applying = false;
     refreshIfIdle();

@@ -1,13 +1,13 @@
 /* ===================== 펜으로 받아쓰기 (태블릿) ===================== */
 function penMode(){ const m = S.dictMode || 'auto'; if (m === 'pen') return true; if (m === 'paper') return false; return Math.min(screen.width, screen.height) >= 600; }
 let PEN = { drawn:false };
-function setupPen(){
+function setupPen(nLines){
   const cv = $('#pen'); if (!cv) return;
   const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
   x.fillStyle = '#fff'; x.fillRect(0, 0, r.width, r.height);
-  x.strokeStyle = '#CDEBE0'; x.lineWidth = 2; [r.height * .33, r.height * .66].forEach(y => { x.beginPath(); x.moveTo(0, y); x.lineTo(r.width, y); x.stroke(); });
+  const nl = nLines || 3; x.strokeStyle = '#CDEBE0'; x.lineWidth = 2; for (let i = 1; i < nl; i++) { const y = r.height * i / nl; x.beginPath(); x.moveTo(0, y); x.lineTo(r.width, y); x.stroke(); }
   x.strokeStyle = '#3A2530'; x.lineWidth = 4.5; x.lineCap = 'round'; x.lineJoin = 'round';
   PEN = { drawn:false, down:false };
   const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };

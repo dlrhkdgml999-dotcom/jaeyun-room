@@ -778,6 +778,7 @@ function nextQ(){
   b.idx++;
   save();
   if (b.idx >= b.qs.length) {
+    if (writeTaskFor(b)) return go('write');
     if (k === 'eng' && b.phase === 'eng') { b.phase = 'dict'; const d = day(); if (!d.dict) d.dict = { words:pickDict(10), idx:0, photo:null, graded:false, marks:null, sent:false }; save(); return go('dict'); }
     return finishBoard(k);
   }
@@ -1070,7 +1071,7 @@ VIEWS.adult = () => {
   let body = '';
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
-    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
+    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
       <div class="panel"><h3>받아쓰기 채점</h3>
         ${pend.length ? pend.map(([k, dy]) => { const dt = Object.assign({}, dy.dict, gradeOf(k)); const marks = (dt.marks && dt.marks.length ? dt.marks : dt.words.map(() => null));
           return `<div class="panel" style="padding:12px;background:var(--bg);border:0">
@@ -1101,7 +1102,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = `
+    body = weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -1130,6 +1131,7 @@ VIEWS.adult = () => {
         <div class="subj-acc">${[['kor','국어','var(--pink)'],['math','수학','var(--sky-deep)'],['eng','영어','var(--mint-deep)'],['rev','복습','var(--lav-deep)']].map(([s, l, c]) => { const p = acc[s][1] ? Math.round(acc[s][0] / acc[s][1] * 100) : 0; return `<div class="r"><span>${l}</span><span class="m"><i style="width:${p}%;background:${c}"></i></span><span style="text-align:right;font-variant-numeric:tabular-nums">${acc[s][1] ? p + '%' : '-'}</span></div>`; }).join('')}</div>
       </div>
       <div class="panel"><h3>자주 틀리는 문제</h3>${top.length ? `<div class="list">${top.map(w => `<div class="li"><span class="grow">${esc(qText(w))}</span><span class="pill">${w.misses}번</span></div>`).join('')}</div>` : '<p class="muted">아직 없어요</p>'}<p class="muted" style="font-size:14px">복습 판에서 두 번 연속 맞히면 목록에서 빠져요. 지금 복습 대기 ${S.wrong.filter(w => w.subj !== 'dict').length}문제.</p></div>
+      ${reviewPanel()}
       ${notesPanel('oppa', '오빠 알림함')}`;
   } else {
     body = familyPanel() + `
@@ -1201,7 +1203,7 @@ const ACT = {
     if (!d.boards[k]) { d.boards[k] = makeBoard(k); if (Object.keys(d.boards).length === 1) notify('mom', '재윤이가 오늘 공부를 시작했어요'); save(); }
     RUN = { k, b:d.boards[k] }; go('intro', k);
   },
-  begin(){ const b = RUN.b; SFX.tap(); if (b.phase === 'dict') return go('dict');
+  begin(){ const b = RUN.b; SFX.tap(); if (b.phase === 'dict') return go('dict'); if (b.idx >= b.qs.length) return writeTaskFor(b) ? go('write') : afterWrite();
     if (b.cur && !b.cur.test && !b.cardsSeen && b.idx === 0) { if (boardHasLecture(b) && !b.lecSkip) return openLecture(b.cur.subj, b.cur.lec); return go('cards', { lesson:b.cur.lesson, fromBoard:true }); }
     go('q'); },
   lecopt(el){ const [s, n] = el.dataset.v.split('|'); openLecture(s, +n, true); },
@@ -1272,6 +1274,15 @@ const ACT = {
   dictsay(){ ++SEQ; const dt = day().dict; speak(dt.words[dt.idx], 'ko-KR', .8); },
   dictnext(){ if (Date.now() - (window.__dictShown || 0) < 900) return; const dt = day().dict; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } dt.pen = dt.pen || []; dt.pen[dt.idx] = penImage(); } SFX.tap(); dt.idx++; if (penMode() && dt.idx >= dt.words.length) { composePen(dt).then(img => { dt.photo = img; dt.pen = null; save(); go('photo'); }); return; } save(); go(dt.idx >= dt.words.length ? 'photo' : 'dict'); },
   penclear(){ setupPen(); },
+  revnext(){ reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  revbad(){ const q = REV.q; if (!q) return; S.reviewNotes = S.reviewNotes || []; S.reviewNotes.push({ lesson:REV.lesson, prompt:q.prompt + (q.vis && q.vis.html ? ' / ' + q.vis.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) : '') + (q.listen ? ' / 듣기: ' + q.listen : ''), opts:(q.opts || []).join(', '), ans:String(q.ans), memo:($('#revmemo') || {}).value || '' }); saveLocal(); toast('표시했어요'); reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  revcopy(){ const t = reviewText(); try { navigator.clipboard.writeText(t).then(() => toast('복사했어요. Claude에게 붙여 넣어 주세요'), () => toast('복사가 안 됐어요')); } catch (e) { toast('복사가 안 됐어요'); } },
+  revclear(){ S.reviewNotes = []; saveLocal(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  writeclear(){ const w = WRITE_TASKS[RUN.b.cur.lesson]; setupPen(w.lines + 1); },
+  writesay(){ const w = WRITE_TASKS[RUN.b.cur.lesson]; speak(w.prompt); },
+  writedone(){ if (RUN.b.wrote) return; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } saveWrite(penImage()); } else { const have = (day().writes || {})[RUN.k]; if (!have || !have.img) return; saveWrite(have.img); } SFX.sticker(); speak('멋지다! 엄마한테 보냈어!'); afterWrite(); },
+  writeskip(){ if (RUN.b.wrote) return; saveWrite(null, true); afterWrite(); },
+  writefb(el){ const parts = el.dataset.v.split('|'), good = parts.pop() === '1', key = parts.join('|'); const inp = document.getElementById('wfb-' + key); S.writeFb = S.writeFb || {}; S.writeFb[key] = { good, text:(inp && inp.value.trim()) || '', at:Date.now() }; applyWriteFb(); save(); toast('재윤이에게 한마디를 보냈어요'); notify('oppa', `엄마가 재윤이 글에 ${good ? '💗 칭찬' : '✏️ 다시 써 보자'}를 남겼어요`); const y = scrollY; go('adult'); scrollTo(0, y); },
   sendphoto(){ const d = day(); if (d.boards.eng && d.boards.eng.done) return; d.dict.sent = true; notify('mom', '📒 재윤이가 받아쓰기 사진을 보냈어요. 채점해 주세요!'); save(); finishBoard('eng'); },
   skipphoto(){ const d = day(); if (d.boards.eng && d.boards.eng.done) return; d.dict.sent = true; notify('mom', '📒 재윤이가 받아쓰기를 끝냈어요 (사진 없음). 공책을 보고 채점해 주세요'); save(); finishBoard('eng'); },
   roomtab(el){ ROOM_TAB = el.dataset.v; go('room'); },
@@ -1317,7 +1328,9 @@ document.addEventListener('click', ev => {
 });
 document.addEventListener('change', async ev => {
   const el = ev.target;
-  if (el.id === 'photoIn' && el.files && el.files[0]) {
+  if (el.id === 'writeIn' && el.files && el.files[0]) {
+    try { const d = day(); d.writes = d.writes || {}; const w = WRITE_TASKS[RUN.b.cur.lesson]; d.writes[RUN.k] = { lesson:RUN.b.cur.lesson, prompt:w.prompt, img:await compressImage(el.files[0]), at:Date.now() }; save(); go('write'); } catch (e) { toast('사진을 불러오지 못했어요. 다시 찍어 주세요'); }
+  } else if (el.id === 'photoIn' && el.files && el.files[0]) {
     try { day().dict.photo = await compressImage(el.files[0]); save(); go('photo'); } catch (e) { toast('사진을 불러오지 못했어요. 다시 찍어 주세요'); }
   } else if (el.dataset.ch === 'audio' && el.files && el.files[0]) {
     const f = el.files[0];
@@ -1334,6 +1347,8 @@ document.addEventListener('change', async ev => {
     save(); toast(`${SUBJ_NAME[s]}: ${el.value === 'curr' ? '진도 방식' : '자유 연습'}으로 바꿨어요. 다음에 시작하는 판부터 적용돼요`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'pace') {
     S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
+  } else if (el.dataset.ch === 'revlesson') {
+    REV.lesson = el.value; reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'cjump') {
     const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); Sync.touch(s === 'math' ? 'curr' : 'currs'); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'level') {
