@@ -684,7 +684,7 @@ function optLabel(q, o){
 function inputHTML(q){
   if (q.input === 'choice') {
     const long = q.opts.some(o => String(o).length > 5);
-    const c3 = q.cols === 3 && !long && !q.sayOpts;
+    const c3 = (q.cols === 3 && !long && !q.sayOpts) || q.grid3;
     return `<div class="options ${c3 ? 'cols3' : q.cols === 2 && !q.sayOpts ? 'cols2' : ''}">${q.opts.map((o, i) => `<button class="opt ${q.pic ? 'pic-opt' : ''} ${long && !q.sayOpts ? 'text-long' : ''} ${c3 && q.opts.some(o => String(o).length >= 4 || (/[가-힣]/.test(o) && String(o).length >= 3)) ? 'four' : ''}" ${q.big ? 'style="font-size:44px;min-height:96px"' : ''} data-a="ans" data-i="${i}">${optLabel(q, o)}</button>`).join('')}</div>`;
   }
   if (q.input === 'numpad') {

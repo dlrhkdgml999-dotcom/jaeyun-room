@@ -13,14 +13,14 @@ function lessonIntroHTML(b){
   if (b.cur.test) {
     const u = C.units[b.cur.unit];
     const rv = u.rev && ebsOn(s) && !c.seen[u.rev] ? lectInfo(s, u.rev) : null;
-    return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[s]} ${u.n}단원 ${esc(u.name)}</span><span class="disp" style="font-size:24px">단원 평가 도전!</span><span class="muted">12문제 중 10문제를 한 번에 맞히면 메달을 받아요 🏅</span>
-      ${rv ? `<button class="btn ghost small" data-a="lecopt" data-v="${s}|${u.rev}">📺 (골라 보기) EBS ${rv.no}강 단원 정리</button>` : ''}</div>`;
+    return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[s]} ${unitTag(u)} ${esc(u.name)}</span><span class="disp" style="font-size:24px">단원 평가 도전!</span><span class="muted">12문제 중 10문제를 한 번에 맞히면 메달을 받아요 🏅</span>
+      ${rv ? `<button class="btn ghost small" data-a="lecopt" data-v="${s}|${u.rev}">📺 (골라 보기) EBS ${rv.no}강 ${esc(rv.desc)}</button>` : ''}</div>`;
   }
   const l = lessonById(b.cur.lesson);
   const lec = b.cur.lec ? lectInfo(s, b.cur.lec) : null, seenLec = lec && c.seen[b.cur.lec];
   const again = (l.ebs || []).find(n => c.seen[n]);
-  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[s]} ${l.unit.n}단원 ${esc(l.unit.name)} · ${l.li + 1}차시</span><span class="disp" style="font-size:24px">${esc(l.title)}</span>
-    ${lec && !seenLec ? `<div class="lec-box"><span class="lec-no">${lec.no}강</span><span style="flex:1;text-align:left"><b class="disp" style="font-size:19px;font-weight:400">오늘의 강의 · EBS ${esc(C.ebs.name)}</b><br><span class="muted" style="font-size:15px">${esc(lec.desc)} · ${lec.mins}분</span></span></div>
+  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[s]} ${unitTag(l.unit)} ${esc(l.unit.name)} · ${l.li + 1}차시</span><span class="disp" style="font-size:24px">${esc(l.title)}</span>
+    ${lec && !seenLec ? `<div class="lec-box"><span class="lec-no">${lec.no}강</span><span style="flex:1;text-align:left"><b class="disp" style="font-size:19px;font-weight:400">오늘의 강의 · EBS ${esc(lec.name)}</b><br><span class="muted" style="font-size:15px">${esc(lec.desc)} · ${lec.mins}분</span></span></div>
       <span class="muted" style="font-size:15px">강의를 보고 → 개념 정리 → 문제를 풀어요</span>`
     : `<span class="muted" style="font-size:15px">개념 카드를 보고 → 문제를 풀어요</span>
       ${again ? `<button class="btn ghost small" data-a="lecopt" data-v="${s}|${again}">📺 ${lectInfo(s, again).no}강 다시 보기 (골라 보기)</button>` : ''}`}
@@ -33,12 +33,12 @@ function lessonResultHTML(r0){
   const s = r0.subj || 'math', C = CURRS[s];
   const r = Object.assign({}, r0, { unit:C.units[r0.unitIdx], lesson:r0.lessonId ? lessonById(r0.lessonId) : null });
   if (r.test) return r.pass
-    ? `<div class="lesson-card won"><span style="font-size:54px">🏅</span><span class="disp" style="font-size:24px">${SUBJ_NAME[s]} ${r.unit.n}단원 "${esc(r.unit.name)}" 통과!</span><span>${Math.round(r.rate * 100)}점! 다음 단원으로 가자!</span></div>`
+    ? `<div class="lesson-card won"><span style="font-size:54px">🏅</span><span class="disp" style="font-size:24px">${SUBJ_NAME[s]} ${unitTag(r.unit)} "${esc(r.unit.name)}" 통과!</span><span>${Math.round(r.rate * 100)}점! 다음 단원으로 가자!</span></div>`
     : `<div class="lesson-card"><span class="disp" style="font-size:22px">${Math.round(r.rate * 100)}점! 아깝다</span><span>내일 한 번 더 도전하면 메달을 받을 수 있어!</span></div>`;
   const next = currentLesson(s), c = curr(s);
   if (r.pass && next && next.id === r.lesson.id && !c.test) return `<div class="lesson-card won"><span class="disp" style="font-size:22px">잘했어! "${esc(r.lesson.title)}"</span><span class="muted">내일 한 번 더 연습하면 다음 차시로 가요</span></div>`;
   return r.pass
-    ? `<div class="lesson-card won"><span class="disp" style="font-size:22px">${r.lesson.li + 1}차시 "${esc(r.lesson.title)}" 통과!</span><span class="muted">다음 시간: ${c.test ? `${r.unit.n}단원 평가` : next ? esc(next.title) : '다음 단원'}</span></div>`
+    ? `<div class="lesson-card won"><span class="disp" style="font-size:22px">${r.lesson.li + 1}차시 "${esc(r.lesson.title)}" 통과!</span><span class="muted">다음 시간: ${c.test ? `${unitTag(r.unit)} 평가` : next ? esc(next.title) : '다음 단원'}</span></div>`
     : `<div class="lesson-card"><span class="disp" style="font-size:22px">조금 어려웠지?</span><span>"${esc(r.lesson.title)}"는 내일 한 번 더 연습하자!</span></div>`;
 }
 
@@ -49,7 +49,7 @@ VIEWS.cards = (o) => {
   const l = lessonById(CARDS.lesson), cards = l.cards, i = CARDS.i, cd = cards[i], last = i === cards.length - 1;
   app().innerHTML = `<section class="screen cards-screen">
     <div class="row"><button class="icon-btn" data-a="${CARDS.fromBoard ? 'home' : 'go'}" data-v="map" data-s="${l.subj}" aria-label="나가기">${ICON.close}</button>
-      <span class="eyebrow" style="flex:1">${SUBJ_NAME[l.subj]} ${l.unit.n}단원 · ${l.li + 1}차시 개념</span><span class="disp" style="font-size:18px">${i + 1}/${cards.length}</span></div>
+      <span class="eyebrow" style="flex:1">${SUBJ_NAME[l.subj]} ${unitTag(l.unit)} · ${l.li + 1}차시 개념</span><span class="disp" style="font-size:18px">${i + 1}/${cards.length}</span></div>
     <h2>${esc(l.title)}</h2>
     <div class="concept">
       <div class="concept-ill">${cd.ill()}</div>
@@ -76,8 +76,9 @@ VIEWS.map = (o) => {
     <div class="seg">${on.map(x => `<button class="${x === s ? 'on' : ''}" data-a="go" data-v="map" data-s="${x}">${SUBJ_NAME[x]}</button>`).join('')}</div>
     <div class="bubble" style="display:flex;gap:10px;align-items:center">${bunnySVG({ size:56, expr:'happy' })}<span>${C.units[c.unit] ? `${SUBJ_NAME[s]}는 지금 ${esc(currLabel(s))}! 재윤이 진짜 잘하고 있어!` : `${esc(josa(C.title, '을', '를'))} 다 끝냈어! 최고야!`}</span></div>
     ${C.units.map((u, ui) => {
+      const head = C.courses.length > 1 && (ui === 0 || C.units[ui - 1].course !== u.course) ? `<h3 class="disp course-head">${esc(u.course.grade)}${u.course.ebs ? ` · ${esc(u.course.ebs.name)}` : ''}</h3>` : '';
       const state = ui < c.unit ? 'past' : ui === c.unit ? 'now' : 'next';
-      return `<div class="unit-card ${state}">
+      return `${head}<div class="unit-card ${state}">
         <div class="row"><span class="unit-no">${u.n}</span><span class="disp" style="font-size:21px;flex:1">${esc(u.name)}</span>${medal(ui) ? '<span style="font-size:30px">🏅</span>' : state === 'next' ? `<span class="muted">${ICON.lock.replace('<svg', '<svg style="width:20px;height:20px"')}</span>` : ''}</div>
         <div class="lesson-dots">${u.lessons.map((l, li) => {
           const d = c.done[l.id], cur = ui === c.unit && li === c.lesson && !c.test, ok = d && d.pass;
@@ -92,19 +93,19 @@ VIEWS.map = (o) => {
 /* 엄마 메뉴: 과목별 진도 */
 function currPanel(s){
   const C = CURRS[s], c = curr(s), on = currOn(s);
-  const opts = C.units.flatMap((u, ui) => [...u.lessons.map((l, li) => `<option value="${ui}|${li}|0" ${c.unit === ui && c.lesson === li && !c.test ? 'selected' : ''}>${u.n}단원 ${li + 1}차시 · ${esc(l.title)}</option>`), `<option value="${ui}|0|1" ${c.unit === ui && c.test ? 'selected' : ''}>${u.n}단원 평가</option>`]).join('');
+  const opts = C.units.flatMap((u, ui) => [...u.lessons.map((l, li) => `<option value="${ui}|${li}|0" ${c.unit === ui && c.lesson === li && !c.test ? 'selected' : ''}>${unitTag(u)} ${li + 1}차시 · ${esc(l.title)}</option>`), `<option value="${ui}|0|1" ${c.unit === ui && c.test ? 'selected' : ''}>${unitTag(u)} 평가</option>`]).join('');
   const recent = Object.entries(c.done).sort((a, b) => b[1].date.localeCompare(a[1].date)).slice(0, 4);
   const seen = Object.entries(c.seen || {}).sort((a, b) => b[1].d.localeCompare(a[1].d)).slice(0, 4);
-  const modeText = { math:['단원 진도 (초2 1학기 선행 + 초1 2학기 복습 30%)','자유 연습 (아래 난이도대로 섞어서)'], kor:['단원 진도 (초2 1학기 국어 + 맞춤법·낱말 복습 30%)','자유 연습 (아래 난이도대로 섞어서)'], eng:['단계 진도 (알파벳 → 파닉스 → 문장)','자유 연습 (아래 난이도대로 섞어서)'] }[s];
+  const modeText = { math:['단원 진도 (1학년 2학기 → 2학년 1학기 + 지난 학기 복습 30%)','자유 연습 (아래 난이도대로 섞어서)'], kor:['단원 진도 (1학년 2학기 → 2학년 1학기 + 낱말·맞춤법 복습 30%)','자유 연습 (아래 난이도대로 섞어서)'], eng:['단계 진도 (알파벳 → 파닉스 → 문장)','자유 연습 (아래 난이도대로 섞어서)'] }[s];
   return `<div class="panel"><h3>${SUBJ_NAME[s]} 진도 · ${esc(C.title)}</h3>
     <div class="field"><label for="mode-${s}">${SUBJ_NAME[s]} 방식</label><select id="mode-${s}" data-ch="cmode" data-v="${s}"><option value="curr" ${on ? 'selected' : ''}>${modeText[0]}</option><option value="free" ${on ? '' : 'selected'}>${modeText[1]}</option></select></div>
     ${on ? `
     <p><b>${esc(currLabel(s))}</b> · 메달 ${c.medals.length}개</p>
     ${s === 'math' ? `<div class="field"><label for="pace">진도 속도 (세 과목 같이)</label><select id="pace" data-ch="pace"><option value="normal" ${S.pace !== 'slow' ? 'selected' : ''}>보통: 차시를 통과하면 다음 날 다음 차시</option><option value="slow" ${S.pace === 'slow' ? 'selected' : ''}>천천히: 한 차시를 이틀 통과해야 다음 차시</option></select></div>` : ''}
     <div class="field"><label for="cjump-${s}">진도 옮기기</label><select id="cjump-${s}" data-ch="cjump" data-v="${s}">${opts}</select></div>
-    ${recent.length ? `<div class="list">${recent.map(([id, d]) => { const l = lessonById(id); return `<div class="li"><span class="grow">${l.unit.n}단원 ${l.li + 1}차시 · ${esc(l.title)}</span><span class="pill ${d.pass ? 'ok' : 'wait'}">${d.rate}%${d.tries > 1 ? ` · ${d.tries}번째` : ''}</span></div>`; }).join('')}</div>` : ''}
+    ${recent.length ? `<div class="list">${recent.map(([id, d]) => { const l = lessonById(id); return `<div class="li"><span class="grow">${unitTag(l.unit)} ${l.li + 1}차시 · ${esc(l.title)}</span><span class="pill ${d.pass ? 'ok' : 'wait'}">${d.rate}%${d.tries > 1 ? ` · ${d.tries}번째` : ''}</span></div>`; }).join('')}</div>` : ''}
     ${C.ebs ? `<div class="row"><span style="flex:1">EBS 강의 함께 보기<br><span class="muted" style="font-size:13px">${esc(C.ebs.name)} · ${esc(C.ebs.teacher)} (무료)</span></span><button class="switch ${ebsOn(s) ? 'on' : ''}" data-a="ebstoggle" data-v="${s}" aria-label="EBS 강의"></button></div>
-      ${seen.length ? `<div class="list">${seen.map(([n, v]) => `<div class="li"><span class="grow">📺 ${lectInfo(s, +n).no}강 · ${esc(lectInfo(s, +n).desc)}</span><span class="pill ${v.mins >= 20 ? 'ok' : 'wait'}">${shortDate(v.d)}${v.mins ? ` · ${v.mins}분` : ''}</span></div>`).join('')}</div>` : ''}
+      ${seen.length ? `<div class="list">${seen.map(([n, v]) => `<div class="li"><span class="grow">📺 ${lectInfo(s, +n).course.short2 || ''} ${lectInfo(s, +n).no}강 · ${esc(lectInfo(s, +n).desc)}</span><span class="pill ${v.mins >= 20 ? 'ok' : 'wait'}">${shortDate(v.d)}${v.mins ? ` · ${v.mins}분` : ''}</span></div>`).join('')}</div>` : ''}
       <a class="btn ghost small" href="${ebsCourseUrl(s)}" target="_blank" rel="noopener">EBS ${esc(C.ebs.name)} 강좌 열기</a>` : ''}` : ''}
   </div>`;
 }
@@ -113,14 +114,15 @@ function currHelpPanel(){
     <p style="font-size:15px;line-height:1.6">• 강의는 <b>하루에 한 편</b>만 봐요. 수학 강의 날과 국어 강의 날이 번갈아 와요. 강의 날에는 교재를 강의와 함께 풀기 때문에 그 과목 앱 문제는 5개, 다른 과목과 복습도 절반 정도로 줄여서 하루 1시간 안팎이 되게 해요.<br>
     • 강의 한 편이 차시 두 개를 다룰 때가 많아서, 다음 날은 강의 없이 바로 문제를 풀어요.<br>
     • 강의를 보려면 <b>EBS 초등 회원 로그인</b>이 필요할 수 있어요. 태블릿 크롬에서 엄마 계정으로 한 번 로그인해 두세요.<br>
-    • 강의는 교재를 펴 놓고 같이 풀어요. 「EBS 만점왕 수학 2-1」「만점왕 국어 2-1」(2026) 교재가 있으면 좋아요. 없어도 볼 수 있어요.<br>
+    • 강의는 교재를 펴 놓고 같이 풀어요. 지금은 <b>1학년 2학기</b>: 「만점왕 수학 플러스 1-2」(김문주 선생님) · 「만점왕 국어 1-2」(전해은 선생님). 1-2를 다 끝내면 자동으로 <b>2학년 1학기</b>(「만점왕 수학 2-1」「만점왕 국어 2-1」)로 넘어가요.<br>
+    • 매일 보는 강의는 <b>개념 강의</b>만이에요. 응용·단원 평가·복습책(Book2) 강의는 단원 평가 날에 "골라 보기"로 하나 보이고, 나머지는 EBS에서 원할 때 보면 돼요.<br>
     • 재윤이가 "다 봤어요"를 누르면 몇 분 동안 봤는지 여기에 남아요. 20분이 안 되면 노란색으로 보여요.</p></div>`;
 }
 function mapTileHTML(){
   const on = SUBJS.filter(currOn); if (!on.length) return '';
   const row = s => { const C = CURRS[s], c = curr(s), u = C.units[c.unit];
     const dots = u ? u.lessons.map((l, li) => `<i class="${(c.done[l.id] || {}).pass ? 'ok' : li === c.lesson && !c.test ? 'cur' : ''}"></i>`).join('') + `<i class="t ${c.test ? 'cur' : ''}"></i>` : '';
-    return `<span class="map-row"><b>${SUBJ_NAME[s]}</b><span class="muted">${u ? `${u.n}단원 · ${c.test ? '평가' : `${c.lesson + 1}차시`}` : '끝!'}</span><span class="mini-dots">${dots}</span></span>`; };
+    return `<span class="map-row"><b>${SUBJ_NAME[s]}</b><span class="muted">${u ? `${unitTag(u)} · ${c.test ? '평가' : `${c.lesson + 1}차시`}` : '끝!'}</span><span class="mini-dots">${dots}</span></span>`; };
   const medals = SUBJS.reduce((n, x) => n + curr(x).medals.length, 0);
   return `<button class="map-tile" data-a="go" data-v="map"><span style="font-size:30px">🗺️</span><span style="flex:1;display:grid;gap:5px;text-align:left"><span class="disp" style="font-size:18px">진도 지도</span>${on.map(row).join('')}</span><span class="sticker-chip">🏅 ${medals}</span></button>`;
 }
@@ -130,10 +132,10 @@ let LECW = null;   // { s, n, at, opt }
 function lectureGuardHTML(s, n){
   const li = lectInfo(s, n), C = CURRS[s];
   return `${distanceArt()}<p class="disp" style="font-size:21px;line-height:1.4">강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 허리 펴고 바르게 앉아서 봐요.</p>
-    <div class="lec-box" style="align-self:stretch"><span class="lec-no">${li.no}강</span><span style="flex:1;text-align:left"><b>EBS ${esc(C.ebs.name)}</b><br><span style="font-size:15px">${esc(li.title)} · ${esc(li.desc)}</span></span></div>
+    <div class="lec-box" style="align-self:stretch"><span class="lec-no">${li.no}강</span><span style="flex:1;text-align:left"><b>EBS ${esc(li.name)}</b><br><span style="font-size:15px">${esc(li.title)} · ${esc(li.desc)}</span></span></div>
     <ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b> 옆의 주황색 ▶ 를 눌러요</li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>
     <p class="muted" style="font-size:14px">📘 교재가 있으면 Book${li.book} ${li.pages}쪽을 펴 놓아요</p>
-    <a class="btn big" href="${ebsCourseUrl(s)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! 보러 갈게</a>`;
+    <a class="btn big" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! 보러 갈게</a>`;
 }
 function openLecture(s, n, opt){
   eyeOverlay(lectureGuardHTML(s, n), o => {
@@ -149,11 +151,11 @@ VIEWS.lecwait = () => {
   app().innerHTML = `<section class="screen" style="justify-content:center;align-items:center;text-align:center">
     <span style="font-size:64px">📺</span>
     <h1>${li.no}강 보는 중</h1>
-    <p class="muted">${esc(CURRS[LECW.s].ebs.name)} · ${esc(li.desc)} · ${li.mins}분</p>
+    <p class="muted">${esc(li.name)} · ${esc(li.desc)} · ${li.mins}분</p>
     ${stageHTML(150, { expr:'happy', size:110 })}
     <div class="bubble">강의를 끝까지 다 보고 나서 눌러 줘!${mins >= 1 ? `<br><span class="muted" style="font-size:15px">지금까지 ${mins}분</span>` : ''}</div>
     <button class="btn big mint" data-a="lecdone">다 봤어요!</button>
-    <a class="btn ghost small" href="${ebsCourseUrl(LECW.s)}" target="_blank" rel="noopener">강의 화면 다시 열기</a>
+    <a class="btn ghost small" href="${ebsCourseUrl(LECW.s, LECW.n)}" target="_blank" rel="noopener">강의 화면 다시 열기</a>
     <button class="grown-up" data-a="lecfail">강의가 안 열려요</button>
   </section>`;
 };

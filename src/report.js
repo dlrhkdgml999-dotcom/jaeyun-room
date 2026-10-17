@@ -22,7 +22,7 @@ function reviewQ(){ try { REV.q = lessonQ(lessonById(REV.lesson)); } catch (e) {
 function reviewPanel(){
   if (!REV.q) reviewQ();
   const q = REV.q, notes = S.reviewNotes || [];
-  const opts = SUBJS.map(s => `<optgroup label="${SUBJ_NAME[s]}">${CURRS[s].all.map(l => `<option value="${l.id}" ${l.id === REV.lesson ? 'selected' : ''}>${l.unit.n}-${l.li + 1} ${esc(l.title)}</option>`).join('')}</optgroup>`).join('');
+  const opts = SUBJS.map(s => `<optgroup label="${SUBJ_NAME[s]}">${CURRS[s].all.map(l => `<option value="${l.id}" ${l.id === REV.lesson ? 'selected' : ''}>${l.unit.course.short2 ? l.unit.course.short2 + ' ' : ''}${l.unit.n}-${l.li + 1} ${esc(l.title)}</option>`).join('')}</optgroup>`).join('');
   const ans = q ? (q.input === 'choice' ? q.opts.map(o => `<span class="pill ${String(o) === String(q.ans) ? 'ok' : ''}">${String(o) === String(q.ans) ? '✔ ' : ''}${q.optHtml && q.optHtml[o] && !q.sayOpts ? q.optHtml[o] : esc(o)}</span>`).join(' ') : `<span class="pill ok">정답: ${esc(q.ans)}</span>`) : '';
   return `<div class="panel"><h3>문제 검토 (오빠용)</h3>
     <p class="muted" style="font-size:14px">차시를 골라 문제를 넘겨 보다가 이상한 문제는 "이상해요"를 눌러 주세요. 다 보면 "검토 내용 복사"를 눌러 Claude에게 붙여 넣으면 고쳐요. 여기서 본 건 재윤이 기록에 안 들어가요.</p>

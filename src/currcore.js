@@ -1,16 +1,9 @@
 /* ===================== 과목 공통 진도 엔진 (수학 · 국어 · 영어) ===================== */
-const CURRS = { math:CURRICULUM, kor:KOR_CURR, eng:ENG_CURR };
+/* 과목마다 코스를 차례로 이어서 진행: 수학·국어는 초1 2학기 → 초2 1학기, 영어는 하나 */
 const SUBJ_NAME = { math:'수학', kor:'국어', eng:'영어' };
-Object.entries(CURRS).forEach(([s, C]) => {
-  C.subj = s;
-  C.all = C.units.flatMap((u, ui) => u.lessons.map((l, li) => Object.assign(l, { ui, li, unit:u, subj:s })));
-});
-const ALL_L = Object.values(CURRS).flatMap(C => C.all);
-const ALL_LESSONS = CURRICULUM.all;
-
-/* ---------- EBS 강의 목록 (오빠가 보내 준 강의목록 캡처 그대로) ---------- */
+/* ---------- EBS 강의 목록: 초2 1학기 (오빠가 보내 준 강의목록 캡처 그대로) ---------- */
 /* [단원, 교재, 쪽, 분, 설명] */
-const EBS_LECT = {
+const EBS_LECT_21 = {
   math:[
     [1,1,'6~11',29,'백 · 몇백'],[1,1,'12~15',29,'세 자리 수 · 자리의 숫자'],[1,1,'16~19',29,'뛰어 세기'],[1,1,'20~23',28,'수의 크기 비교'],[1,1,'24~27',28,'단원평가'],[1,2,'4~5',29,'1단원 핵심 + 문제 복습'],[1,2,'6~7',28,'학교 시험 만점왕 1회'],[1,2,'8~9',28,'학교 시험 만점왕 2회'],
     [2,1,'28~33',29,'△ · □ 알아보고 찾기'],[2,1,'34~37',29,'○ · 칠교판으로 모양 만들기'],[2,1,'38~41',28,'쌓은 모양 · 여러 가지 모양 쌓기'],[2,1,'42~45',28,'단원평가'],[2,2,'10~11',28,'2단원 핵심 + 문제 복습'],[2,2,'12~13',28,'학교 시험 만점왕 1회'],[2,2,'14~15',28,'학교 시험 만점왕 2회'],
@@ -30,19 +23,44 @@ const EBS_LECT = {
     [8,1,'151~153',28,'「우산 사용법」 시 · 이야기 · 인형극'],[8,1,'154~155',28,'「신호」「해와 달이 된 오누이」'],[8,1,'156~159',28,'「사자와 생쥐」 인형극 · 작품 감상'],[8,1,'160~164',28,'단원 확인 평가'],[8,1,'164~166',29,'단원 확인 평가'],[8,2,'36~39',28,'핵심 + 복습 학교 시험 만점왕'],[8,2,'36~39',28,'학교 시험 만점왕'],
   ],
 };
-function ebsCourseUrl(s){ return `https://primary.ebs.co.kr/course/view?courseId=${CURRS[s].ebs.id}`; }
+CURRICULUM.lect = EBS_LECT_21.math; KOR_CURR.lect = EBS_LECT_21.kor;
+CURRICULUM.grade = '2학년 1학기'; CURRICULUM.short2 = '2-1'; KOR_CURR.grade = '2학년 1학기'; KOR_CURR.short2 = '2-1';
+const COURSES = { math:[MATH12, CURRICULUM], kor:[KOR12, KOR_CURR], eng:[ENG_CURR] };
+const CURRS = {}, EBS_LECT = {};
+Object.entries(COURSES).forEach(([s, list]) => {
+  const units = [], lect = []; let off = 0;
+  list.forEach((co, ci) => {
+    co.subj = s; co.ci = ci; co.lectOff = off;
+    (co.lect || []).forEach(x => lect.push({ co, u:x[0], book:x[1], pages:x[2], mins:x[3], desc:x[4] }));
+    co.units.forEach(u => { u.course = co; if (u.rev) u.rev += off; u.lessons.forEach(l => { if (l.ebs) l.ebs = l.ebs.map(n => n + off); }); units.push(u); });
+    off += (co.lect || []).length;
+  });
+  const C = { subj:s, courses:list, units, short:list[0].short };
+  // 지금 하고 있는 코스의 이름 · EBS 강좌 (다 끝났으면 마지막 코스)
+  Object.defineProperty(C, 'now', { get(){ const u = units[curr(s).unit]; return u ? u.course : list[list.length - 1]; } });
+  Object.defineProperty(C, 'ebs', { get(){ return C.now.ebs || null; } });
+  Object.defineProperty(C, 'title', { get(){ return C.now.title; } });
+  C.all = units.flatMap((u, ui) => u.lessons.map((l, li) => Object.assign(l, { ui, li, unit:u, subj:s })));
+  CURRS[s] = C; EBS_LECT[s] = lect;
+});
+const ALL_L = Object.values(CURRS).flatMap(C => C.all);
+const ALL_LESSONS = CURRS.math.all;
+/* 코스 이름표: "1-2 3단원" */
+function unitTag(u){ return u.course && u.course.short2 && CURRS[u.course.subj].courses.length > 1 ? `${u.course.short2} ${u.n}단원` : `${u.n}단원`; }
+function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now; return `https://primary.ebs.co.kr/course/view?courseId=${co.ebs.id}`; }
 function lectInfo(s, n){
   const L = EBS_LECT[s], x = L[n - 1]; if (!x) return null;
-  const part = L.slice(0, n).filter(y => y[0] === x[0]).length, u = CURRS[s].units[x[0] - 1];
-  return { n, no:String(n).padStart(2, '0'), title:`${x[0]}. ${u.name}(${part})`, book:x[1], pages:x[2], mins:x[3], desc:x[4] };
+  const co = x.co, local = n - co.lectOff, part = L.slice(co.lectOff, n).filter(y => y.u === x.u).length, u = co.units[x.u - 1];
+  return { n, local, no:String(local).padStart(2, '0'), title: co.lectTitle === 'name' ? `${x.u}. ${u.name}` : `${x.u}. ${u.name}(${part})`, book:x.book, pages:x.pages, mins:x.mins, desc:x.desc, course:co, name:co.ebs.name };
 }
 
 /* ---------- 진도 상태 ---------- */
-function blankCurr(){ return { unit:0, lesson:0, test:false, done:{}, tests:[], medals:[], seen:{} }; }
+/* v:2 = 코스가 이어진 진도 (초1 2학기부터). 그 전 진도(2학년 1학기로 시작한 시험 기록)는 처음부터 다시 */
+function blankCurr(){ return { v:2, unit:0, lesson:0, test:false, done:{}, tests:[], medals:[], seen:{} }; }
 function curr(s = 'math'){
   let c;
-  if (s === 'math') { if (!S.curr) S.curr = blankCurr(); c = S.curr; }
-  else { if (!S.currs) S.currs = {}; if (!S.currs[s]) S.currs[s] = blankCurr(); c = S.currs[s]; }
+  if (s === 'math') { if (!S.curr || (S.curr.v !== 2)) S.curr = blankCurr(); c = S.curr; }
+  else { if (!S.currs) S.currs = {}; if (!S.currs[s] || (s !== 'eng' && S.currs[s].v !== 2)) S.currs[s] = blankCurr(); c = S.currs[s]; }
   if (!c.seen) c.seen = {}; if (!c.done) c.done = {}; if (!c.tests) c.tests = []; if (!c.medals) c.medals = [];
   return c;
 }
@@ -50,9 +68,21 @@ function currOn(s){ return (s === 'math' ? S.mathMode : (S.modes || {})[s]) !== 
 function mathCurrOn(){ return currOn('math'); }
 function lessonById(id){ return ALL_L.find(l => l.id === id); }
 function currentLesson(s = 'math'){ const c = curr(s), u = CURRS[s].units[c.unit]; return u ? u.lessons[c.lesson] : null; }
-function currLabel(s = 'math'){ const c = curr(s), u = CURRS[s].units[c.unit]; if (!u) return `${josa(CURRS[s].title.replace(/ \(.*\)$/, ''), '을', '를')} 모두 끝냈어요!`; return c.test ? `${u.n}단원 ${u.name} · 단원 평가` : `${u.n}단원 ${u.name} · ${c.lesson + 1}차시`; }
+function currLabel(s = 'math'){ const c = curr(s), u = CURRS[s].units[c.unit]; if (!u) return `${josa(CURRS[s].title.replace(/ \(.*\)$/, ''), '을', '를')} 모두 끝냈어요!`; return c.test ? `${unitTag(u)} ${u.name} · 단원 평가` : `${unitTag(u)} ${u.name} · ${c.lesson + 1}차시`; }
 function lessonQ(l){ const q = LESSON_GEN[l.id](); q.subj = l.subj; q.lesson = l.id; if (!q.say) q.say = q.prompt; return q; }
-function baseGen(s, n){ return s === 'math' ? genMathBase(n) : s === 'kor' ? genKor(n) : genEngBase(n); }
+/* 기초 복습: 지금 코스보다 한 학기 앞 내용 (초1 2학기 코스면 초1 1학기, 초2 1학기 코스면 초1 2학기) */
+function baseGen(s, n){
+  const first = CURRS[s].now.ci === 0 && CURRS[s].courses.length > 1;
+  if (s === 'math') return first ? genMathLv(0, n) : genMathBase(n);
+  if (s === 'kor') return first ? genKorBase(n) : genKor(n);
+  return genEngBase(n);
+}
+function genMathLv(l, n){
+  const bag = []; Object.entries(MATH_PLAN[l]).forEach(([k, w]) => { for (let i = 0; i < Math.round(w * 4); i++) bag.push(k); });
+  const out = [], used = new Set(); let last = '';
+  for (let i = 0; out.length < n && i < n * 15; i++) { const t = pick(bag); if (t === last) continue; const q = ML[t](); q.subj = 'math'; if (!q.say) q.say = q.prompt; if (used.has(q.key)) continue; used.add(q.key); out.push(q); last = t; }
+  return out;
+}
 
 /* 오늘 판: 차시 연습 70% + 앞 차시 조금 + 기초 복습 30% / 단원 평가 날은 평가 12문제 */
 function genCurriculum(s, n){
@@ -93,7 +123,9 @@ function judgeCurriculum(b){
   const t = todayKey(), nm = SUBJ_NAME[s];
   if (b.cur.test) {
     const pass = rate >= .8; c.tests.push({ unit:c.unit, rate:Math.round(rate * 100), date:t, pass });
-    if (pass) { c.medals.push({ unit:c.unit, date:t }); c.unit++; c.lesson = 0; c.test = false; notify('oppa', `🏅 재윤이가 ${nm} ${u.n}단원 평가를 통과했어요 (${Math.round(rate * 100)}점)`); notify('mom', `🏅 재윤이가 ${nm} ${u.n}단원 "${u.name}" 평가를 통과했어요`);
+    if (pass) { c.medals.push({ unit:c.unit, date:t }); c.unit++; c.lesson = 0; c.test = false; notify('oppa', `🏅 재윤이가 ${nm} ${unitTag(u)} 평가를 통과했어요 (${Math.round(rate * 100)}점)`); notify('mom', `🏅 재윤이가 ${nm} ${unitTag(u)} "${u.name}" 평가를 통과했어요`);
+      const nu = C.units[c.unit];
+      if (nu && nu.course !== u.course) { const msg = `🎉 재윤이가 ${josa(u.course.title, '을', '를')} 모두 끝냈어요! 내일부터 ${nu.course.title} 시작 (EBS ${nu.course.ebs ? nu.course.ebs.name : ''})`; notify('mom', msg); notify('oppa', msg); }
       if (!C.units[c.unit]) { notify('mom', `🎉 재윤이가 ${josa(C.title, '을', '를')} 모두 끝냈어요! 이제 ${nm}는 엄마 메뉴의 난이도대로 복습해요`); notify('oppa', `🎉 재윤이가 ${josa(C.title, '을', '를')} 모두 끝냈어요!`); } }
     return { subj:s, test:true, pass, rate:Math.round(rate * 100) / 100, unitIdx:C.units.indexOf(u) };
   }
@@ -147,7 +179,7 @@ function markLectureSeen(s, n, mins){
   const c = curr(s); c.seen[n] = { d:todayKey(), mins };
   S.lastLec = s; const d = day(); if (d.lec && d.lec.s === s) d.lec.done = true;
   const li = lectInfo(s, n);
-  notify('mom', `📺 재윤이가 EBS ${CURRS[s].ebs.name} ${li.no}강을 봤어요${mins ? ` (${mins}분)` : ''}`);
+  notify('mom', `📺 재윤이가 EBS ${li.name} ${li.no}강을 봤어요${mins ? ` (${mins}분)` : ''}`);
   notify('oppa', `📺 재윤이가 ${SUBJ_NAME[s]} ${li.no}강 "${li.desc}"을 봤어요${mins ? ` (${mins}분)` : ''}`);
   save();
 }

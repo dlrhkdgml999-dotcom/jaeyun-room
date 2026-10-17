@@ -13,6 +13,15 @@ const WRITE_TASKS = {
   'e6-2':{ prompt:'따라 써 봐요: I like apples.', guide:'I like apples.', lines:1, en:true },
   'e6-3':{ prompt:'따라 써 봐요: I can swim.', guide:'I can swim.', lines:1, en:true },
 };
+/* 1학년 2학기 직접 써 보기 */
+Object.assign(WRITE_TASKS, {
+  'n1-2':{ prompt:'흉내 내는 말을 넣어 문장을 하나 써 봐요', guide:'예) 토끼가 깡충깡충 뛰어요.', lines:1 },
+  'n1-4':{ prompt:'오늘 내 기분을 까닭과 함께 써 봐요', guide:'예) 오빠가 놀아 줘서 기뻤어요.', lines:1 },
+  'n3-4':{ prompt:'오늘 있었던 일로 그림일기를 써 봐요 (공책에 그림도 그려요!)', guide:'날짜 · 요일 · 날씨\n겪은 일 한 줄\n생각이나 느낌 한 줄', lines:3 },
+  'n5-3':{ prompt:'세는 말을 넣어 두 가지를 써 봐요', guide:'예) 연필 한 자루\n예) 꽃 세 송이', lines:2 },
+  'n6-4':{ prompt:'띄어쓰기를 지켜 문장을 하나 써 봐요', guide:'예) 나는 그림을 그려요.', lines:1 },
+  'n7-3':{ prompt:'겪은 일을 마음과 함께 두 줄 써 봐요', guide:'① 언제, 어디에서, 무슨 일\n② 그때 내 마음', lines:2 },
+});
 function writeTaskFor(b){ return b && b.cur && !b.cur.test && b.cur.lesson && WRITE_TASKS[b.cur.lesson] && !b.wrote ? WRITE_TASKS[b.cur.lesson] : null; }
 let WRITE = null;
 VIEWS.write = () => {

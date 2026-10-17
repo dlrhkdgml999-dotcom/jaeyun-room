@@ -462,3 +462,8 @@ audio{width:100%}
 .order-pick{background:var(--butter-pale);border:2.5px dashed var(--butter-deep);border-radius:var(--r-md);padding:12px 14px;display:grid;gap:10px;justify-items:center}
 .order-btn{flex:1;background:#fff;border:2.5px solid var(--line);border-radius:var(--r-md);padding:8px 4px;display:grid;justify-items:center;gap:4px;font-family:var(--f-display);font-size:18px;box-shadow:var(--shadow)}
 .order-btn .badge{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:17px}
+/* 1학년 2학기: 수 카드 · 수 배열표 · 코스 제목 */
+.num-card{display:inline-grid;place-items:center;width:58px;height:74px;border:3px solid var(--ink,#5B3A4A);border-radius:12px;background:#fff;font-family:Jua,sans-serif;font-size:38px;box-shadow:0 3px 0 rgba(91,58,74,.18)}
+.hchart td{min-width:46px;height:44px;font-size:22px}
+.course-head{font-size:19px;font-weight:400;margin:10px 2px 0;color:var(--ink,#5B3A4A);opacity:.85}
+.opt .clock{width:100%;height:auto}
