@@ -506,7 +506,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261017115505";
+window.APP_VERSION = "20261017124406";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -886,6 +886,7 @@ const TTS_PRESETS = {
   tori:  { name:'토리 목소리 (귀엽게)', pitch:1.35, rate:.86 },
   sister:{ name:'언니 목소리 (밝게)', pitch:1.2, rate:.92 },
   teacher:{ name:'선생님 목소리 (차분하게)', pitch:1.02, rate:.85 },
+  story: { name:'동화 구연 목소리 (아주 생생하게)', pitch:1.5, rate:.82 },
 };
 function playClip(src){
   return new Promise(res => {
@@ -1898,7 +1899,7 @@ VIEWS.adult = () => {
         <div class="list">${Object.entries(TTS_PRESETS).map(([k, pr]) => `<button class="li" style="text-align:left;${S.tts.preset === k ? 'outline:3px solid var(--pink)' : ''}" data-a="ttspreset" data-v="${k}"><span class="grow">${pr.name}</span>${S.tts.preset === k ? '<span class="pill">사용 중</span>' : ''}</button>`).join('')}</div>
         <div class="field"><label for="ttspitch">목소리 높이 <b id="pv">${S.tts.pitch.toFixed(2)}</b></label><input type="range" id="ttspitch" min="0.8" max="1.8" step="0.05" value="${S.tts.pitch}" data-ch="tts"></div>
         <div class="field"><label for="ttsrate">말 빠르기 <b id="rv">${S.tts.rate.toFixed(2)}</b></label><input type="range" id="ttsrate" min="0.6" max="1.2" step="0.02" value="${S.tts.rate}" data-ch="tts"></div>
-        ${langVoices('ko').length > 1 ? `<div class="field"><label>한국어 목소리 고르기 (${langVoices('ko').length}개)</label><div class="list">${langVoices('ko').map(v => { const on = pickVoice('ko', S.tts.voice) === v; return `<div class="li" style="${on ? 'outline:3px solid var(--pink)' : ''}"><span class="grow" style="font-size:14px">${esc(v.name)}${v.localService ? '' : ' · 온라인'}</span><button class="btn ghost small" data-a="ttsvoice" data-v="${esc(v.name)}">${on ? '듣기' : '고르기'}</button></div>`; }).join('')}</div></div>` : `<p class="muted" style="font-size:14px">이 폰에서 고를 수 있는 한국어 목소리가 ${langVoices('ko').length ? '하나뿐이에요' : '아직 안 보여요'}. 갤럭시 설정에서 "TTS"를 검색하면 다른 목소리를 내려받을 수 있어요.</p>`}
+        ${langVoices('ko').length > 1 ? `<div class="field"><label>한국어 목소리 고르기 (${langVoices('ko').length}개)</label><div class="list">${langVoices('ko').map(v => { const on = pickVoice('ko', S.tts.voice) === v; return `<div class="li" style="${on ? 'outline:3px solid var(--pink)' : ''}"><span class="grow" style="font-size:14px">${esc(v.name)}${v.localService ? '' : ' · 온라인'}</span><button class="btn ghost small" data-a="ttsvoice" data-v="${esc(v.name)}">${on ? '듣기' : '고르기'}</button></div>`; }).join('')}</div></div>` : `<p class="muted" style="font-size:14px">이 폰에서 고를 수 있는 한국어 목소리가 ${langVoices('ko').length ? '하나뿐이에요' : '아직 안 보여요'}. 태블릿(폰) 설정에서 "TTS" 또는 "텍스트 음성"을 검색해 Google 엔진의 한국어 음성을 고르면 그 목소리로 읽어 줘요.</p>`}
         <button class="btn sky" data-a="ttstest">들어 보기</button>
       </div>
       <div class="panel"><h3>토끼 친구 이름</h3><div class="field"><input type="text" id="bname" maxlength="8" value="${esc(S.bunnyName)}"></div><button class="btn small" data-a="savename" style="justify-self:start">이름 저장</button></div>
