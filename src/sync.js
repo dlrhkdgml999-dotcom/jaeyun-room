@@ -35,7 +35,11 @@ const Sync = {
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
-  writable(k){ return true; },   // 실제로 바뀐 칸만 보내므로 누구나 쓸 수 있게 둔다 (같은 칸을 동시에 고치면 나중 것이 남음)
+  /* 엄마·오빠 폰에서 재윤이 화면으로 풀어 본 것은 미리보기라서 재윤이 기록(진도·스티커·오답)으로 보내지 않는다.
+     엄마 메뉴에서 진도를 옮긴 것처럼 어른이 일부러 바꾼 칸만 보낸다 */
+  touched:new Set(),
+  writable(k){ if (linked() && role() !== 'kid' && KID_KEYS.includes(k)) return this.touched.has(k); return true; },
+  touch(k){ if (linked() && role() !== 'kid' && this.last.s[k]) { try { S[k] = this.unpack(JSON.parse(this.last.s[k])); } catch (e) {} } this.touched.add(k); },
   listen(){
     const b = this.base();
     this.unsub.push(this.db.collection(`${b}/s`).onSnapshot(snap => this.onState(snap)));
@@ -81,7 +85,7 @@ const Sync = {
       if (!this.writable(k)) continue;
       const v = this.pack(S[k]), raw = JSON.stringify(v);
       if (raw === this.last.s[k] || v === undefined) continue;
-      this.last.s[k] = raw; jobs.push(this.db.doc(`${b}/s/${k}`).set({ v, at:Date.now(), by:role() }));
+      this.last.s[k] = raw; this.touched.delete(k); jobs.push(this.db.doc(`${b}/s/${k}`).set({ v, at:Date.now(), by:role() }));
     }
     if (canWriteKid()) for (const k of Object.keys(S.days)) {
       const v = this.pack(S.days[k]), raw = JSON.stringify(v);

@@ -445,7 +445,7 @@ function boardState(k, d = day()){
 function nextBoard(d = day()){ return BOARDS.find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; Sync.addNote(n); S.notes.unshift(n); S.notes = S.notes.slice(0, 80); }
+function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) Sync.addNote(n); S.notes.unshift(n); S.notes = S.notes.slice(0, 80); }
 function alarmInfo(){
   const d = now(), dow = d.getDay();
   if (!S.alarms.on[dow]) return null;
@@ -552,7 +552,7 @@ VIEWS.home = () => {
   const prevNeed = ITEMS.filter(i => i.need <= total).reduce((m, i) => Math.max(m, i.need), 0);
   const kn = S.kidNotes[0];
   app().innerHTML = `<section class="screen">
-    ${linked() && role() !== 'kid' ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
+    ${linked() && role() !== 'kid' ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 (여기서 풀어 본 건 재윤이 기록에 안 들어가요) · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
     <div class="home-top">
       <span class="nameplate">재윤이 공부방</span><span class="spacer"></span>
       <span class="sticker-chip" aria-label="모은 스티커">⭐ ${total}</span>
@@ -1335,7 +1335,7 @@ document.addEventListener('change', async ev => {
   } else if (el.dataset.ch === 'pace') {
     S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
   } else if (el.dataset.ch === 'cjump') {
-    const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
+    const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); Sync.touch(s === 'math' ? 'curr' : 'currs'); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'level') {
     S.level[el.dataset.v] = +el.value; save(); toast(`${{kor:'국어',math:'수학',eng:'영어'}[el.dataset.v]}: ${el.options[el.selectedIndex].text}로 바꿨어요`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'altime') { S.alarms.time[+el.dataset.v] = el.value; save(); }

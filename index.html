@@ -473,7 +473,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261017091551";
+window.APP_VERSION = "20261017092131";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -1164,7 +1164,7 @@ function boardState(k, d = day()){
 function nextBoard(d = day()){ return BOARDS.find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; Sync.addNote(n); S.notes.unshift(n); S.notes = S.notes.slice(0, 80); }
+function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) Sync.addNote(n); S.notes.unshift(n); S.notes = S.notes.slice(0, 80); }
 function alarmInfo(){
   const d = now(), dow = d.getDay();
   if (!S.alarms.on[dow]) return null;
@@ -1271,7 +1271,7 @@ VIEWS.home = () => {
   const prevNeed = ITEMS.filter(i => i.need <= total).reduce((m, i) => Math.max(m, i.need), 0);
   const kn = S.kidNotes[0];
   app().innerHTML = `<section class="screen">
-    ${linked() && role() !== 'kid' ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
+    ${linked() && role() !== 'kid' ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 (여기서 풀어 본 건 재윤이 기록에 안 들어가요) · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
     <div class="home-top">
       <span class="nameplate">재윤이 공부방</span><span class="spacer"></span>
       <span class="sticker-chip" aria-label="모은 스티커">⭐ ${total}</span>
@@ -2054,7 +2054,7 @@ document.addEventListener('change', async ev => {
   } else if (el.dataset.ch === 'pace') {
     S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
   } else if (el.dataset.ch === 'cjump') {
-    const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
+    const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); Sync.touch(s === 'math' ? 'curr' : 'currs'); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'level') {
     S.level[el.dataset.v] = +el.value; save(); toast(`${{kor:'국어',math:'수학',eng:'영어'}[el.dataset.v]}: ${el.options[el.selectedIndex].text}로 바꿨어요`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'altime') { S.alarms.time[+el.dataset.v] = el.value; save(); }
@@ -3731,7 +3731,11 @@ const Sync = {
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
-  writable(k){ return true; },   // 실제로 바뀐 칸만 보내므로 누구나 쓸 수 있게 둔다 (같은 칸을 동시에 고치면 나중 것이 남음)
+  /* 엄마·오빠 폰에서 재윤이 화면으로 풀어 본 것은 미리보기라서 재윤이 기록(진도·스티커·오답)으로 보내지 않는다.
+     엄마 메뉴에서 진도를 옮긴 것처럼 어른이 일부러 바꾼 칸만 보낸다 */
+  touched:new Set(),
+  writable(k){ if (linked() && role() !== 'kid' && KID_KEYS.includes(k)) return this.touched.has(k); return true; },
+  touch(k){ if (linked() && role() !== 'kid' && this.last.s[k]) { try { S[k] = this.unpack(JSON.parse(this.last.s[k])); } catch (e) {} } this.touched.add(k); },
   listen(){
     const b = this.base();
     this.unsub.push(this.db.collection(`${b}/s`).onSnapshot(snap => this.onState(snap)));
@@ -3777,7 +3781,7 @@ const Sync = {
       if (!this.writable(k)) continue;
       const v = this.pack(S[k]), raw = JSON.stringify(v);
       if (raw === this.last.s[k] || v === undefined) continue;
-      this.last.s[k] = raw; jobs.push(this.db.doc(`${b}/s/${k}`).set({ v, at:Date.now(), by:role() }));
+      this.last.s[k] = raw; this.touched.delete(k); jobs.push(this.db.doc(`${b}/s/${k}`).set({ v, at:Date.now(), by:role() }));
     }
     if (canWriteKid()) for (const k of Object.keys(S.days)) {
       const v = this.pack(S.days[k]), raw = JSON.stringify(v);
