@@ -6,7 +6,7 @@
    - 사진·녹음: families/{fid}/blobs/{해시}[_조각]                        (큰 파일은 조각내서)
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
-const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports'];
+const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports','collect','friends'];
 const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
@@ -44,7 +44,7 @@ const Sync = {
     const b = this.base();
     this.unsub.push(this.db.collection(`${b}/s`).onSnapshot(snap => this.onState(snap)));
     this.unsub.push(this.db.collection(`${b}/days`).onSnapshot(snap => this.onDays(snap)));
-    this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(80).onSnapshot(snap => this.onNotes(snap)));
+    this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(120).onSnapshot(snap => this.onNotes(snap)));
   },
   onState(snap){
     let changed = false;
@@ -68,7 +68,7 @@ const Sync = {
   onNotes(snap){
     const ids = new Set(S.notes.map(n => n.id)); let changed = false;
     snap.docs.forEach(d => { const n = d.data(); if (!ids.has(d.id)) { S.notes.push(Object.assign({ id:d.id }, n)); changed = true; } });
-    if (changed) { S.notes.sort((a, b) => b.at - a.at); S.notes = S.notes.slice(0, 80); this.afterRemote(); }
+    if (changed) { S.notes.sort((a, b) => b.at - a.at); trimNotes(); this.afterRemote(); }
   },
   afterRemote(){
     this.applying = true;
@@ -161,7 +161,7 @@ const Sync = {
 };
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
-  if (['home','adult','map','gift','cal','room','alldone'].includes(SCREEN)) {
+  if (['home','adult','map','gift','cal','room','alldone','book'].includes(SCREEN)) {
     const y = scrollY; const active = document.activeElement;
     if (active && /INPUT|TEXTAREA|SELECT/.test(active.tagName)) return;
     VIEWS[SCREEN](); scrollTo(0, y);

@@ -434,3 +434,31 @@ audio{width:100%}
 .adult .panel, .adult .panel *{min-width:0}
 .adult .panel .li .grow{overflow-wrap:anywhere}
 @media (min-width:700px){ .passage{font-size:24px} }
+
+/* 캡슐 · 도감 · 순서 고르기 */
+.home-nav{grid-template-columns:repeat(3,1fr)}
+.home-nav .nav-tile{flex-direction:column;justify-content:center;gap:4px;padding:10px 6px;font-size:18px}
+.capsule{background:none;border:0;padding:0;filter:drop-shadow(0 8px 0 rgba(238,95,141,.18))}
+.capsule.shake{animation:capshake .45s}
+@keyframes capshake{0%,100%{transform:rotate(0)}20%{transform:rotate(-12deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-7deg)}80%{transform:rotate(5deg)}}
+.cap-dots{display:flex;gap:10px;justify-content:center}
+.cap-dots i{width:16px;height:16px;border-radius:50%;background:var(--line)} .cap-dots i.on{background:var(--pink-deep)}
+.cap-item{font-size:120px;line-height:1;width:190px;height:190px;border-radius:50%;display:grid;place-items:center;background:#fff;border:5px solid var(--line);animation:pop .5s cubic-bezier(.2,1.6,.4,1) both}
+.cap-item.r2{border-color:var(--sky);box-shadow:0 0 0 8px var(--sky-pale)}
+.cap-item.r3{border-color:transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#FF8FB1,#FFE08A,#7FD8BE,#8CC9FF,#C3ADF2) border-box;box-shadow:0 0 30px rgba(195,173,242,.7)}
+.rare-tag{display:inline-block;font-family:var(--f-display);font-size:16px;padding:4px 14px;border-radius:999px;background:var(--line);color:var(--ink)}
+.rare-tag.r2{background:var(--sky-pale);color:var(--sky-deep)}
+.rare-tag.r3{background:linear-gradient(90deg,#FFD1E0,#FFF1BF,#CFF3E6,#D6ECFF,#E7DDFB)}
+.book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.book-cell{background:#fff;border:2.5px solid var(--line);border-radius:var(--r-md);padding:10px 4px;display:grid;justify-items:center;gap:4px;position:relative;box-shadow:var(--shadow)}
+.book-cell .e{font-size:44px;line-height:1.1} .book-cell .n{font-family:var(--f-display);font-size:13px;text-align:center;word-break:keep-all}
+.book-cell .cnt{position:absolute;top:4px;right:8px;font-size:12px;color:var(--ink-soft)}
+.book-cell.r2{border-color:var(--sky)} .book-cell.r3{border-color:var(--lav-deep)}
+.book-cell.on{outline:4px solid var(--pink);outline-offset:2px}
+.book-cell.on::after{content:"♥";position:absolute;top:2px;left:8px;color:var(--pink-deep)}
+.book-cell.empty{opacity:.45;box-shadow:none;border-style:dashed}
+.stage-btn{position:relative}
+.friends{position:absolute;left:0;right:0;bottom:2px;display:flex;justify-content:space-around;font-size:26px;pointer-events:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.08))}
+.order-pick{background:var(--butter-pale);border:2.5px dashed var(--butter-deep);border-radius:var(--r-md);padding:12px 14px;display:grid;gap:10px;justify-items:center}
+.order-btn{flex:1;background:#fff;border:2.5px solid var(--line);border-radius:var(--r-md);padding:8px 4px;display:grid;justify-items:center;gap:4px;font-family:var(--f-display);font-size:18px;box-shadow:var(--shadow)}
+.order-btn .badge{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:17px}

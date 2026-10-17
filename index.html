@@ -454,6 +454,34 @@ audio{width:100%}
 .adult .panel .li .grow{overflow-wrap:anywhere}
 @media (min-width:700px){ .passage{font-size:24px} }
 
+/* 캡슐 · 도감 · 순서 고르기 */
+.home-nav{grid-template-columns:repeat(3,1fr)}
+.home-nav .nav-tile{flex-direction:column;justify-content:center;gap:4px;padding:10px 6px;font-size:18px}
+.capsule{background:none;border:0;padding:0;filter:drop-shadow(0 8px 0 rgba(238,95,141,.18))}
+.capsule.shake{animation:capshake .45s}
+@keyframes capshake{0%,100%{transform:rotate(0)}20%{transform:rotate(-12deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-7deg)}80%{transform:rotate(5deg)}}
+.cap-dots{display:flex;gap:10px;justify-content:center}
+.cap-dots i{width:16px;height:16px;border-radius:50%;background:var(--line)} .cap-dots i.on{background:var(--pink-deep)}
+.cap-item{font-size:120px;line-height:1;width:190px;height:190px;border-radius:50%;display:grid;place-items:center;background:#fff;border:5px solid var(--line);animation:pop .5s cubic-bezier(.2,1.6,.4,1) both}
+.cap-item.r2{border-color:var(--sky);box-shadow:0 0 0 8px var(--sky-pale)}
+.cap-item.r3{border-color:transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#FF8FB1,#FFE08A,#7FD8BE,#8CC9FF,#C3ADF2) border-box;box-shadow:0 0 30px rgba(195,173,242,.7)}
+.rare-tag{display:inline-block;font-family:var(--f-display);font-size:16px;padding:4px 14px;border-radius:999px;background:var(--line);color:var(--ink)}
+.rare-tag.r2{background:var(--sky-pale);color:var(--sky-deep)}
+.rare-tag.r3{background:linear-gradient(90deg,#FFD1E0,#FFF1BF,#CFF3E6,#D6ECFF,#E7DDFB)}
+.book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.book-cell{background:#fff;border:2.5px solid var(--line);border-radius:var(--r-md);padding:10px 4px;display:grid;justify-items:center;gap:4px;position:relative;box-shadow:var(--shadow)}
+.book-cell .e{font-size:44px;line-height:1.1} .book-cell .n{font-family:var(--f-display);font-size:13px;text-align:center;word-break:keep-all}
+.book-cell .cnt{position:absolute;top:4px;right:8px;font-size:12px;color:var(--ink-soft)}
+.book-cell.r2{border-color:var(--sky)} .book-cell.r3{border-color:var(--lav-deep)}
+.book-cell.on{outline:4px solid var(--pink);outline-offset:2px}
+.book-cell.on::after{content:"♥";position:absolute;top:2px;left:8px;color:var(--pink-deep)}
+.book-cell.empty{opacity:.45;box-shadow:none;border-style:dashed}
+.stage-btn{position:relative}
+.friends{position:absolute;left:0;right:0;bottom:2px;display:flex;justify-content:space-around;font-size:26px;pointer-events:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.08))}
+.order-pick{background:var(--butter-pale);border:2.5px dashed var(--butter-deep);border-radius:var(--r-md);padding:12px 14px;display:grid;gap:10px;justify-items:center}
+.order-btn{flex:1;background:#fff;border:2.5px solid var(--line);border-radius:var(--r-md);padding:8px 4px;display:grid;justify-items:center;gap:4px;font-family:var(--f-display);font-size:18px;box-shadow:var(--shadow)}
+.order-btn .badge{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:17px}
+
 </style>
 </head>
 <body>
@@ -473,7 +501,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261017100648";
+window.APP_VERSION = "20261017101958";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -1161,10 +1189,11 @@ function boardState(k, d = day()){
   if (b.done) return 'done';
   return 'doing';
 }
-function nextBoard(d = day()){ return BOARDS.find(b => boardState(b.k, d) !== 'done'); }
+function nextBoard(d = day()){ return orderedBoards(d).find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) Sync.addNote(n); S.notes.unshift(n); S.notes = S.notes.slice(0, 80); }
+function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) Sync.addNote(n); S.notes.unshift(n); trimNotes(); }
+function trimNotes(){ const cnt = {}; S.notes = S.notes.filter(x => (cnt[x.to] = (cnt[x.to] || 0) + 1) <= 60); }
 function alarmInfo(){
   const d = now(), dow = d.getDay();
   if (!S.alarms.on[dow]) return null;
@@ -1279,13 +1308,15 @@ VIEWS.home = () => {
     </div>
     <p class="muted" style="font-size:15px;margin-top:-8px">${korDate(now())} · ${esc(josa(S.bunnyName,'이랑','랑'))} 친구 된 지 ${friendDays()}일째</p>
     <div class="hero">
-      <button class="stage-btn" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}</button>
+      <button class="stage-btn" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
       <div class="bubble left" id="heroBubble">${esc(greet)}</div>
     </div>
     ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
     ${al && al.passed && !al.started && !d.done ? `<button class="alarm-banner" data-a="m2" style="width:100%;text-align:left"><span style="font-size:28px">⏰</span><span style="flex:1">공부할 시간이야! 엄마 목소리 들어 볼까?</span><span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span></button>` : ''}
+    ${capsuleWaiting(d) ? `<button class="alarm-banner" data-a="go" data-v="capsule" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:30px">🎁</span><span style="flex:1">오늘의 캡슐이 기다려요! 열어 볼까?</span></button>` : ''}
+    ${orderPickHTML(d)}
     <div class="boards">
-      ${BOARDS.map(b => { const st = boardState(b.k, d); const isNext = nb && nb.k === b.k && !d.done; const bo = d.boards[b.k];
+      ${orderedBoards(d).map(b => { const st = boardState(b.k, d); const isNext = nb && nb.k === b.k && !d.done; const bo = d.boards[b.k];
         const label = st === 'done' ? '다 했어!' : st === 'doing' ? `${bo.phase === 'dict' ? '받아쓰기 중' : (bo.idx + 1) + '번부터'}` : isNext ? '시작!' : '';
         return `<button class="board-card ${st} ${isNext ? 'next' : ''}" data-a="board" data-k="${b.k}">
           <span class="badge ${b.cls}">${b.badge}</span>
@@ -1299,6 +1330,7 @@ VIEWS.home = () => {
     <div class="home-nav">
       <button class="nav-tile" data-a="go" data-v="room"><span class="ic" style="background:var(--pink-pale)">🎀</span>꾸미기</button>
       <button class="nav-tile" data-a="go" data-v="cal"><span class="ic" style="background:var(--mint-pale)">📅</span>달력</button>
+      <button class="nav-tile" data-a="go" data-v="book"><span class="ic" style="background:var(--butter-pale)">🦄</span>도감</button>
     </div>
     ${isInstalled() ? '' : `<button class="install-tile" data-a="installkid"><span style="font-size:30px">📲</span><span style="flex:1">바탕화면에 공부방 놓기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">엄마랑 같이 해요</span></span></button>`}
     ${d.done && (S.praise && (S.praise.audio || S.praise.text)) ? `<button class="btn lav big" data-a="go" data-v="alldone">오빠 칭찬 다시 듣기</button>` : ''}
@@ -1610,7 +1642,8 @@ VIEWS.alldone = () => {
       ${pr && pr.text ? `<span>${esc(pr.text)}</span>` : ''}
       ${pr && pr.audio ? `<button class="btn lav" data-a="praise">▶ 오빠 목소리 듣기</button>` : (!pr || !pr.text) ? `<span class="muted" style="font-family:var(--f-body);font-size:16px">오빠가 곧 칭찬을 남겨 줄 거야!</span>` : ''}
     </div>
-    <button class="btn big" data-a="home">처음으로</button>
+    ${capsuleWaiting(d) ? `<button class="btn big" data-a="go" data-v="capsule">🎁 오늘의 캡슐 열기</button>` : ''}
+    <button class="btn ${capsuleWaiting(d) ? 'ghost' : 'big'}" data-a="home">처음으로</button>
   </section>`;
   confetti();
   if (pr && pr.audio) setTimeout(() => playClip(pr.audio), 600);
@@ -1994,6 +2027,9 @@ const ACT = {
   dictsay(){ ++SEQ; const dt = day().dict; speak(dt.words[dt.idx], 'ko-KR', .8); },
   dictnext(){ if (Date.now() - (window.__dictShown || 0) < 900) return; const dt = day().dict; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } dt.pen = dt.pen || []; dt.pen[dt.idx] = penImage(); } SFX.tap(); dt.idx++; if (penMode() && dt.idx >= dt.words.length) { composePen(dt).then(img => { dt.photo = img; dt.pen = null; save(); go('photo'); }); return; } save(); go(dt.idx >= dt.words.length ? 'photo' : 'dict'); },
   penclear(){ setupPen(); },
+  captap(){ if (!CAP) return; CAP.taps++; SFX.tap(); const b = $('.capsule'); if (b) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } document.querySelectorAll('.cap-dots i').forEach((i, n) => i.classList.toggle('on', n < CAP.taps)); if (CAP.taps >= 3) { CAP = null; setTimeout(openCapsule, 450); } },
+  friend(el){ const id = el.dataset.v; S.friends = S.friends || []; if (S.friends.includes(id)) S.friends = S.friends.filter(x => x !== id); else { S.friends.push(id); if (S.friends.length > 3) S.friends.shift(); } SFX.tap(); save(); const y = scrollY; go('book'); scrollTo(0, y); },
+  pickfirst(el){ const k = el.dataset.v, d = day(); d.order = [k, ...['kor','math','eng'].filter(x => x !== k)]; save(); ACT.board({ dataset:{ k } }); },
   repshare(el){ const r = el.dataset.v && S.reports[el.dataset.v] ? S.reports[el.dataset.v] : buildWeekReport(mondayOf(todayKey())); const text = reportText(r);
     if (navigator.share) navigator.share({ title:reportTitle(r), text }).catch(() => {}); else { try { navigator.clipboard.writeText(text).then(() => toast('복사했어요. 카톡에 붙여 넣어 주세요')); } catch (e) { toast('복사가 안 됐어요'); } } },
   mailsave(){ const mom = $('#mmom').value.trim(), oppa = $('#moppa').value.trim(); const ok = x => !x || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
@@ -3728,7 +3764,7 @@ VIEWS.eyebreak = (next) => {
    - 사진·녹음: families/{fid}/blobs/{해시}[_조각]                        (큰 파일은 조각내서)
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
-const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports'];
+const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports','collect','friends'];
 const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
@@ -3766,7 +3802,7 @@ const Sync = {
     const b = this.base();
     this.unsub.push(this.db.collection(`${b}/s`).onSnapshot(snap => this.onState(snap)));
     this.unsub.push(this.db.collection(`${b}/days`).onSnapshot(snap => this.onDays(snap)));
-    this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(80).onSnapshot(snap => this.onNotes(snap)));
+    this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(120).onSnapshot(snap => this.onNotes(snap)));
   },
   onState(snap){
     let changed = false;
@@ -3790,7 +3826,7 @@ const Sync = {
   onNotes(snap){
     const ids = new Set(S.notes.map(n => n.id)); let changed = false;
     snap.docs.forEach(d => { const n = d.data(); if (!ids.has(d.id)) { S.notes.push(Object.assign({ id:d.id }, n)); changed = true; } });
-    if (changed) { S.notes.sort((a, b) => b.at - a.at); S.notes = S.notes.slice(0, 80); this.afterRemote(); }
+    if (changed) { S.notes.sort((a, b) => b.at - a.at); trimNotes(); this.afterRemote(); }
   },
   afterRemote(){
     this.applying = true;
@@ -3883,7 +3919,7 @@ const Sync = {
 };
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
-  if (['home','adult','map','gift','cal','room','alldone'].includes(SCREEN)) {
+  if (['home','adult','map','gift','cal','room','alldone','book'].includes(SCREEN)) {
     const y = scrollY; const active = document.activeElement;
     if (active && /INPUT|TEXTAREA|SELECT/.test(active.tagName)) return;
     VIEWS[SCREEN](); scrollTo(0, y);
@@ -4185,6 +4221,97 @@ function mailPanel(){
       <div class="row" style="flex-wrap:wrap"><button class="btn small" data-a="mailurl">URL 저장</button>${m.url ? `<button class="btn mint small" data-a="mailtest">테스트 메일 보내기</button>` : ''}</div>
       <p class="muted" style="font-size:13px">메일 주소나 URL을 바꾸면 코드를 다시 붙여 넣고 "배포 관리 → 새 버전"으로 다시 배포해 주세요.</p>` : ''}
   </div>`;
+}
+
+/* ===================== 매일 뽑기 캡슐 · 도감 · 오늘 순서 고르기 ===================== */
+/* 하루 공부를 다 끝내면 캡슐 하나. 안에는 토리 친구가 랜덤으로 (보통 · 반짝 · 무지개) */
+const COLLECT = [
+  // 보통 (r:1)
+  { id:'c01', e:'🐣', n:'병아리 삐약이', r:1 }, { id:'c02', e:'🐰', n:'토끼 친구 솜이', r:1 }, { id:'c03', e:'🐱', n:'고양이 나비', r:1 }, { id:'c04', e:'🐶', n:'강아지 콩이', r:1 },
+  { id:'c05', e:'🐹', n:'햄스터 도토리', r:1 }, { id:'c06', e:'🐼', n:'판다 대나무', r:1 }, { id:'c07', e:'🐨', n:'코알라 쿨쿨', r:1 }, { id:'c08', e:'🐧', n:'펭귄 뒤뚱이', r:1 },
+  { id:'c09', e:'🐢', n:'거북이 느릿', r:1 }, { id:'c10', e:'🐞', n:'무당벌레 점박이', r:1 }, { id:'c11', e:'🍓', n:'딸기 새콤이', r:1 }, { id:'c12', e:'🍩', n:'도넛 동글이', r:1 },
+  { id:'c13', e:'🧁', n:'컵케이크 포근이', r:1 }, { id:'c14', e:'🍭', n:'막대사탕 빙글이', r:1 }, { id:'c15', e:'🌷', n:'튤립 봄이', r:1 }, { id:'c16', e:'🌻', n:'해바라기 해님', r:1 },
+  { id:'c17', e:'🍄', n:'버섯 뽀송이', r:1 }, { id:'c18', e:'🎈', n:'풍선 둥실이', r:1 },
+  // 반짝 (r:2)
+  { id:'c19', e:'🦋', n:'나비 팔랑이', r:2 }, { id:'c20', e:'🐬', n:'돌고래 퐁당이', r:2 }, { id:'c21', e:'🦊', n:'여우 꼬리별', r:2 }, { id:'c22', e:'🐿️', n:'다람쥐 볼빵빵', r:2 },
+  { id:'c23', e:'🍰', n:'케이크 생일이', r:2 }, { id:'c24', e:'🌈', n:'무지개 일곱빛', r:2 }, { id:'c25', e:'⭐', n:'별 반짝이', r:2 }, { id:'c26', e:'🎀', n:'리본 사랑이', r:2 },
+  { id:'c27', e:'🍀', n:'네잎클로버 행운이', r:2 }, { id:'c28', e:'🫧', n:'비눗방울 퐁퐁이', r:2 },
+  // 무지개 (r:3, 아주 가끔)
+  { id:'c29', e:'🦄', n:'유니콘 꿈꾸미', r:3 }, { id:'c30', e:'👑', n:'왕관 재윤공주', r:3 }, { id:'c31', e:'🐉', n:'아기 용 불꽃이', r:3 }, { id:'c32', e:'🧚', n:'요정 반짝날개', r:3 },
+];
+const RARE = { 1:{ name:'보통', cls:'r1' }, 2:{ name:'반짝', cls:'r2' }, 3:{ name:'무지개', cls:'r3' } };
+function capsulePick(){
+  const own = S.collect || {};
+  const roll = Math.random(), r = roll < .06 ? 3 : roll < .32 ? 2 : 1;
+  let pool = COLLECT.filter(c => c.r === r && !own[c.id]);
+  if (!pool.length) pool = COLLECT.filter(c => !own[c.id]);       // 그 등급을 다 모았으면 아직 없는 친구 아무나
+  if (!pool.length) pool = COLLECT.filter(c => c.r === r);          // 다 모았으면 중복
+  return pick(pool);
+}
+function capsuleWaiting(d = day()){ return d.done && !(d.capsule && d.capsule.opened); }
+let CAP = null;
+VIEWS.capsule = () => {
+  const d = day();
+  if (!d.done) return go('home');
+  if (d.capsule && d.capsule.opened) return go('capsuleOpen', d.capsule.id);
+  CAP = { taps:0 };
+  app().innerHTML = `<section class="screen reward" style="justify-content:center">
+    <h1>오늘의 캡슐!</h1>
+    <p class="score-line">오늘 공부를 다 끝낸 선물이야.<br>캡슐을 세 번 톡톡 두드려 봐!</p>
+    <button class="capsule" data-a="captap" aria-label="캡슐 두드리기">${capsuleSVG()}</button>
+    <div class="cap-dots"><i></i><i></i><i></i></div>
+  </section>`;
+  speak('오늘의 캡슐! 세 번 톡톡 두드려 봐!');
+};
+VIEWS.capsuleOpen = (id) => {
+  const isNew = (day().capsule || {}).isNew;
+  const c = COLLECT.find(x => x.id === id), own = S.collect || {}, total = COLLECT.filter(x => own[x.id]).length;
+  app().innerHTML = `<section class="screen reward" style="justify-content:center">
+    <span class="rare-tag ${RARE[c.r].cls}">${RARE[c.r].name}</span>
+    <div class="cap-item ${RARE[c.r].cls}">${c.e}</div>
+    <h1>${esc(c.n)}</h1>
+    <p class="score-line">${isNew ? '새 친구가 생겼어! 도감에 쏙!' : '이미 있는 친구네! 대신 스티커 하나 더 줄게 ⭐'}<br><span class="muted">도감 ${total} / ${COLLECT.length}</span></p>
+    <div class="row" style="gap:12px;align-self:stretch"><button class="btn ghost big" data-a="go" data-v="book" style="flex:1">도감 보기</button><button class="btn big" data-a="home" style="flex:1">처음으로</button></div>
+  </section>`;
+};
+function capsuleSVG(){
+  return `<svg viewBox="0 0 160 170" width="190" height="200" aria-hidden="true"><g class="cap-top"><path d="M20 85 A60 60 0 0 1 140 85 Z" fill="#FF8FB1" stroke="${INK}" stroke-width="5"/><circle cx="55" cy="55" r="9" fill="#fff" opacity=".7"/></g><g class="cap-bot"><path d="M20 90 A60 60 0 0 0 140 90 Z" fill="#fff" stroke="${INK}" stroke-width="5"/></g><rect x="14" y="82" width="132" height="11" rx="5" fill="#FFE08A" stroke="${INK}" stroke-width="4"/><text x="80" y="128" text-anchor="middle" font-size="26" font-family="Jua, sans-serif" fill="${INK}">?</text></svg>`;
+}
+function openCapsule(){
+  const d = day(); if (!d.done || (d.capsule && d.capsule.opened)) return;
+  const c = capsulePick(); S.collect = S.collect || {};
+  const isNew = !S.collect[c.id]; S.collect[c.id] = (S.collect[c.id] || 0) + 1;
+  if (!isNew) { const st = pick(STICKERS); d.earned.push(st); S.stickers.push({ e:st, d:todayKey(), bonus:true }); }
+  d.capsule = { id:c.id, opened:true, isNew };
+  if (c.r === 3) { notify('oppa', `🦄 재윤이가 캡슐에서 무지개 친구 "${c.n}"를 뽑았어요!`); notify('mom', `🦄 재윤이가 캡슐에서 무지개 친구 "${c.n}"를 뽑았어요!`); }
+  save();
+  SFX.sticker(); confetti();
+  go('capsuleOpen', c.id);
+  speak(isNew ? `우와! ${c.n}! 새 친구가 생겼어!` : `${c.n}! 이미 있는 친구네. 대신 스티커 하나 더!`);
+}
+/* 도감: 가진 친구는 눌러서 토리 옆에 두기 (세 명까지) */
+VIEWS.book = () => {
+  const own = S.collect || {}, fr = S.friends || [], total = COLLECT.filter(x => own[x.id]).length;
+  app().innerHTML = `<section class="screen">
+    <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">토리 친구 도감</h2><span class="sticker-chip">${total} / ${COLLECT.length}</span></div>
+    <div class="bubble" style="font-size:18px">공부를 다 끝낸 날마다 캡슐에서 친구가 나와요. 친구를 누르면 ${esc(S.bunnyName)} 옆에 같이 놀 수 있어요 (세 명까지)!</div>
+    ${[3, 2, 1].map(r => `<h3 class="disp" style="font-weight:400;margin:4px 0 0"><span class="rare-tag ${RARE[r].cls}">${RARE[r].name}</span></h3>
+      <div class="book-grid">${COLLECT.filter(c => c.r === r).map(c => own[c.id]
+        ? `<button class="book-cell ${RARE[r].cls} ${fr.includes(c.id) ? 'on' : ''}" data-a="friend" data-v="${c.id}"><span class="e">${c.e}</span><span class="n">${esc(c.n)}</span>${own[c.id] > 1 ? `<span class="cnt">×${own[c.id]}</span>` : ''}</button>`
+        : `<span class="book-cell empty"><span class="e">❔</span><span class="n">???</span></span>`).join('')}</div>`).join('')}
+  </section>`;
+};
+function friendsHTML(){ const fr = (S.friends || []).map(id => COLLECT.find(c => c.id === id)).filter(Boolean); return fr.length ? `<span class="friends">${fr.map(c => `<span>${c.e}</span>`).join('')}</span>` : ''; }
+
+/* 오늘 순서 고르기: 국어 · 수학 · 영어 중 무엇부터 (복습은 늘 마지막) */
+function orderedBoards(d = day()){
+  const ord = d.order || ['kor','math','eng'];
+  return [...ord.map(k => BOARDS.find(b => b.k === k)), BOARDS.find(b => b.k === 'rev')];
+}
+function orderPickHTML(d = day()){
+  if (d.order || Object.keys(d.boards).length) return '';
+  return `<div class="order-pick"><span class="disp" style="font-size:20px">오늘은 뭐부터 할까?</span>
+    <div class="row" style="gap:10px">${BOARDS.filter(b => b.k !== 'rev').map(b => `<button class="order-btn" data-a="pickfirst" data-v="${b.k}"><span class="badge ${b.cls}">${b.badge}</span>${b.k === 'eng' ? '영어' : b.name}</button>`).join('')}</div></div>`;
 }
 
 /* 첫 화면 (모든 내용이 준비된 뒤에) */

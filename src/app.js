@@ -442,10 +442,11 @@ function boardState(k, d = day()){
   if (b.done) return 'done';
   return 'doing';
 }
-function nextBoard(d = day()){ return BOARDS.find(b => boardState(b.k, d) !== 'done'); }
+function nextBoard(d = day()){ return orderedBoards(d).find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) Sync.addNote(n); S.notes.unshift(n); S.notes = S.notes.slice(0, 80); }
+function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) Sync.addNote(n); S.notes.unshift(n); trimNotes(); }
+function trimNotes(){ const cnt = {}; S.notes = S.notes.filter(x => (cnt[x.to] = (cnt[x.to] || 0) + 1) <= 60); }
 function alarmInfo(){
   const d = now(), dow = d.getDay();
   if (!S.alarms.on[dow]) return null;
@@ -560,13 +561,15 @@ VIEWS.home = () => {
     </div>
     <p class="muted" style="font-size:15px;margin-top:-8px">${korDate(now())} · ${esc(josa(S.bunnyName,'이랑','랑'))} 친구 된 지 ${friendDays()}일째</p>
     <div class="hero">
-      <button class="stage-btn" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}</button>
+      <button class="stage-btn" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
       <div class="bubble left" id="heroBubble">${esc(greet)}</div>
     </div>
     ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
     ${al && al.passed && !al.started && !d.done ? `<button class="alarm-banner" data-a="m2" style="width:100%;text-align:left"><span style="font-size:28px">⏰</span><span style="flex:1">공부할 시간이야! 엄마 목소리 들어 볼까?</span><span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span></button>` : ''}
+    ${capsuleWaiting(d) ? `<button class="alarm-banner" data-a="go" data-v="capsule" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:30px">🎁</span><span style="flex:1">오늘의 캡슐이 기다려요! 열어 볼까?</span></button>` : ''}
+    ${orderPickHTML(d)}
     <div class="boards">
-      ${BOARDS.map(b => { const st = boardState(b.k, d); const isNext = nb && nb.k === b.k && !d.done; const bo = d.boards[b.k];
+      ${orderedBoards(d).map(b => { const st = boardState(b.k, d); const isNext = nb && nb.k === b.k && !d.done; const bo = d.boards[b.k];
         const label = st === 'done' ? '다 했어!' : st === 'doing' ? `${bo.phase === 'dict' ? '받아쓰기 중' : (bo.idx + 1) + '번부터'}` : isNext ? '시작!' : '';
         return `<button class="board-card ${st} ${isNext ? 'next' : ''}" data-a="board" data-k="${b.k}">
           <span class="badge ${b.cls}">${b.badge}</span>
@@ -580,6 +583,7 @@ VIEWS.home = () => {
     <div class="home-nav">
       <button class="nav-tile" data-a="go" data-v="room"><span class="ic" style="background:var(--pink-pale)">🎀</span>꾸미기</button>
       <button class="nav-tile" data-a="go" data-v="cal"><span class="ic" style="background:var(--mint-pale)">📅</span>달력</button>
+      <button class="nav-tile" data-a="go" data-v="book"><span class="ic" style="background:var(--butter-pale)">🦄</span>도감</button>
     </div>
     ${isInstalled() ? '' : `<button class="install-tile" data-a="installkid"><span style="font-size:30px">📲</span><span style="flex:1">바탕화면에 공부방 놓기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">엄마랑 같이 해요</span></span></button>`}
     ${d.done && (S.praise && (S.praise.audio || S.praise.text)) ? `<button class="btn lav big" data-a="go" data-v="alldone">오빠 칭찬 다시 듣기</button>` : ''}
@@ -891,7 +895,8 @@ VIEWS.alldone = () => {
       ${pr && pr.text ? `<span>${esc(pr.text)}</span>` : ''}
       ${pr && pr.audio ? `<button class="btn lav" data-a="praise">▶ 오빠 목소리 듣기</button>` : (!pr || !pr.text) ? `<span class="muted" style="font-family:var(--f-body);font-size:16px">오빠가 곧 칭찬을 남겨 줄 거야!</span>` : ''}
     </div>
-    <button class="btn big" data-a="home">처음으로</button>
+    ${capsuleWaiting(d) ? `<button class="btn big" data-a="go" data-v="capsule">🎁 오늘의 캡슐 열기</button>` : ''}
+    <button class="btn ${capsuleWaiting(d) ? 'ghost' : 'big'}" data-a="home">처음으로</button>
   </section>`;
   confetti();
   if (pr && pr.audio) setTimeout(() => playClip(pr.audio), 600);
@@ -1275,6 +1280,9 @@ const ACT = {
   dictsay(){ ++SEQ; const dt = day().dict; speak(dt.words[dt.idx], 'ko-KR', .8); },
   dictnext(){ if (Date.now() - (window.__dictShown || 0) < 900) return; const dt = day().dict; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } dt.pen = dt.pen || []; dt.pen[dt.idx] = penImage(); } SFX.tap(); dt.idx++; if (penMode() && dt.idx >= dt.words.length) { composePen(dt).then(img => { dt.photo = img; dt.pen = null; save(); go('photo'); }); return; } save(); go(dt.idx >= dt.words.length ? 'photo' : 'dict'); },
   penclear(){ setupPen(); },
+  captap(){ if (!CAP) return; CAP.taps++; SFX.tap(); const b = $('.capsule'); if (b) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } document.querySelectorAll('.cap-dots i').forEach((i, n) => i.classList.toggle('on', n < CAP.taps)); if (CAP.taps >= 3) { CAP = null; setTimeout(openCapsule, 450); } },
+  friend(el){ const id = el.dataset.v; S.friends = S.friends || []; if (S.friends.includes(id)) S.friends = S.friends.filter(x => x !== id); else { S.friends.push(id); if (S.friends.length > 3) S.friends.shift(); } SFX.tap(); save(); const y = scrollY; go('book'); scrollTo(0, y); },
+  pickfirst(el){ const k = el.dataset.v, d = day(); d.order = [k, ...['kor','math','eng'].filter(x => x !== k)]; save(); ACT.board({ dataset:{ k } }); },
   repshare(el){ const r = el.dataset.v && S.reports[el.dataset.v] ? S.reports[el.dataset.v] : buildWeekReport(mondayOf(todayKey())); const text = reportText(r);
     if (navigator.share) navigator.share({ title:reportTitle(r), text }).catch(() => {}); else { try { navigator.clipboard.writeText(text).then(() => toast('복사했어요. 카톡에 붙여 넣어 주세요')); } catch (e) { toast('복사가 안 됐어요'); } } },
   mailsave(){ const mom = $('#mmom').value.trim(), oppa = $('#moppa').value.trim(); const ok = x => !x || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
