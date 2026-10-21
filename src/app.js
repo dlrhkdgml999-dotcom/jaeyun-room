@@ -203,12 +203,24 @@ function itemSVG(id){
     default: return '';
   }
 }
-function bunnySVG(o = {}){
-  const expr = o.expr || 'normal';
-  const eq = o.eq || S.equipped || {};
-  const size = o.size || 140;
+/* 표정: 눈과 입 (토리를 누르면 tori.js가 이 함수로 표정을 잠깐 바꾼다) */
+function faceParts(expr){
   let eyes, mouth;
-  if (expr === 'happy') {
+  if (expr === 'love') {
+    const heart = (x, y) => `<path d="M${x} ${y + 9} C${x - 15} ${y - 1} ${x - 9} ${y - 13} ${x} ${y - 5} C${x + 9} ${y - 13} ${x + 15} ${y - 1} ${x} ${y + 9} Z" fill="#F0527E" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    eyes = heart(76, 126) + heart(124, 126);
+    mouth = `<path d="M90 146 Q100 160 110 146 Z" fill="#E35A7F" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+  } else if (expr === 'dizzy') {
+    const sp = (x, y) => `<path d="M${x} ${y} m-9 0 a9 9 0 1 0 18 0 a7 7 0 1 0 -14 0 a5 5 0 1 0 10 0 a3 3 0 1 0 -6 0" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+    eyes = sp(76, 127) + sp(124, 127);
+    mouth = `<path d="M90 149 Q95 144 100 149 Q105 154 110 149" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+  } else if (expr === 'wink') {
+    eyes = `<path d="M66 128 Q76 120 86 128" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><ellipse cx="124" cy="127" rx="7" ry="9" fill="${INK}"/><circle cx="126" cy="123" r="2.6" fill="#fff"/>`;
+    mouth = `<path d="M90 146 Q100 160 110 146 Z" fill="#E35A7F" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+  } else if (expr === 'sleepy') {
+    eyes = `<path d="M66 129 Q76 136 86 129" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M114 129 Q124 136 134 129" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
+    mouth = `<ellipse cx="100" cy="150" rx="7" ry="9" fill="#E35A7F" stroke="${INK}" stroke-width="3"/>`;
+  } else if (expr === 'happy') {
     eyes = `<path d="M66 129 Q76 116 86 129" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M114 129 Q124 116 134 129" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
     mouth = `<path d="M90 146 Q100 160 110 146 Z" fill="#E35A7F" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
   } else if (expr === 'wow') {
@@ -221,9 +233,16 @@ function bunnySVG(o = {}){
     eyes = `<ellipse cx="76" cy="127" rx="7" ry="9" fill="${INK}"/><circle cx="78" cy="123" r="2.6" fill="#fff"/><ellipse cx="124" cy="127" rx="7" ry="9" fill="${INK}"/><circle cx="126" cy="123" r="2.6" fill="#fff"/>`;
     mouth = `<path d="M91 145 Q95.5 151 100 145 Q104.5 151 109 145" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
   }
+  return { eyes, mouth };
+}
+function bunnySVG(o = {}){
+  const expr = o.expr || 'normal';
+  const eq = o.eq || S.equipped || {};
+  const size = o.size || 140;
+  const { eyes, mouth } = faceParts(expr);
   const cape = eq.neck === 'cape' ? `<path d="M66 176 L36 232 Q100 244 164 232 L134 176 Z" fill="#C3ADF2" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>` : '';
   const neck = eq.neck && eq.neck !== 'cape' ? itemSVG(eq.neck) : (eq.neck === 'cape' ? `<path d="M80 182 Q100 192 120 182" fill="none" stroke="#8A67D6" stroke-width="5" stroke-linecap="round"/><circle cx="100" cy="188" r="5" fill="#FFD43B" stroke="${INK}" stroke-width="2.5"/>` : '');
-  return `<svg class="bunny ${o.cls || ''}" width="${size}" height="${Math.round(size * 1.2)}" viewBox="0 0 200 240" aria-hidden="true">
+  return `<svg class="bunny e-${expr} ${o.cls || ''}" data-expr="${expr}" width="${size}" height="${Math.round(size * 1.2)}" viewBox="0 0 200 240" aria-hidden="true">
   ${cape}
   <g class="ear-l"><ellipse cx="72" cy="58" rx="20" ry="50" transform="rotate(-12 72 58)" fill="#fff" stroke="${INK}" stroke-width="4"/><ellipse cx="73" cy="64" rx="9" ry="34" transform="rotate(-12 73 64)" fill="#FFC2D4"/></g>
   <g class="ear-r"><ellipse cx="128" cy="58" rx="20" ry="50" transform="rotate(12 128 58)" fill="#fff" stroke="${INK}" stroke-width="4"/><ellipse cx="127" cy="64" rx="9" ry="34" transform="rotate(12 127 64)" fill="#FFC2D4"/></g>
@@ -231,10 +250,11 @@ function bunnySVG(o = {}){
   <ellipse cx="78" cy="228" rx="15" ry="9" fill="#fff" stroke="${INK}" stroke-width="4"/><ellipse cx="122" cy="228" rx="15" ry="9" fill="#fff" stroke="${INK}" stroke-width="4"/>
   <ellipse cx="100" cy="128" rx="66" ry="56" fill="#fff" stroke="${INK}" stroke-width="4"/>
   ${eq.head === 'rainbow' ? itemSVG('rainbow') : ''}
-  <ellipse cx="60" cy="146" rx="12" ry="7.5" fill="#FFB3C7" opacity=".85"/><ellipse cx="140" cy="146" rx="12" ry="7.5" fill="#FFB3C7" opacity=".85"/>
-  ${eyes}
+  <g class="cheeks"><ellipse cx="60" cy="146" rx="12" ry="7.5" fill="#FFB3C7" opacity=".85"/><ellipse cx="140" cy="146" rx="12" ry="7.5" fill="#FFB3C7" opacity=".85"/></g>
+  <g class="eyes">${eyes}</g>
   <path d="M95.5 137 Q100 133.5 104.5 137 Q100 142 95.5 137 Z" fill="#FF8FB1" stroke="#EE5F8D" stroke-width="1.5"/>
-  ${mouth}
+  <g class="mouth">${mouth}</g>
+  <g class="mouth-talk"><ellipse cx="100" cy="151" rx="8" ry="8" fill="#E35A7F" stroke="${INK}" stroke-width="3"/><ellipse cx="100" cy="155" rx="4.5" ry="2.6" fill="#FF9BB5"/></g>
   ${eq.face ? itemSVG(eq.face) : ''}
   ${eq.head && eq.head !== 'rainbow' ? itemSVG(eq.head) : ''}
   ${neck}
@@ -562,7 +582,7 @@ VIEWS.home = () => {
     </div>
     <p class="muted" style="font-size:15px;margin-top:-8px">${korDate(now())} · ${esc(josa(S.bunnyName,'이랑','랑'))} 친구 된 지 ${friendDays()}일째</p>
     <div class="hero">
-      <button class="stage-btn" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
+      <button class="stage-btn tori-stage" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
       <div class="bubble left" id="heroBubble">${esc(greet)}</div>
     </div>
     ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
@@ -918,7 +938,7 @@ VIEWS.room = () => {
     return;
   }
   app().innerHTML = `<section class="screen">${head}
-    <div class="stage dress-stage ${S.equipped.bg || 'bg-none'}">${bunnySVG({ size:180, expr:'happy' })}</div>
+    <button class="stage dress-stage tori-stage ${S.equipped.bg || 'bg-none'}" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${bunnySVG({ size:180, expr:'happy' })}</button>
     <div class="item-grid">${ITEMS.map(it => { const has = total >= it.need, on = S.equipped[it.slot] === it.id;
       const thumb = it.slot === 'bg' ? `<span class="bg-thumb ${it.id}"></span>` : bunnySVG({ size:52, eq:{ [it.slot]:it.id } });
       return `<button class="item ${on ? 'on' : ''} ${has ? '' : 'locked'}" data-a="equip" data-v="${it.id}" ${has ? '' : 'aria-disabled="true"'}><span class="thumb">${thumb}</span><span>${esc(it.name)}</span>${has ? (on ? '<span class="pill">착용 중</span>' : '') : `<span class="lock">⭐ ${it.need}개</span>`}</button>`; }).join('')}</div>
@@ -1160,7 +1180,7 @@ VIEWS.adult = () => {
         <p class="demo-note">지금은 이 폰 하나에 재윤이·엄마·오빠 화면이 함께 들어 있는 체험판이에요. 서버를 연결하면 세 폰이 같은 기록을 나눠 써요.</p>
       </div>`;
   }
-  app().innerHTML = `<section class="screen adult">${adultHead()}${body}</section>`;
+  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${body}</section>`;
 };
 let RESET_ARMED = false;
 
@@ -1250,14 +1270,21 @@ const ACT = {
   nextq(){ nextQ(); },
   eyetoggle(){ S.eyeBreak = S.eyeBreak === false ? true : false; save(); const y = scrollY; go('adult'); scrollTo(0, y); },
   eyedone(el){ const v = el.dataset.v; if (v === 'lesson' && RUN && RUN.b && RUN.b.cur) return go('cards', { lesson:RUN.b.cur.lesson, fromBoard:true }); if (v === 'intro' && RUN) return go('intro', RUN.k); go('home'); },
-  async joinrole(el){ const m = $('#joinmsg'); if (m) m.textContent = '연결하는 중이에요…'; const ok = await Sync.join(JOIN_FID, el.dataset.v).catch(e => { console.warn(e); return false; });
+  async joinrole(el){
+    const v = el.dataset.v, sc = S.started ? studyScore(S) : 0;
+    // 공부 기록이 있는 기기(=재윤이 태블릿일 가능성)를 엄마·오빠 기기로 고르면 한 번 더 묻는다
+    if (v !== 'kid' && sc >= 3 && (!linked() || role() === 'kid') && !confirm(`이 기기에 재윤이가 공부한 기록(스티커 ${S.stickers.length}개)이 있어요.\n재윤이 태블릿이라면 "재윤이"를 골라야 기록이 가족에게 가요.\n\n그래도 ${v === 'mom' ? '엄마' : '오빠'} 기기로 할까요?`)) return;
+    const m = $('#joinmsg'); if (m) m.textContent = '연결하는 중이에요…'; const ok = await Sync.join(JOIN_FID, v).catch(e => { console.warn(e); return false; });
     if (!ok) { if (m) m.textContent = '연결하지 못했어요. 인터넷이 되는지, 링크가 맞는지 확인해 주세요.'; return; }
-    history.replaceState(null, '', location.pathname); toast('가족과 연결됐어요!'); if (el.dataset.v === 'kid') go('home'); else { S.adultTab = el.dataset.v; go('adult'); } },
+    history.replaceState(null, '', location.pathname); toast(Sync.kept ? `가족과 연결됐어요! 이 기기 공부 기록(스티커 ${S.stickers.length}개)을 가족 기록으로 올렸어요` : '가족과 연결됐어요!'); if (el.dataset.v === 'kid') go('home'); else { S.adultTab = el.dataset.v; go('adult'); } },
   async famcreate(el){ const m = $('#fammsg'); if (m) m.textContent = '가족방을 만드는 중이에요…'; const ok = await Sync.create(el.dataset.v).catch(e => { console.warn(e); return false; });
     if (!ok) { if (m) m.textContent = '만들지 못했어요. ' + (Sync.error || '인터넷 연결과 Firebase 보안 규칙을 확인해 주세요.'); S.local = null; saveLocal(); return; }
     toast('가족방을 만들었어요. 링크를 카톡으로 보내 주세요'); go('adult'); },
   famcopy(){ const v = familyLink(); try { navigator.clipboard.writeText(v).then(() => toast('링크를 복사했어요'), () => { $('#famlink').select(); toast('링크를 길게 눌러 복사해 주세요'); }); } catch (e) { $('#famlink').select(); } },
   famrole(){ JOIN_FID = S.local.fid; go('join'); },
+  joinpaste(){ const v = ($('#joinpaste') || {}).value || '', m = v.match(/join=([a-z0-9]{20,})/) || v.trim().match(/^([a-z0-9]{20,})$/);
+    if (!m) { const f = $('#fammsg'); if (f) f.textContent = '가족 링크가 맞는지 확인해 주세요 (#join= 이 들어 있어야 해요)'; return; }
+    JOIN_FID = m[1]; go('join'); },
   cardsay(){ const l = lessonById(CARDS.lesson); sayParts(l.cards[CARDS.i].say); },
   cardmove(el){ CARDS.i = clamp(CARDS.i + +el.dataset.v, 0, lessonById(CARDS.lesson).cards.length - 1); SFX.tap(); go('cards'); },
   cardsdone(){ if (CARDS.fromBoard && RUN && RUN.b) { RUN.b.cardsSeen = true; save(); go('q'); } else go('map', { s:lessonById(CARDS.lesson).subj }); },
@@ -1265,11 +1292,7 @@ const ACT = {
   ttspreset(el){ const pr = TTS_PRESETS[el.dataset.v]; S.tts.preset = el.dataset.v; S.tts.pitch = pr.pitch; S.tts.rate = pr.rate; save(); const y = scrollY; go('adult'); scrollTo(0, y); ttsSample(); },
   ttsvoice(el){ S.tts.voice = el.dataset.v; save(); const y = scrollY; go('adult'); scrollTo(0, y); ttsSample(); },
   ttstest(){ ttsSample(); },
-  poke(){
-    const line = pick(POKE_LINES); const b = $('#heroBubble'); if (b) b.textContent = line;
-    const svg = $('.stage-btn .bunny'); if (svg) { svg.classList.remove('hop'); void svg.getBoundingClientRect(); svg.classList.add('hop'); }
-    tone([[1318,0,.08],[1568,.08,.12]]); speak(line);
-  },
+  poke(el, ev){ Tori.tap(el, ev); },   // 토리 누르기: tori.js
   giftgoal(el){ if (giftAch()) { toast('이번 약속은 이미 달성했어요'); return; } S.gift.goal = +el.dataset.v; S.gift.name = $('#gname').value.trim(); checkGift(); save(); const y = scrollY; go('adult'); scrollTo(0, y); },
   savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },
   giftgiven(){ const g = S.gift, ach = giftAch(); g.history.unshift({ round:g.round, name:g.name, achieved:ach }); S.gift = { name:'', goal:g.goal, round:g.round + 1, start:addDays(ach, 1), achieved:null, history:g.history }; if (S.gift.start > todayKey()) S.gift.start = addDays(todayKey(), day().done ? 1 : 0); save(); toast('다음 선물 약속을 시작했어요'); go('adult'); },

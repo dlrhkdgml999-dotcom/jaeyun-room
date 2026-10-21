@@ -487,6 +487,51 @@ audio{width:100%}
 .course-head{font-size:19px;font-weight:400;margin:10px 2px 0;color:var(--ink,#5B3A4A);opacity:.85}
 .opt .clock{width:100%;height:auto}
 
+/* ---------- 토리랑 놀기 (tori.js) ---------- */
+.tori-stage{position:relative;overflow:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:pan-y;cursor:pointer;border:0;padding:0;font:inherit;color:inherit;width:100%}
+.dress-stage.tori-stage{display:grid;place-items:center}
+.bunny .mouth-talk{opacity:0}
+.bunny.talking .mouth{opacity:0}
+.bunny.talking .mouth-talk{opacity:1;transform-box:fill-box;transform-origin:center;animation:toriTalk .17s ease-in-out infinite alternate}
+@keyframes toriTalk{from{transform:scaleY(.3) scaleX(1.1)}to{transform:scaleY(1) scaleX(.95)}}
+.bunny.e-normal .eyes,.bunny.e-wow .eyes,.bunny.e-think .eyes{transform-box:fill-box;transform-origin:center;animation:toriBlink 5.2s infinite}
+@keyframes toriBlink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+.bunny{transform-origin:50% 92%}
+.t-spin{animation:toriSpin 1s ease-in-out}
+@keyframes toriSpin{0%{transform:rotate(0)}70%{transform:rotate(380deg)}85%{transform:rotate(350deg)}100%{transform:rotate(360deg)}}
+.t-flap .ear-l{animation:toriFlapL .3s ease-in-out 3!important}
+.t-flap .ear-r{animation:toriFlapR .3s ease-in-out 3!important}
+@keyframes toriFlapL{50%{transform:rotate(-22deg)}}
+@keyframes toriFlapR{50%{transform:rotate(22deg)}}
+.t-dance{animation:toriDance 1.2s ease-in-out}
+@keyframes toriDance{0%,100%{transform:rotate(0) translateY(0)}15%{transform:rotate(-12deg) translateY(-8px)}30%{transform:rotate(0) translateY(0)}45%{transform:rotate(12deg) translateY(-8px)}60%{transform:rotate(0) translateY(0)}80%{transform:translateY(-16px) scale(1.04)}}
+.t-bigjump{animation:toriJump .9s cubic-bezier(.3,.7,.4,1)}
+@keyframes toriJump{0%{transform:scale(1,1)}15%{transform:scale(1.1,.85)}45%{transform:translateY(-40px) scale(.95,1.08)}75%{transform:translateY(0) scale(1.08,.9)}100%{transform:scale(1,1)}}
+.t-shy{animation:toriShy .7s ease-in-out}
+@keyframes toriShy{0%,100%{transform:scale(1)}30%{transform:scale(1.06,.92)}60%{transform:scale(.97,1.04)}}
+.t-nod{animation:toriNod .7s ease-in-out}
+@keyframes toriNod{0%,100%{transform:rotate(0)}30%{transform:rotate(8deg)}60%{transform:rotate(-5deg)}}
+.t-purr{animation:toriPurr .5s ease-in-out infinite}
+.t-purr .cheeks{animation:toriBlush .5s ease-in-out infinite alternate}
+@keyframes toriPurr{0%,100%{transform:rotate(-2deg) scale(1)}50%{transform:rotate(2deg) scale(1.03,.98)}}
+@keyframes toriBlush{to{opacity:.55}}
+.tori-fx{position:absolute;pointer-events:none;font-size:24px;line-height:1;transform:translate(-50%,-50%);animation:toriFx 1.3s ease-out forwards;z-index:3}
+@keyframes toriFx{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}15%{opacity:1;transform:translate(-50%,-70%) scale(1.15)}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),-260%) scale(.9)}}
+.tori-say{position:absolute;left:50%;top:10px;transform:translateX(-50%);max-width:88%;background:var(--paper,#fff);border:2.5px solid var(--line);border-radius:18px;padding:8px 12px;font-family:var(--f-display);font-size:18px;line-height:1.3;white-space:pre-line;z-index:4;pointer-events:none}
+#heroBubble{white-space:pre-line}
+.t-pop{animation:toriPop .35s cubic-bezier(.3,1.6,.5,1)}
+.tori-say.t-pop{animation:toriPopC .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes toriPop{from{transform:scale(.85);opacity:.4}to{transform:scale(1);opacity:1}}
+@keyframes toriPopC{from{transform:translateX(-50%) scale(.85);opacity:.4}to{transform:translateX(-50%) scale(1);opacity:1}}
+.board-card.t-call{animation:toriCall .5s ease-in-out 3}
+@keyframes toriCall{50%{transform:scale(1.04);box-shadow:0 0 0 6px rgba(238,95,141,.3)}}
+@media (prefers-reduced-motion: reduce){.bunny.e-normal .eyes{animation:none}}
+/* 동기화 알림 (엄마·오빠 메뉴 맨 위) */
+.sync-alert{border-radius:var(--r-md);padding:12px 14px;font-size:16px;line-height:1.5;border:2.5px solid}
+.sync-alert.warn{background:#FFF1E6;border-color:#F2A65A;color:#7A3E0F}
+.sync-alert.soft{background:var(--butter-pale);border-color:var(--butter-deep)}
+.sync-alert.ok{background:var(--mint-pale);border-color:transparent;color:#1F7E62;font-size:15px;padding:8px 14px}
+
 </style>
 </head>
 <body>
@@ -506,7 +551,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261017124406";
+window.APP_VERSION = "20261021154805";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -955,12 +1000,24 @@ function itemSVG(id){
     default: return '';
   }
 }
-function bunnySVG(o = {}){
-  const expr = o.expr || 'normal';
-  const eq = o.eq || S.equipped || {};
-  const size = o.size || 140;
+/* 표정: 눈과 입 (토리를 누르면 tori.js가 이 함수로 표정을 잠깐 바꾼다) */
+function faceParts(expr){
   let eyes, mouth;
-  if (expr === 'happy') {
+  if (expr === 'love') {
+    const heart = (x, y) => `<path d="M${x} ${y + 9} C${x - 15} ${y - 1} ${x - 9} ${y - 13} ${x} ${y - 5} C${x + 9} ${y - 13} ${x + 15} ${y - 1} ${x} ${y + 9} Z" fill="#F0527E" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    eyes = heart(76, 126) + heart(124, 126);
+    mouth = `<path d="M90 146 Q100 160 110 146 Z" fill="#E35A7F" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+  } else if (expr === 'dizzy') {
+    const sp = (x, y) => `<path d="M${x} ${y} m-9 0 a9 9 0 1 0 18 0 a7 7 0 1 0 -14 0 a5 5 0 1 0 10 0 a3 3 0 1 0 -6 0" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+    eyes = sp(76, 127) + sp(124, 127);
+    mouth = `<path d="M90 149 Q95 144 100 149 Q105 154 110 149" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+  } else if (expr === 'wink') {
+    eyes = `<path d="M66 128 Q76 120 86 128" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><ellipse cx="124" cy="127" rx="7" ry="9" fill="${INK}"/><circle cx="126" cy="123" r="2.6" fill="#fff"/>`;
+    mouth = `<path d="M90 146 Q100 160 110 146 Z" fill="#E35A7F" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+  } else if (expr === 'sleepy') {
+    eyes = `<path d="M66 129 Q76 136 86 129" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M114 129 Q124 136 134 129" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
+    mouth = `<ellipse cx="100" cy="150" rx="7" ry="9" fill="#E35A7F" stroke="${INK}" stroke-width="3"/>`;
+  } else if (expr === 'happy') {
     eyes = `<path d="M66 129 Q76 116 86 129" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M114 129 Q124 116 134 129" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
     mouth = `<path d="M90 146 Q100 160 110 146 Z" fill="#E35A7F" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
   } else if (expr === 'wow') {
@@ -973,9 +1030,16 @@ function bunnySVG(o = {}){
     eyes = `<ellipse cx="76" cy="127" rx="7" ry="9" fill="${INK}"/><circle cx="78" cy="123" r="2.6" fill="#fff"/><ellipse cx="124" cy="127" rx="7" ry="9" fill="${INK}"/><circle cx="126" cy="123" r="2.6" fill="#fff"/>`;
     mouth = `<path d="M91 145 Q95.5 151 100 145 Q104.5 151 109 145" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
   }
+  return { eyes, mouth };
+}
+function bunnySVG(o = {}){
+  const expr = o.expr || 'normal';
+  const eq = o.eq || S.equipped || {};
+  const size = o.size || 140;
+  const { eyes, mouth } = faceParts(expr);
   const cape = eq.neck === 'cape' ? `<path d="M66 176 L36 232 Q100 244 164 232 L134 176 Z" fill="#C3ADF2" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>` : '';
   const neck = eq.neck && eq.neck !== 'cape' ? itemSVG(eq.neck) : (eq.neck === 'cape' ? `<path d="M80 182 Q100 192 120 182" fill="none" stroke="#8A67D6" stroke-width="5" stroke-linecap="round"/><circle cx="100" cy="188" r="5" fill="#FFD43B" stroke="${INK}" stroke-width="2.5"/>` : '');
-  return `<svg class="bunny ${o.cls || ''}" width="${size}" height="${Math.round(size * 1.2)}" viewBox="0 0 200 240" aria-hidden="true">
+  return `<svg class="bunny e-${expr} ${o.cls || ''}" data-expr="${expr}" width="${size}" height="${Math.round(size * 1.2)}" viewBox="0 0 200 240" aria-hidden="true">
   ${cape}
   <g class="ear-l"><ellipse cx="72" cy="58" rx="20" ry="50" transform="rotate(-12 72 58)" fill="#fff" stroke="${INK}" stroke-width="4"/><ellipse cx="73" cy="64" rx="9" ry="34" transform="rotate(-12 73 64)" fill="#FFC2D4"/></g>
   <g class="ear-r"><ellipse cx="128" cy="58" rx="20" ry="50" transform="rotate(12 128 58)" fill="#fff" stroke="${INK}" stroke-width="4"/><ellipse cx="127" cy="64" rx="9" ry="34" transform="rotate(12 127 64)" fill="#FFC2D4"/></g>
@@ -983,10 +1047,11 @@ function bunnySVG(o = {}){
   <ellipse cx="78" cy="228" rx="15" ry="9" fill="#fff" stroke="${INK}" stroke-width="4"/><ellipse cx="122" cy="228" rx="15" ry="9" fill="#fff" stroke="${INK}" stroke-width="4"/>
   <ellipse cx="100" cy="128" rx="66" ry="56" fill="#fff" stroke="${INK}" stroke-width="4"/>
   ${eq.head === 'rainbow' ? itemSVG('rainbow') : ''}
-  <ellipse cx="60" cy="146" rx="12" ry="7.5" fill="#FFB3C7" opacity=".85"/><ellipse cx="140" cy="146" rx="12" ry="7.5" fill="#FFB3C7" opacity=".85"/>
-  ${eyes}
+  <g class="cheeks"><ellipse cx="60" cy="146" rx="12" ry="7.5" fill="#FFB3C7" opacity=".85"/><ellipse cx="140" cy="146" rx="12" ry="7.5" fill="#FFB3C7" opacity=".85"/></g>
+  <g class="eyes">${eyes}</g>
   <path d="M95.5 137 Q100 133.5 104.5 137 Q100 142 95.5 137 Z" fill="#FF8FB1" stroke="#EE5F8D" stroke-width="1.5"/>
-  ${mouth}
+  <g class="mouth">${mouth}</g>
+  <g class="mouth-talk"><ellipse cx="100" cy="151" rx="8" ry="8" fill="#E35A7F" stroke="${INK}" stroke-width="3"/><ellipse cx="100" cy="155" rx="4.5" ry="2.6" fill="#FF9BB5"/></g>
   ${eq.face ? itemSVG(eq.face) : ''}
   ${eq.head && eq.head !== 'rainbow' ? itemSVG(eq.head) : ''}
   ${neck}
@@ -1314,7 +1379,7 @@ VIEWS.home = () => {
     </div>
     <p class="muted" style="font-size:15px;margin-top:-8px">${korDate(now())} · ${esc(josa(S.bunnyName,'이랑','랑'))} 친구 된 지 ${friendDays()}일째</p>
     <div class="hero">
-      <button class="stage-btn" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
+      <button class="stage-btn tori-stage" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
       <div class="bubble left" id="heroBubble">${esc(greet)}</div>
     </div>
     ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
@@ -1670,7 +1735,7 @@ VIEWS.room = () => {
     return;
   }
   app().innerHTML = `<section class="screen">${head}
-    <div class="stage dress-stage ${S.equipped.bg || 'bg-none'}">${bunnySVG({ size:180, expr:'happy' })}</div>
+    <button class="stage dress-stage tori-stage ${S.equipped.bg || 'bg-none'}" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${bunnySVG({ size:180, expr:'happy' })}</button>
     <div class="item-grid">${ITEMS.map(it => { const has = total >= it.need, on = S.equipped[it.slot] === it.id;
       const thumb = it.slot === 'bg' ? `<span class="bg-thumb ${it.id}"></span>` : bunnySVG({ size:52, eq:{ [it.slot]:it.id } });
       return `<button class="item ${on ? 'on' : ''} ${has ? '' : 'locked'}" data-a="equip" data-v="${it.id}" ${has ? '' : 'aria-disabled="true"'}><span class="thumb">${thumb}</span><span>${esc(it.name)}</span>${has ? (on ? '<span class="pill">착용 중</span>' : '') : `<span class="lock">⭐ ${it.need}개</span>`}</button>`; }).join('')}</div>
@@ -1912,7 +1977,7 @@ VIEWS.adult = () => {
         <p class="demo-note">지금은 이 폰 하나에 재윤이·엄마·오빠 화면이 함께 들어 있는 체험판이에요. 서버를 연결하면 세 폰이 같은 기록을 나눠 써요.</p>
       </div>`;
   }
-  app().innerHTML = `<section class="screen adult">${adultHead()}${body}</section>`;
+  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${body}</section>`;
 };
 let RESET_ARMED = false;
 
@@ -2002,14 +2067,21 @@ const ACT = {
   nextq(){ nextQ(); },
   eyetoggle(){ S.eyeBreak = S.eyeBreak === false ? true : false; save(); const y = scrollY; go('adult'); scrollTo(0, y); },
   eyedone(el){ const v = el.dataset.v; if (v === 'lesson' && RUN && RUN.b && RUN.b.cur) return go('cards', { lesson:RUN.b.cur.lesson, fromBoard:true }); if (v === 'intro' && RUN) return go('intro', RUN.k); go('home'); },
-  async joinrole(el){ const m = $('#joinmsg'); if (m) m.textContent = '연결하는 중이에요…'; const ok = await Sync.join(JOIN_FID, el.dataset.v).catch(e => { console.warn(e); return false; });
+  async joinrole(el){
+    const v = el.dataset.v, sc = S.started ? studyScore(S) : 0;
+    // 공부 기록이 있는 기기(=재윤이 태블릿일 가능성)를 엄마·오빠 기기로 고르면 한 번 더 묻는다
+    if (v !== 'kid' && sc >= 3 && (!linked() || role() === 'kid') && !confirm(`이 기기에 재윤이가 공부한 기록(스티커 ${S.stickers.length}개)이 있어요.\n재윤이 태블릿이라면 "재윤이"를 골라야 기록이 가족에게 가요.\n\n그래도 ${v === 'mom' ? '엄마' : '오빠'} 기기로 할까요?`)) return;
+    const m = $('#joinmsg'); if (m) m.textContent = '연결하는 중이에요…'; const ok = await Sync.join(JOIN_FID, v).catch(e => { console.warn(e); return false; });
     if (!ok) { if (m) m.textContent = '연결하지 못했어요. 인터넷이 되는지, 링크가 맞는지 확인해 주세요.'; return; }
-    history.replaceState(null, '', location.pathname); toast('가족과 연결됐어요!'); if (el.dataset.v === 'kid') go('home'); else { S.adultTab = el.dataset.v; go('adult'); } },
+    history.replaceState(null, '', location.pathname); toast(Sync.kept ? `가족과 연결됐어요! 이 기기 공부 기록(스티커 ${S.stickers.length}개)을 가족 기록으로 올렸어요` : '가족과 연결됐어요!'); if (el.dataset.v === 'kid') go('home'); else { S.adultTab = el.dataset.v; go('adult'); } },
   async famcreate(el){ const m = $('#fammsg'); if (m) m.textContent = '가족방을 만드는 중이에요…'; const ok = await Sync.create(el.dataset.v).catch(e => { console.warn(e); return false; });
     if (!ok) { if (m) m.textContent = '만들지 못했어요. ' + (Sync.error || '인터넷 연결과 Firebase 보안 규칙을 확인해 주세요.'); S.local = null; saveLocal(); return; }
     toast('가족방을 만들었어요. 링크를 카톡으로 보내 주세요'); go('adult'); },
   famcopy(){ const v = familyLink(); try { navigator.clipboard.writeText(v).then(() => toast('링크를 복사했어요'), () => { $('#famlink').select(); toast('링크를 길게 눌러 복사해 주세요'); }); } catch (e) { $('#famlink').select(); } },
   famrole(){ JOIN_FID = S.local.fid; go('join'); },
+  joinpaste(){ const v = ($('#joinpaste') || {}).value || '', m = v.match(/join=([a-z0-9]{20,})/) || v.trim().match(/^([a-z0-9]{20,})$/);
+    if (!m) { const f = $('#fammsg'); if (f) f.textContent = '가족 링크가 맞는지 확인해 주세요 (#join= 이 들어 있어야 해요)'; return; }
+    JOIN_FID = m[1]; go('join'); },
   cardsay(){ const l = lessonById(CARDS.lesson); sayParts(l.cards[CARDS.i].say); },
   cardmove(el){ CARDS.i = clamp(CARDS.i + +el.dataset.v, 0, lessonById(CARDS.lesson).cards.length - 1); SFX.tap(); go('cards'); },
   cardsdone(){ if (CARDS.fromBoard && RUN && RUN.b) { RUN.b.cardsSeen = true; save(); go('q'); } else go('map', { s:lessonById(CARDS.lesson).subj }); },
@@ -2017,11 +2089,7 @@ const ACT = {
   ttspreset(el){ const pr = TTS_PRESETS[el.dataset.v]; S.tts.preset = el.dataset.v; S.tts.pitch = pr.pitch; S.tts.rate = pr.rate; save(); const y = scrollY; go('adult'); scrollTo(0, y); ttsSample(); },
   ttsvoice(el){ S.tts.voice = el.dataset.v; save(); const y = scrollY; go('adult'); scrollTo(0, y); ttsSample(); },
   ttstest(){ ttsSample(); },
-  poke(){
-    const line = pick(POKE_LINES); const b = $('#heroBubble'); if (b) b.textContent = line;
-    const svg = $('.stage-btn .bunny'); if (svg) { svg.classList.remove('hop'); void svg.getBoundingClientRect(); svg.classList.add('hop'); }
-    tone([[1318,0,.08],[1568,.08,.12]]); speak(line);
-  },
+  poke(el, ev){ Tori.tap(el, ev); },   // 토리 누르기: tori.js
   giftgoal(el){ if (giftAch()) { toast('이번 약속은 이미 달성했어요'); return; } S.gift.goal = +el.dataset.v; S.gift.name = $('#gname').value.trim(); checkGift(); save(); const y = scrollY; go('adult'); scrollTo(0, y); },
   savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },
   giftgiven(){ const g = S.gift, ach = giftAch(); g.history.unshift({ round:g.round, name:g.name, achieved:ach }); S.gift = { name:'', goal:g.goal, round:g.round + 1, start:addDays(ach, 1), achieved:null, history:g.history }; if (S.gift.start > todayKey()) S.gift.start = addDays(todayKey(), day().done ? 1 : 0); save(); toast('다음 선물 약속을 시작했어요'); go('adult'); },
@@ -4710,26 +4778,53 @@ function role(){ return (S.local && S.local.role) || 'all'; }
 function linked(){ return !!(S.local && S.local.fid); }
 function canWriteKid(){ return !linked() || role() === 'kid'; }
 function newFid(){ const a = 'abcdefghijkmnpqrstuvwxyz23456789'; let s = ''; const r = new Uint8Array(22); (crypto || window.msCrypto).getRandomValues(r); r.forEach(x => s += a[x % a.length]); return s; }
-function hashStr(str){ let h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36) + str.length.toString(36); }
+function hashStr(str){ str = str == null ? "" : String(str); let h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36) + str.length.toString(36); }
 
+/* 공부 기록이 얼마나 있는지 (스티커 수 + 한 판이라도 끝낸 날 수) — 가족 연결할 때 어느 쪽 기록을 남길지 정한다 */
+function studyScore(st){ const days = Object.values((st && st.days) || {}).filter(d => d && d.boards && Object.values(d.boards).some(b => b && b.done)).length; return ((st && st.stickers) || []).length + days; }
+const SYNCED_KEY = 'jaeyun-synced';
 const Sync = {
   db:null, ready:false, status:'off', last:{ s:{}, days:{} }, timer:null, blobCache:{}, blobWait:{}, unsub:[], applying:false,
+  kid:null, kidDayAt:0, okAt:0, beatAt:0, sy:null, syT:null, retryT:null,
   base(){ return `families/${S.local.fid}`; },
+  /* 서버가 받았다고 확인해 준 값의 지문: 앱을 껐다 켜도 남아서, 못 보낸 것만 다시 보낸다 */
+  synced(){
+    if (!this.sy || this.sy.fid !== (S.local && S.local.fid)) {
+      let x = null; try { x = JSON.parse(localStorage.getItem(SYNCED_KEY) || 'null'); } catch (e) {}
+      this.sy = x && x.fid === (S.local && S.local.fid) ? Object.assign({ s:{}, d:{}, b:{} }, x) : { fid:S.local && S.local.fid, s:{}, d:{}, b:{}, fresh:true };
+    }
+    return this.sy;
+  },
+  saveSynced(){ clearTimeout(this.syT); this.syT = setTimeout(() => { try { const x = Object.assign({}, this.sy); delete x.fresh; localStorage.setItem(SYNCED_KEY, JSON.stringify(x)); } catch (e) {} }, 800); },
+  resetSynced(){ this.sy = { fid:S.local && S.local.fid, s:{}, d:{}, b:{}, fresh:true }; try { localStorage.removeItem(SYNCED_KEY); } catch (e) {} },
+  async fs(){
+    if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    await firebase.auth().signInAnonymously();
+    if (!this.db) {
+      this.db = firebase.firestore();
+      // 인터넷이 끊겨도 보낼 기록을 기기에 쌓아 두었다가, 다시 연결되면 보낸다 (앱을 껐다 켜도 유지)
+      if (this.db.enablePersistence) { try { await this.db.enablePersistence({ synchronizeTabs:true }); } catch (e) {} }
+    }
+    return this.db;
+  },
   async start(){
     if (!linked() || this.ready) return;
     if (!window.firebase || !window.FIREBASE_CONFIG) { this.status = 'nosdk'; return; }
     try {
       this.status = 'connecting';
-      if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-      await firebase.auth().signInAnonymously();
-      this.db = firebase.firestore();
+      await this.fs();
       try { this.blobCache = JSON.parse(localStorage.getItem('jaeyun-blobs') || '{}'); } catch (e) {}
-      // 처음 연결할 때 기준점: 지금 이 기기 값
-      [...KID_KEYS, ...ADULT_KEYS].forEach(k => this.last.s[k] = JSON.stringify(this.pack(S[k])));
-      Object.keys(S.days).forEach(k => this.last.days[k] = JSON.stringify(this.pack(S.days[k])));
+      // 기준점: 서버가 받았다고 확인한 값. 그 뒤에 이 기기에서 바뀐 것(인터넷 없을 때 공부한 것 포함)은 다시 보낸다.
+      // 재윤이 태블릿은 확인 기록이 없으면 전부 한 번 보낸다 (재윤이 기록의 원본은 태블릿)
+      const sy = this.synced(), kid = canWriteKid();
+      [...KID_KEYS, ...ADULT_KEYS].forEach(k => { const raw = JSON.stringify(this.pack(S[k]));
+        const mine = this.writable(k) && (!KID_KEYS.includes(k) || kid);
+        this.last.s[k] = !mine ? raw : sy.s[k] === undefined ? (kid && KID_KEYS.includes(k) ? '' : raw) : sy.s[k] === hashStr(raw) ? raw : ''; });
+      Object.keys(S.days).forEach(k => { const raw = JSON.stringify(this.pack(S.days[k])); this.last.days[k] = kid && sy.d[k] !== hashStr(raw) ? '' : raw; });
       this.listen();
       this.ready = true; this.status = 'on';
-    } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); }
+      this.schedule(); this.beat();
+    } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.start(), 30000); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
   /* 엄마·오빠 폰에서 재윤이 화면으로 풀어 본 것은 미리보기라서 재윤이 기록(진도·스티커·오답)으로 보내지 않는다.
@@ -4739,27 +4834,33 @@ const Sync = {
   touch(k){ if (linked() && role() !== 'kid' && this.last.s[k]) { try { S[k] = this.unpack(JSON.parse(this.last.s[k])); } catch (e) {} } this.touched.add(k); },
   listen(){
     const b = this.base();
+    this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = [];
     this.unsub.push(this.db.collection(`${b}/s`).onSnapshot(snap => this.onState(snap)));
     this.unsub.push(this.db.collection(`${b}/days`).onSnapshot(snap => this.onDays(snap)));
     this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(120).onSnapshot(snap => this.onNotes(snap)));
+    // 재윤이 태블릿이 마지막으로 연결된 때 (엄마·오빠 폰에서 보여 줌)
+    try { this.unsub.push(this.db.doc(`${b}/meta/kid`).onSnapshot(d => { const k = d && d.exists ? d.data() : null; if (JSON.stringify(k) !== JSON.stringify(this.kid)) { this.kid = k; if (SCREEN === 'adult') refreshIfIdle(); } })); } catch (e) {}
   },
   onState(snap){
-    let changed = false;
+    let changed = false; const sy = this.synced();
     snap.docs.forEach(d => { const k = d.id, raw = JSON.stringify(d.data().v);
       if (LOCAL_KEYS.includes(k)) return;
       const dirty = JSON.stringify(this.pack(S[k])) !== this.last.s[k];
-      if (raw === this.last.s[k]) return;           // 내가 쓴 것이 돌아온 것
-      if (dirty && this.writable(k)) return;         // 아직 못 보낸 내 변경이 우선 (곧 덮어씀)
-      this.last.s[k] = raw; S[k] = this.unpack(d.data().v); changed = true; });
+      if (raw === this.last.s[k]) { sy.s[k] = hashStr(raw); return; }   // 내가 쓴 것이 돌아온 것
+      if (dirty && this.writable(k) && (!KID_KEYS.includes(k) || canWriteKid())) return;   // 아직 못 보낸 내 변경이 우선 (곧 덮어씀)
+      this.last.s[k] = raw; sy.s[k] = hashStr(raw); S[k] = this.unpack(d.data().v); changed = true; });
+    this.saveSynced();
     if (changed) this.afterRemote();
   },
   onDays(snap){
-    let changed = false;
-    snap.docs.forEach(d => { const k = d.id, raw = JSON.stringify(d.data().v);
-      if (raw === this.last.days[k]) return;
+    let changed = false; const sy = this.synced();
+    snap.docs.forEach(d => { const k = d.id, data = d.data(), raw = JSON.stringify(data.v);
+      if (data.at > this.kidDayAt) this.kidDayAt = data.at;
+      if (raw === this.last.days[k]) { sy.d[k] = hashStr(raw); return; }
       const dirty = S.days[k] && JSON.stringify(this.pack(S.days[k])) !== this.last.days[k];
       if (dirty && canWriteKid()) return;
-      this.last.days[k] = raw; S.days[k] = this.unpack(d.data().v); changed = true; });
+      this.last.days[k] = raw; sy.d[k] = hashStr(raw); S.days[k] = this.unpack(data.v); changed = true; });
+    this.saveSynced();
     if (changed) this.afterRemote();
   },
   onNotes(snap){
@@ -4775,22 +4876,36 @@ const Sync = {
     refreshIfIdle();
   },
   schedule(){ if (!this.ready) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 700); },
+  /* 보내기: 실패하면 "보낸 것"으로 치지 않고 20초 뒤 다시 보낸다 */
   async push(){
     if (!this.ready) return;
-    const b = this.base(), jobs = [];
+    clearTimeout(this.timer);
+    const b = this.base(), jobs = [], sy = this.synced();
+    const job = (ref, data, raw, getLast, setLast, mark) => { const prev = getLast(); setLast(raw);
+      jobs.push(ref.set(data).then(() => { mark(); this.saveSynced(); }, e => { if (getLast() === raw) setLast(prev); throw e; })); };
     for (const k of [...KID_KEYS, ...ADULT_KEYS]) {
       if (!this.writable(k)) continue;
       const v = this.pack(S[k]), raw = JSON.stringify(v);
       if (raw === this.last.s[k] || v === undefined) continue;
-      this.last.s[k] = raw; this.touched.delete(k); jobs.push(this.db.doc(`${b}/s/${k}`).set({ v, at:Date.now(), by:role() }));
+      this.touched.delete(k);
+      job(this.db.doc(`${b}/s/${k}`), { v, at:Date.now(), by:role() }, raw, () => this.last.s[k], x => this.last.s[k] = x, () => sy.s[k] = hashStr(raw));
     }
     if (canWriteKid()) for (const k of Object.keys(S.days)) {
       const v = this.pack(S.days[k]), raw = JSON.stringify(v);
       if (raw === this.last.days[k]) continue;
-      this.last.days[k] = raw; jobs.push(this.db.doc(`${b}/days/${k}`).set({ v, at:Date.now() }));
+      job(this.db.doc(`${b}/days/${k}`), { v, at:Date.now() }, raw, () => this.last.days[k], x => this.last.days[k] = x, () => sy.d[k] = hashStr(raw));
     }
-    try { await Promise.all(jobs); this.status = 'on'; } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); }
+    if (jobs.length) this.beat();
+    try { await Promise.all(jobs); if (jobs.length) { this.status = 'on'; this.error = ''; this.okAt = Date.now(); } }
+    catch (e) { this.status = 'error'; this.error = String(e && e.message || e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.push(), 20000); }
   },
+  /* 재윤이 태블릿: "나 연결됐어요" 표시 (1분에 한 번까지) */
+  beat(force){
+    if (!this.ready || role() !== 'kid') return;
+    const t = Date.now(); if (!force && t - this.beatAt < 60000) return; this.beatAt = t;
+    this.db.doc(`${this.base()}/meta/kid`).set({ at:t, stickers:S.stickers.length, days:Object.keys(S.days).length }).catch(() => { this.beatAt = 0; });
+  },
+  kidSeenAt(){ return Math.max((this.kid && this.kid.at) || 0, this.kidDayAt || 0); },
   addNote(n){ if (!this.ready) return; n.id = n.id || ('n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); this.db.doc(`${this.base()}/notes/${n.id}`).set({ to:n.to, text:n.text, at:n.at, d:n.d }).catch(() => {}); },
   /* 큰 데이터(사진·녹음)를 blobs로 빼고 짧은 표시로 바꾼다 */
   pack(v){
@@ -4805,12 +4920,15 @@ const Sync = {
     if (v && typeof v === 'object') { const o = {}; for (const k in v) o[k] = this.unpack(v[k]); return o; }
     return v;
   },
+  /* 사진·녹음 올리기: 연결 전에 생긴 것도 연결되면 올린다 (올린 것은 기억해 두고 다시 안 올림) */
   putBlob(h, data){
-    if (this.blobCache[h] || !this.ready) { this.blobCache[h] = data; return; }
-    this.blobCache[h] = data; this.saveBlobCache();
-    const parts = Math.ceil(data.length / CHUNK), b = this.base();
-    for (let i = 0; i < parts; i++) this.db.doc(`${b}/blobs/${h}_${i}`).set({ d:data.slice(i * CHUNK, (i + 1) * CHUNK) }).catch(() => {});
-    this.db.doc(`${b}/blobs/${h}`).set({ parts }).catch(() => {});
+    if (!this.blobCache[h]) { this.blobCache[h] = data; this.saveBlobCache(); }
+    if (!this.ready || !linked()) return;
+    const sy = this.synced(); if (sy.b[h] || (this.upping || (this.upping = {}))[h]) return;
+    this.upping[h] = true;
+    const parts = Math.ceil(data.length / CHUNK), b = this.base(), w = [];
+    for (let i = 0; i < parts; i++) w.push(this.db.doc(`${b}/blobs/${h}_${i}`).set({ d:data.slice(i * CHUNK, (i + 1) * CHUNK) }));
+    Promise.all(w).then(() => this.db.doc(`${b}/blobs/${h}`).set({ parts })).then(() => { sy.b[h] = 1; this.saveSynced(); }, () => {}).finally(() => { this.upping[h] = false; });
   },
   async fetchBlob(h){
     if (this.blobWait[h]) return; this.blobWait[h] = true;
@@ -4828,7 +4946,7 @@ const Sync = {
   /* 가족방 만들기: 지금 이 기기 기록을 가족 기록으로 올린다 */
   async create(roleName){
     S.local = { fid:newFid(), role:roleName };
-    saveLocal(); this.ready = false; await this.start();
+    saveLocal(); this.resetSynced(); this.ready = false; await this.start();
     if (!this.ready) return false;
     [...KID_KEYS, ...ADULT_KEYS].forEach(k => this.last.s[k] = '');
     Object.keys(S.days).forEach(k => this.last.days[k] = '');
@@ -4836,15 +4954,20 @@ const Sync = {
     await this.db.doc(`families/${S.local.fid}`).set({ created:Date.now() });
     return true;
   },
+  /* 가족방 들어가기.
+     재윤이 기기로 들어갈 때 이 기기에 공부 기록이 더 많으면(연결 안 된 채로 공부한 태블릿) 이 기기 기록을 남기고 가족 기록으로 올린다.
+     그 밖에는 가족 기록을 받아 이 기기를 맞춘다. 어느 경우든 들어가기 전 기록은 백업해 둔다 */
   async join(fid, roleName){
-    const old = S.local; S.local = { fid, role:roleName }; saveLocal();
+    const old = S.local;
     if (!window.firebase || !window.FIREBASE_CONFIG) { this.status = 'nosdk'; return false; }
-    if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-    await firebase.auth().signInAnonymously();
-    this.db = firebase.firestore();
+    if (S.started) { try { const bk = Object.assign({}, S, { days:{} }); Object.keys(S.days).forEach(k => { const d = Object.assign({}, S.days[k]); if (d.dict) d.dict = Object.assign({}, d.dict, { photo:null }); bk.days[k] = d; }); localStorage.setItem('jaeyun-backup', JSON.stringify({ at:Date.now(), S:bk })); } catch (e) {} }
+    const mine = { kid:Object.fromEntries(KID_KEYS.map(k => [k, S[k]])), days:S.days, score:S.started ? studyScore(S) : 0 };
+    this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false;
+    S.local = { fid, role:roleName }; saveLocal();
+    await this.fs();
     const fam = await this.db.doc(`families/${fid}`).get();
     if (!fam.exists) { S.local = old; saveLocal(); return false; }
-    // 가족 기록을 받아서 이 기기를 맞춘다
+    // 가족 기록을 받는다
     const st = await this.db.collection(`families/${fid}/s`).get();
     const fresh = freshState(); Object.assign(S, fresh, { local:S.local, notes:[], days:{} });
     st.docs.forEach(d => { S[d.id] = d.data().v; });
@@ -4852,10 +4975,28 @@ const Sync = {
     S.started = true;
     [...KID_KEYS, ...ADULT_KEYS].forEach(k => { if (S[k] !== undefined) S[k] = this.unpack(S[k]); });
     Object.keys(S.days).forEach(k => S.days[k] = this.unpack(S.days[k]));
-    saveLocal(); this.ready = false; await this.start(); return true;
+    this.resetSynced();
+    this.kept = 0;
+    if (roleName === 'kid' && mine.score > studyScore(S)) {
+      // 이 기기(태블릿)의 재윤이 기록이 더 많다 → 그대로 남기고 가족 기록으로 올린다
+      KID_KEYS.forEach(k => { if (mine.kid[k] !== undefined) S[k] = mine.kid[k]; });
+      Object.entries(mine.days).forEach(([k, d]) => { const f = S.days[k]; const doneN = x => x && x.boards ? Object.values(x.boards).filter(b => b && b.done).length : 0; if (!f || doneN(d) >= doneN(f)) S.days[k] = d; });
+      this.kept = mine.score;
+    } else {
+      // 받은 값이 곧 서버 값
+      const sy = this.synced();
+      [...KID_KEYS, ...ADULT_KEYS].forEach(k => sy.s[k] = hashStr(JSON.stringify(this.pack(S[k]))));
+      Object.keys(S.days).forEach(k => sy.d[k] = hashStr(JSON.stringify(this.pack(S.days[k]))));
+      delete sy.fresh; this.saveSynced();
+    }
+    saveLocal(); await this.start(); if (roleName === 'kid') this.beat(true);
+    return true;
   },
   leave(){ this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false; S.local = null; this.status = 'off'; saveLocal(); },
 };
+/* 인터넷이 다시 되거나, 앱을 다시 볼 때 · 끌 때 바로 보낸다 */
+window.addEventListener('online', () => { if (!Sync.ready) Sync.start(); else Sync.push(); });
+document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) Sync.beat(); });
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
   if (['home','adult','map','gift','cal','room','alldone','book'].includes(SCREEN)) {
@@ -4878,7 +5019,7 @@ VIEWS.join = (fid) => {
       <button class="role-btn" data-a="joinrole" data-v="mom"><span style="font-size:44px">💗</span><b>엄마</b><span class="muted">채점 · 알림 시간</span></button>
       <button class="role-btn" data-a="joinrole" data-v="oppa"><span style="font-size:44px">🎁</span><b>오빠</b><span class="muted">칭찬 · 기록 · 선물</span></button>
     </div>
-    ${S.started && !linked() ? `<p class="demo-note">이 기기에 있던 체험판 기록은 가족 기록으로 바뀌어요.</p>` : ''}
+    ${S.started && studyScore(S) > 0 ? `<p class="demo-note">이 기기에 재윤이 공부 기록(스티커 ${S.stickers.length}개)이 있어요. 재윤이 태블릿이면 <b>재윤이</b>를 골라 주세요. 기록은 지워지지 않고 가족 기록으로 올라가요.</p>` : ''}
     <p class="muted" id="joinmsg"></p>
   </section>`;
 };
@@ -4888,16 +5029,48 @@ function familyPanel(){
     ${window.firebase && window.FIREBASE_CONFIG ? `<div class="row" style="flex-wrap:wrap;gap:8px"><span class="muted" style="font-size:15px">이 기기는</span>
       <button class="btn small" data-a="famcreate" data-v="oppa">오빠 폰으로 만들기</button><button class="btn ghost small" data-a="famcreate" data-v="mom">엄마 폰으로</button><button class="btn ghost small" data-a="famcreate" data-v="kid">재윤이 태블릿으로</button></div>`
       : `<p class="demo-note">가족 연결은 진짜 주소(github.io)에서 열었을 때만 돼요. 지금 화면은 체험판이에요.</p>`}
+    ${window.firebase && window.FIREBASE_CONFIG ? `<div class="field" style="margin-top:6px"><label for="joinpaste">이미 가족방이 있으면: 가족 링크를 붙여넣고 연결</label><input type="text" id="joinpaste" placeholder="https://…#join=…" autocomplete="off"></div><button class="btn small" data-a="joinpaste" style="justify-self:start">이 링크로 연결하기</button>` : ''}
     <p class="muted" id="fammsg"></p></div>`;
   const who = { kid:'재윤이 태블릿', mom:'엄마 폰', oppa:'오빠 폰', all:'공용' }[role()];
   const st = { on:'연결됨 ✓', connecting:'연결 중…', error:'연결 오류', nosdk:'서버를 못 불러왔어요', off:'꺼짐' }[Sync.status] || Sync.status;
   return `<div class="panel"><h3>가족 기기 연결</h3>
     <div class="row"><span class="grow" style="flex:1">이 기기: <b>${who}</b></span><span class="pill ${Sync.status === 'on' ? 'ok' : 'wait'}">${st}</span></div>
-    ${Sync.status === 'error' ? `<p class="demo-note">${esc(Sync.error || '')}<br>Firebase 보안 규칙을 붙여넣었는지 확인해 주세요.</p>` : ''}
+    ${Sync.status === 'error' ? `<p class="demo-note">${esc(Sync.error || '')}<br>인터넷이 되면 저절로 다시 보내요. 계속 이러면 Firebase 보안 규칙을 확인해 주세요.</p>` : ''}
+    ${role() === 'kid' ? `<p class="muted" style="font-size:14px">${Sync.okAt ? `마지막으로 보낸 때: ${agoText(Sync.okAt)}` : '이 기기 기록을 가족에게 보내는 중이에요'}</p>` : `<p class="muted" style="font-size:14px">${Sync.kidSeenAt() ? `재윤이 태블릿 마지막 연결: ${agoText(Sync.kidSeenAt())}` : '재윤이 태블릿에서 아직 기록이 오지 않았어요'}</p>`}
     <div class="field"><label for="famlink">가족 링크 (카톡으로 보내서 다른 기기에서 열기)</label><input type="text" id="famlink" readonly value="${esc(familyLink())}"></div>
     <div class="row" style="flex-wrap:wrap"><button class="btn small" data-a="famcopy">링크 복사</button><button class="btn ghost small" data-a="famrole">이 기기 역할 바꾸기</button></div>
     <p class="muted" style="font-size:13px">링크를 아는 사람은 기록을 볼 수 있으니 가족끼리만 나눠 주세요.</p>
   </div>`;
+}
+
+function agoText(t){
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m < 2) return '방금'; if (m < 60) return `${m}분 전`;
+  const d = new Date(t), today = todayKey(), dk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const hm = `${d.getHours() < 12 ? '오전' : '오후'} ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (dk === today) return `오늘 ${hm}`; if (dk === addDays(today, -1)) return `어제 ${hm}`;
+  return `${Math.max(2, Math.round((Date.now() - t) / 86400000))}일 전 (${d.getMonth() + 1}/${d.getDate()})`;
+}
+/* 엄마·오빠 메뉴 맨 위: 기록이 가족에게 안 가고 있으면 알려 준다 */
+function syncAlert(){
+  const box = (html, tone = 'warn') => `<div class="sync-alert ${tone}">${html}</div>`;
+  const sc = S.started ? studyScore(S) : 0;
+  if (!linked()) {
+    if (!sc || !(window.firebase && window.FIREBASE_CONFIG)) return '';
+    return box(`<b>⚠️ 이 기기는 아직 가족과 연결되지 않았어요</b><br>이 기기에서 공부한 기록(스티커 ${S.stickers.length}개)이 엄마·오빠 폰으로 가지 않고 이 기기에만 있어요.<br>재윤이 태블릿이라면: 오빠 폰 <b>설정 → 가족 링크</b>를 이 기기에서 열거나 아래 <b>설정</b> 탭에 붙여넣고 <b>"재윤이"</b>를 고르세요. 이 기기 기록이 그대로 가족 기록으로 올라가요.`);
+  }
+  if (role() === 'kid') {
+    if (Sync.status === 'error') return box(`<b>⚠️ 기록을 보내지 못하고 있어요</b><br>${esc(Sync.error || '')}<br>인터넷이 되면 저절로 다시 보내요.`);
+    return '';
+  }
+  // 엄마 · 오빠 폰
+  let remoteSt = 0; try { remoteSt = (JSON.parse(Sync.last.s.stickers || '[]') || []).length; } catch (e) {}
+  if (Sync.ready && S.stickers.length >= remoteSt + 3) return box(`<b>⚠️ 이 기기는 "${role() === 'mom' ? '엄마' : '오빠'} 폰"으로 연결돼 있어요</b><br>그런데 여기서 공부한 기록(스티커 ${S.stickers.length}개)이 있어요. 엄마·오빠 폰에서 푼 건 미리보기라 재윤이 기록에 안 들어가요.<br>재윤이 태블릿이라면 <b>설정 → 이 기기 역할 바꾸기 → 재윤이</b>를 눌러 주세요. 이 기기 기록이 그대로 올라가요.`);
+  if (!Sync.ready) return '';
+  const seen = Sync.kidSeenAt();
+  if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);
+  if (Date.now() - seen > 2 * 86400000) return box(`재윤이 태블릿 마지막 연결: <b>${agoText(seen)}</b><br>태블릿이 인터넷에 연결돼 있는지 확인해 주세요.`, 'soft');
+  return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓`, 'ok');
 }
 
 /* ===================== 펜으로 받아쓰기 (태블릿) ===================== */
@@ -5261,6 +5434,233 @@ function orderPickHTML(d = day()){
   return `<div class="order-pick"><span class="disp" style="font-size:20px">오늘은 뭐부터 할까?</span>
     <div class="row" style="gap:10px">${BOARDS.filter(b => b.k !== 'rev').map(b => `<button class="order-btn" data-a="pickfirst" data-v="${b.k}"><span class="badge ${b.cls}">${b.badge}</span>${b.k === 'eng' ? '영어' : b.name}</button>`).join('')}</div></div>`;
 }
+
+/* ===================== 토리랑 놀기: 누르면 말하고 움직여요 ===================== */
+/* 귀 · 얼굴 · 몸을 누르면 반응이 달라요. 길게 누르거나 문지르면 쓰다듬기, 빨리 여러 번 누르면 어지러워해요.
+   공부를 다 하기 전에는 너무 오래 놀지 않게, 많이 누르면 다음 판으로 안내해요.
+   누른 횟수는 이 기기 메모리에만 있어요 (기록 · 동기화에 안 들어감) */
+const Tori = (() => {
+  const N = () => S.bunnyName || '토리';
+  const SUBJ_SHORT = { kor:'국어', math:'수학', eng:'영어', rev:'복습' };
+  const EAR_LINES = ['귀는 간지러워~ 히히!', '쫑긋쫑긋! 재윤이 목소리 잘 들려!', '귀를 파닥파닥! 날아갈 것 같아!', () => `${josa(N(), '이', '')} 귀 보들보들하지?`, '귀 잡으면 안 돼~ 살살 만져 줘!'];
+  const BODY_LINES = ['깡충깡충! 같이 뛰자!', '빙글빙글 춤추기! 재윤이도 따라 해 봐!', () => `쿵짝쿵짝~ ${josa(N(), '이', '')} 춤 어때?`, '배 누르면 간지러워! 꺄르르!', '높이 뛰기! 재윤이도 할 수 있어?'];
+  const PET_LINES = ['기분 좋아~ 재윤이 손 따뜻해!', '쓰담쓰담 최고야~', () => `${josa(N(), '이', '')} 행복해! 재윤이 사랑해!`, '음~ 포근해서 졸려질 것 같아~', '재윤이가 쓰다듬어 주면 힘이 쑥쑥 나!'];
+  const DIZZY_LINES = ['어지러워~ 빙글빙글~', () => `살살 눌러 줘~ ${josa(N(), '이', '')} 눈이 핑글핑글!`, '우와와~ 세상이 빙글빙글 돌아~'];
+  const EN_LINES = [['Hello, Jaeyun!', '안녕, 재윤아!'], ['I love you!', '사랑해!'], ['You are my best friend!', '너는 내 제일 친한 친구야!'], ["Let's study together!", '같이 공부하자!'], ['Good job!', '잘했어!'], ['Hop, hop, hop!', '깡충깡충깡충!'], ['You are so smart!', '너는 정말 똑똑해!']];
+  /* 수수께끼: 한 번 누르면 문제, 다시 누르면 정답 */
+  const RIDDLES = [
+    ['하늘에서 하얗게 내려와요. 손에 닿으면 사르르 녹아요. 나는 누구게?', '눈'],
+    ['아침마다 동쪽에서 떠올라요. 쳐다보면 눈이 부셔요. 나는 누구게?', '해'],
+    [() => `${josa(N(), '이', '')} 제일 좋아하는 주황색 채소는? 길쭉하고 아삭아삭해!`, '당근'],
+    ['다리가 여덟 개! 실로 줄을 쳐서 집을 지어요. 나는 누구게?', '거미'],
+    ['비 오는 날 꼭 필요해요. 펴면 동그랗고 접으면 길쭉해요. 나는 뭐게?', '우산'],
+    ['목이 아주아주 길어서 높은 나뭇잎도 냠냠 먹어요. 나는 누구게?', '기린'],
+    ['숫자 열두 개가 빙 둘러 있고, 바늘 두 개가 빙글빙글 돌아요. 나는 뭐게?', '시계'],
+    ['여름에 시원하게 먹어요. 겉은 초록 줄무늬, 속은 빨갛고 씨는 까매요. 나는 뭐게?', '수박'],
+    ['밤하늘에서 반짝반짝! 그림으로 그리면 뾰족한 데가 다섯 개야. 나는 뭐게?', '별'],
+    [() => `1 더하기 1은 뭐게? 힌트! ${josa(N(), '이', '')} 귀 개수랑 같아!`, '2! 귀가 두 개니까', true],
+    ['3 더하기 4는 뭐게? 손가락으로 세어 봐!', '7', true],
+    ['아침에 일어나서, 밥 먹고 나서 꼭 해요. 치카치카! 무엇을 할까?', '이 닦기'],
+  ];
+  const txt = l => typeof l === 'function' ? l() : l;
+  const recent = [];
+  function fresh(list){   // 방금 한 말은 다시 안 하게
+    const cand = list.map(txt).filter(t => !recent.includes(t));
+    const t = pick(cand.length ? cand : list.map(txt));
+    recent.push(t); if (recent.length > 8) recent.shift();
+    return t;
+  }
+
+  /* ---------- 지금 상황에 맞는 말 ---------- */
+  function contextLines(){
+    const out = [], d = day(), h = now().getHours();
+    if (d.done) out.push(`오늘 공부 다 했지? 쪽! ${josa(N(), '이', '가')} 뽀뽀해 줄게!`, '오늘도 해냈어! 재윤이 최고야!', '이제 꾸미기 하러 갈까?');
+    else { const nb = nextBoard(d); if (nb) out.push(`오늘은 ${SUBJ_SHORT[nb.k]}부터 해 볼까?`, `${SUBJ_SHORT[nb.k]} 하러 가자! ${josa(N(), '이', '가')} 응원할게!`); }
+    try { const left = S.gift.goal - giftDays().length; if (!giftAch() && left > 0) out.push(`오빠 선물까지 ${left}일 남았어! 힘내자!`); } catch (e) {}
+    const worn = ITEMS.filter(i => i.slot !== 'bg' && S.equipped[i.slot] === i.id);
+    if (worn.length) { const it = pick(worn); out.push(`${josa(N(), '이', '')} ${it.name} 어때? 예쁘지?`); }
+    const fr = (S.friends || []).map(id => COLLECT.find(c => c.id === id)).filter(Boolean);
+    if (fr.length) { const c = pick(fr); out.push(`${c.n}도 재윤이가 좋대!`); }
+    const st = streakDays(); if (st >= 2) out.push(`우리 ${st}일 연속 같이 공부했어! 멋지다!`);
+    if (S.stickers.length >= 5) out.push(`스티커를 ${S.stickers.length}개나 모았어! 대단해!`);
+    if (h < 9) out.push('하암~ 아직 조금 졸려~ 재윤이는 잘 잤어?');
+    else if (h >= 20) out.push('벌써 깜깜해졌네. 일찍 자야 쑥쑥 커!');
+    return out;
+  }
+
+  /* ---------- 화면 효과 ---------- */
+  const timers = new WeakMap();
+  function bunnyIn(el){ return el && (el.querySelector('svg.bunny')); }
+  function anim(svg, cls, ms = 900){
+    if (!svg) return;
+    ['hop','wiggle','t-spin','t-flap','t-dance','t-shy','t-bigjump','t-nod'].forEach(c => svg.classList.remove(c));
+    void svg.getBoundingClientRect(); svg.classList.add(cls);
+    setTimeout(() => svg.classList.remove(cls), ms + 100);
+  }
+  function setExpr(svg, expr, ms = 1800){
+    if (!svg) return;
+    const f = faceParts(expr), e = svg.querySelector('.eyes'), m = svg.querySelector('.mouth'); if (!e || !m) return;
+    e.innerHTML = f.eyes; m.innerHTML = f.mouth;
+    svg.className.baseVal = svg.className.baseVal.replace(/\be-\w+/, 'e-' + expr);
+    clearTimeout(timers.get(svg));
+    timers.set(svg, setTimeout(() => { const base = svg.dataset.expr || 'normal', g = faceParts(base); e.innerHTML = g.eyes; m.innerHTML = g.mouth; svg.className.baseVal = svg.className.baseVal.replace(/\be-\w+/, 'e-' + base); }, ms));
+  }
+  function fx(stage, x, y, chars, n = 5){
+    if (!stage) return;
+    const r = stage.getBoundingClientRect();
+    const cx = x == null ? r.width / 2 : x - r.left, cy = y == null ? r.height * .4 : y - r.top;
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement('span'); s.className = 'tori-fx'; s.textContent = pick(chars);
+      s.style.left = (cx + (Math.random() - .5) * 60) + 'px'; s.style.top = (cy + (Math.random() - .5) * 30) + 'px';
+      s.style.setProperty('--dx', ((Math.random() - .5) * 70).toFixed(0) + 'px'); s.style.animationDelay = (i * 70) + 'ms';
+      stage.appendChild(s); setTimeout(() => s.remove(), 1500 + i * 70);
+    }
+  }
+  /* 말풍선: 홈은 옆 말풍선, 꾸미기 방은 토리 위에 작은 풍선 */
+  function bubble(stage, text){
+    const hb = $('#heroBubble');
+    if (hb && stage && stage.closest('.hero')) { hb.textContent = text; hb.classList.remove('t-pop'); void hb.offsetWidth; hb.classList.add('t-pop'); return; }
+    if (!stage) return;
+    let b = stage.querySelector('.tori-say');
+    if (!b) { b = document.createElement('span'); b.className = 'tori-say'; stage.appendChild(b); }
+    b.textContent = text; b.classList.remove('t-pop'); void b.offsetWidth; b.classList.add('t-pop');
+    clearTimeout(b._t); b._t = setTimeout(() => b.remove(), 4200);
+  }
+  /* 말하는 동안 입이 움직여요 */
+  let talkSeq = 0;
+  async function say(stage, parts){
+    const svg = bunnyIn(stage), my = ++talkSeq, seq = ++SEQ;
+    if (svg) svg.classList.add('talking');
+    for (const [t, lang] of parts) { if (seq !== SEQ) break; await speak(t, lang); }
+    if (my === talkSeq && svg) svg.classList.remove('talking');
+  }
+  function talk(stage, text){ bubble(stage, text); return say(stage, [[text, 'ko-KR']]); }
+
+  /* ---------- 누르기 ---------- */
+  let taps = [], petAt = 0, riddle = null, playN = 0, playDay = '';
+  const zoneOf = (svg, ev) => {
+    if (!svg || !ev || (!ev.clientX && !ev.clientY)) return 'face';
+    const r = svg.getBoundingClientRect(), y = (ev.clientY - r.top) / r.height, x = (ev.clientX - r.left) / r.width;
+    if (x < -.05 || x > 1.05 || y < 0 || y > 1.02) return 'body';
+    return y < .4 ? 'ears' : y < .77 ? 'face' : 'body';
+  };
+  /* 공부 끝나기 전에는 12번쯤 놀면 다음 판을 알려 줘요 */
+  function needNudge(){
+    const t = todayKey(); if (playDay !== t) { playDay = t; playN = 0; }
+    playN++;
+    const d = day(); if (d.done || !(SCREEN === 'home')) return null;
+    if (playN >= 12 && playN % 6 === 0) { const nb = nextBoard(d); return nb || null; }
+    return null;
+  }
+  let dizzyUntil = 0;
+  function tap(el, ev){
+    if (Date.now() - petAt < 600) return;   // 쓰다듬기 끝난 직후 클릭은 무시
+    const svg = bunnyIn(el), stage = el, t = Date.now();
+    if (t < dizzyUntil) { fx(stage, ev && ev.clientX, ev && ev.clientY, ['💫'], 1); return; }   // 어지러운 동안은 별만
+    taps = taps.filter(x => t - x < 2500); taps.push(t);
+    if (riddle && t - riddle.at < 90000) {   // 수수께끼 정답 (공부 안내보다 먼저)
+      const r = riddle; riddle = null; needNudge();
+      anim(svg, 't-bigjump', 900); setExpr(svg, 'wow', 2600); fx(stage, null, null, ['🎉','⭐','✨'], 6);
+      SFX.right();
+      const a = r[2] ? `딩동댕! 정답은 ${r[1]}!` : `딩동댕! 정답은 ${josa(r[1], '이야', '야')}!`;
+      return talk(stage, a + ' 재윤이 맞혔어?');
+    }
+    if (taps.length >= 6) {   // 너무 빨리 많이 누르면
+      taps = []; dizzyUntil = t + 2200; needNudge();
+      anim(svg, 't-spin', 1000); setExpr(svg, 'dizzy', 2200); fx(stage, null, null, ['💫','⭐'], 4);
+      tone([[660,0,.12,'sine'],[523,.12,.12,'sine'],[440,.24,.2,'sine']]);
+      return talk(stage, fresh(DIZZY_LINES));
+    }
+    const nb = needNudge();
+    if (nb) {
+      anim(svg, 't-nod', 700); setExpr(svg, 'wink', 2200);
+      const card = document.querySelector(`.board-card[data-k="${nb.k}"]`); if (card) { card.classList.remove('t-call'); void card.offsetWidth; card.classList.add('t-call'); }
+      tone([[988,0,.1],[1318,.1,.18]]);
+      return talk(stage, pick([`재윤아, 공부 먼저 하고 또 놀자! 오늘은 ${SUBJ_SHORT[nb.k]}부터!`, `${josa(N(), '이', '가')} 여기서 기다릴게! ${SUBJ_SHORT[nb.k]} 하고 와서 또 놀자!`]));
+    }
+    const zone = zoneOf(svg, ev), x = ev && ev.clientX, y = ev && ev.clientY;
+    if (zone === 'ears') {
+      anim(svg, 't-flap', 900); setExpr(svg, 'happy', 1600); fx(stage, x, y, ['✨','💗'], 3);
+      tone([[1568,0,.06],[1760,.07,.06],[1568,.14,.1]]);
+      return talk(stage, fresh(EAR_LINES));
+    }
+    if (zone === 'body') {
+      const dance = Math.random() < .5;
+      anim(svg, dance ? 't-dance' : 't-bigjump', dance ? 1200 : 900); setExpr(svg, 'happy', 1800); fx(stage, x, y, ['🎵','🎶','⭐'], 4);
+      tone(dance ? [[784,0,.1],[988,.15,.1],[1175,.3,.1],[988,.45,.14]] : [[523,0,.1],[1046,.12,.2]]);
+      return talk(stage, fresh(BODY_LINES));
+    }
+    // 얼굴: 여러 가지 말
+    const r = Math.random();
+    if (r < .18) {
+      riddle = Object.assign([...pick(RIDDLES)], { at:t }); riddle[0] = txt(riddle[0]);
+      anim(svg, 'wiggle', 500); setExpr(svg, 'think', 3500); fx(stage, null, null, ['❓'], 2);
+      tone([[880,0,.1],[1175,.12,.16]]);
+      bubble(stage, '🤔 ' + riddle[0] + ` (${josa(N(), '을', '를')} 한 번 더 누르면 정답!)`);
+      return say(stage, [[`${N()} 수수께끼!`, 'ko-KR'], [riddle[0], 'ko-KR']]);
+    }
+    if (r < .32) {
+      const [e, k] = pick(EN_LINES);
+      anim(svg, 'hop', 600); setExpr(svg, 'wink', 2400); fx(stage, x, y, ['💬','✨'], 3);
+      tone([[1318,0,.08],[1568,.08,.12]]);
+      bubble(stage, `${e}\n(${k})`);
+      return say(stage, [[e, 'en-US'], [k, 'ko-KR']]);
+    }
+    const ctx = contextLines();
+    const line = r < .62 && ctx.length ? fresh(ctx) : fresh(POKE_LINES);
+    anim(svg, Math.random() < .5 ? 'hop' : 't-shy', 700); setExpr(svg, pick(['happy','wow','wink']), 1800); fx(stage, x, y, ['💗','✨','🥕'], 3);
+    tone([[1318,0,.08],[1568,.08,.12]]);
+    return talk(stage, line);
+  }
+
+  /* ---------- 쓰다듬기: 길게 누르거나 문지르기 ---------- */
+  let hold = null;
+  function pet(){
+    if (!hold || hold.petted) return;
+    hold.petted = true; petAt = Date.now();
+    const svg = bunnyIn(hold.el);
+    svg && svg.classList.add('t-purr'); setExpr(svg, 'love', 999999);
+    tone([[392,0,.25,'sine',.08],[440,.25,.25,'sine',.08],[392,.5,.3,'sine',.08]]);
+    talk(hold.el, fresh(PET_LINES));
+    hold.heart = setInterval(() => { if (hold) fx(hold.el, hold.x, hold.y, ['💗','💕','💖'], 1); }, 260);
+  }
+  function endHold(){
+    if (!hold) return;
+    clearTimeout(hold.timer); clearInterval(hold.heart);
+    if (hold.petted) { petAt = Date.now(); const svg = bunnyIn(hold.el); if (svg) { svg.classList.remove('t-purr'); setExpr(svg, 'happy', 1500); } }
+    hold = null;
+  }
+  document.addEventListener('pointerdown', ev => {
+    const el = ev.target.closest && ev.target.closest('.tori-stage'); if (!el) return;
+    endHold();
+    hold = { el, x:ev.clientX, y:ev.clientY, sx:ev.clientX, sy:ev.clientY, dist:0, petted:false };
+    hold.timer = setTimeout(pet, 600);
+  });
+  document.addEventListener('pointermove', ev => {
+    if (!hold) return;
+    hold.dist += Math.hypot(ev.clientX - hold.x, ev.clientY - hold.y); hold.x = ev.clientX; hold.y = ev.clientY;
+    if (!hold.petted && hold.dist > 70) pet();
+  });
+  ['pointerup','pointercancel'].forEach(t => document.addEventListener(t, endHold));
+  document.addEventListener('contextmenu', ev => { if (ev.target.closest && ev.target.closest('.tori-stage')) ev.preventDefault(); });
+
+  /* ---------- 가만히 있을 때 혼자 꼼지락 (소리 없이) ---------- */
+  let lastTouch = Date.now();
+  ['pointerdown','keydown'].forEach(t => document.addEventListener(t, () => lastTouch = Date.now(), true));
+  setInterval(() => {
+    if (!['home','room'].includes(SCREEN) || document.hidden || hold || Date.now() - lastTouch < 12000) return;
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const svg = document.querySelector('.tori-stage svg.bunny'); if (!svg || svg.classList.contains('talking')) return;
+    const h = now().getHours(), r = Math.random();
+    if (h >= 21 && r < .5) { setExpr(svg, 'sleepy', 2500); anim(svg, 't-nod', 700); return; }
+    if (r < .35) anim(svg, 't-flap', 900);
+    else if (r < .6) anim(svg, 'wiggle', 500);
+    else if (r < .8) { anim(svg, 'hop', 600); }
+    else setExpr(svg, 'wink', 900);
+  }, 9000);
+
+  return { tap, talk, contextLines, RIDDLES, _state:() => ({ taps:taps.length, playN, riddle:!!riddle }) };
+})();
 
 /* 첫 화면 (모든 내용이 준비된 뒤에) */
 (function boot(){
