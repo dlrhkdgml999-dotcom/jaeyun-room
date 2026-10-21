@@ -1,4 +1,4 @@
-import asyncio, sys, base64
+import asyncio, sys, os, base64
 sys.path.insert(0,'.')
 from harness import Sim, SP
 async def main():
