@@ -96,7 +96,7 @@ function currPanel(s){
   const opts = C.units.flatMap((u, ui) => [...u.lessons.map((l, li) => `<option value="${ui}|${li}|0" ${c.unit === ui && c.lesson === li && !c.test ? 'selected' : ''}>${unitTag(u)} ${li + 1}차시 · ${esc(l.title)}</option>`), `<option value="${ui}|0|1" ${c.unit === ui && c.test ? 'selected' : ''}>${unitTag(u)} 평가</option>`]).join('');
   const recent = Object.entries(c.done).sort((a, b) => b[1].date.localeCompare(a[1].date)).slice(0, 4);
   const seen = Object.entries(c.seen || {}).sort((a, b) => b[1].d.localeCompare(a[1].d)).slice(0, 4);
-  const modeText = { math:['단원 진도 (1학년 2학기 → 2학년 1학기 + 지난 학기 복습 30%)','자유 연습 (아래 난이도대로 섞어서)'], kor:['단원 진도 (1학년 2학기 → 2학년 1학기 + 낱말·맞춤법 복습 30%)','자유 연습 (아래 난이도대로 섞어서)'], eng:['단계 진도 (알파벳 → 파닉스 → 문장)','자유 연습 (아래 난이도대로 섞어서)'] }[s];
+  const modeText = { math:['단원 진도 (1학년 2학기 → 2학년 1학기 + 지난 학기 복습 30%)','자유 연습 (아래 난이도대로 섞어서)'], kor:['단원 진도 (1학년 2학기 → 2학년 1학기 + 낱말·맞춤법 복습 30%)','자유 연습 (아래 난이도대로 섞어서)'], eng:['단계 진도 (1단계 파닉스 → 2단계 생활 영어)','자유 연습 (아래 난이도대로 섞어서)'] }[s];
   return `<div class="panel"><h3>${SUBJ_NAME[s]} 진도 · ${esc(C.title)}</h3>
     <div class="field"><label for="mode-${s}">${SUBJ_NAME[s]} 방식</label><select id="mode-${s}" data-ch="cmode" data-v="${s}"><option value="curr" ${on ? 'selected' : ''}>${modeText[0]}</option><option value="free" ${on ? '' : 'selected'}>${modeText[1]}</option></select></div>
     ${on ? `

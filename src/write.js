@@ -13,6 +13,12 @@ const WRITE_TASKS = {
   'e6-2':{ prompt:'따라 써 봐요: I like apples.', guide:'I like apples.', lines:1, en:true },
   'e6-3':{ prompt:'따라 써 봐요: I can swim.', guide:'I can swim.', lines:1, en:true },
 };
+/* 영어 2단계 직접 써 보기 */
+Object.assign(WRITE_TASKS, {
+  'f1-2':{ prompt:"따라 써 봐요: I'm happy.", guide:"I'm happy.", lines:1, en:true },
+  'f5-2':{ prompt:'따라 써 봐요: This is my mom.', guide:'This is my mom.', lines:1, en:true },
+  'f7-3':{ prompt:'따라 써 봐요: I like pizza.', guide:'I like pizza.', lines:1, en:true },
+});
 /* 1학년 2학기 직접 써 보기 */
 Object.assign(WRITE_TASKS, {
   'n1-2':{ prompt:'흉내 내는 말을 넣어 문장을 하나 써 봐요', guide:'예) 토끼가 깡충깡충 뛰어요.', lines:1 },

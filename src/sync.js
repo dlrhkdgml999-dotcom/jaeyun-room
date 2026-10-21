@@ -48,7 +48,8 @@ const Sync = {
     try {
       this.status = 'connecting';
       await this.fs();
-      try { this.blobCache = JSON.parse(localStorage.getItem('jaeyun-blobs') || '{}'); } catch (e) {}
+      // 사진·녹음 보관함은 메모리에만: 기록(S)에 이미 원본이 있으니 따로 저장하지 않는다 (예전 보관함은 지워서 저장 공간 확보)
+      try { localStorage.removeItem('jaeyun-blobs'); } catch (e) {}
       // 기준점: 서버가 받았다고 확인한 값. 그 뒤에 이 기기에서 바뀐 것(인터넷 없을 때 공부한 것 포함)은 다시 보낸다.
       // 재윤이 태블릿은 확인 기록이 없으면 전부 한 번 보낸다 (재윤이 기록의 원본은 태블릿)
       const sy = this.synced(), kid = canWriteKid();
@@ -58,6 +59,8 @@ const Sync = {
       Object.keys(S.days).forEach(k => { const raw = JSON.stringify(this.pack(S.days[k])); this.last.days[k] = kid && sy.d[k] !== hashStr(raw) ? '' : raw; });
       this.listen();
       this.ready = true; this.status = 'on';
+      // 태블릿: 아직 서버에 없는 사진(예전에 올리다 실패한 것)도 다시 올린다
+      if (kid) Object.entries(this.blobCache).forEach(([h, d]) => this.putBlob(h, d));
       this.schedule(); this.beat();
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.start(), 30000); }
   },
@@ -170,14 +173,14 @@ const Sync = {
     try {
       const meta = await this.db.doc(`${this.base()}/blobs/${h}`).get(); if (!meta.exists) { this.blobWait[h] = false; return; }
       let data = ''; for (let i = 0; i < meta.data().parts; i++) { const p = await this.db.doc(`${this.base()}/blobs/${h}_${i}`).get(); data += p.data().d; }
-      this.blobCache[h] = data; this.saveBlobCache();
+      this.blobCache[h] = data; this.synced().b[h] = 1; this.saveSynced(); this.saveBlobCache();
       // 받은 값을 다시 풀어서 S에 넣는다
       for (const k of [...KID_KEYS, ...ADULT_KEYS]) if (this.last.s[k] && this.last.s[k].includes(h)) S[k] = this.unpack(JSON.parse(this.last.s[k]));
       for (const k of Object.keys(this.last.days)) if (this.last.days[k].includes(h)) S.days[k] = this.unpack(JSON.parse(this.last.days[k]));
       saveLocal(); refreshIfIdle();
     } catch (e) { this.blobWait[h] = false; }
   },
-  saveBlobCache(){ try { const keys = Object.keys(this.blobCache); if (keys.length > 30) keys.slice(0, keys.length - 30).forEach(k => delete this.blobCache[k]); localStorage.setItem('jaeyun-blobs', JSON.stringify(this.blobCache)); } catch (e) {} },
+  saveBlobCache(){ const keys = Object.keys(this.blobCache); if (keys.length > 60) keys.slice(0, keys.length - 60).forEach(k => delete this.blobCache[k]); },
   /* 가족방 만들기: 지금 이 기기 기록을 가족 기록으로 올린다 */
   async create(roleName){
     S.local = { fid:newFid(), role:roleName };

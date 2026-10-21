@@ -25,7 +25,7 @@ const EBS_LECT_21 = {
 };
 CURRICULUM.lect = EBS_LECT_21.math; KOR_CURR.lect = EBS_LECT_21.kor;
 CURRICULUM.grade = '2학년 1학기'; CURRICULUM.short2 = '2-1'; KOR_CURR.grade = '2학년 1학기'; KOR_CURR.short2 = '2-1';
-const COURSES = { math:[MATH12, CURRICULUM], kor:[KOR12, KOR_CURR], eng:[ENG_CURR] };
+const COURSES = { math:[MATH12, CURRICULUM], kor:[KOR12, KOR_CURR], eng:[ENG_CURR, ENG_CURR2] };
 const CURRS = {}, EBS_LECT = {};
 Object.entries(COURSES).forEach(([s, list]) => {
   const units = [], lect = []; let off = 0;
@@ -125,7 +125,7 @@ function judgeCurriculum(b){
     const pass = rate >= .8; c.tests.push({ unit:c.unit, rate:Math.round(rate * 100), date:t, pass });
     if (pass) { c.medals.push({ unit:c.unit, date:t }); c.unit++; c.lesson = 0; c.test = false; notify('oppa', `🏅 재윤이가 ${nm} ${unitTag(u)} 평가를 통과했어요 (${Math.round(rate * 100)}점)`); notify('mom', `🏅 재윤이가 ${nm} ${unitTag(u)} "${u.name}" 평가를 통과했어요`);
       const nu = C.units[c.unit];
-      if (nu && nu.course !== u.course) { const msg = `🎉 재윤이가 ${josa(u.course.title, '을', '를')} 모두 끝냈어요! 내일부터 ${nu.course.title} 시작 (EBS ${nu.course.ebs ? nu.course.ebs.name : ''})`; notify('mom', msg); notify('oppa', msg); }
+      if (nu && nu.course !== u.course) { const msg = `🎉 재윤이가 ${josa(u.course.title, '을', '를')} 모두 끝냈어요! 내일부터 ${nu.course.title} 시작${nu.course.ebs ? ` (EBS ${nu.course.ebs.name})` : ''}`; notify('mom', msg); notify('oppa', msg); }
       if (!C.units[c.unit]) { notify('mom', `🎉 재윤이가 ${josa(C.title, '을', '를')} 모두 끝냈어요! 이제 ${nm}는 엄마 메뉴의 난이도대로 복습해요`); notify('oppa', `🎉 재윤이가 ${josa(C.title, '을', '를')} 모두 끝냈어요!`); } }
     return { subj:s, test:true, pass, rate:Math.round(rate * 100) / 100, unitIdx:C.units.indexOf(u) };
   }
