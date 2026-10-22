@@ -41,8 +41,25 @@ function composePen(dt){
       x.fillStyle = '#9B7C8B'; x.font = '22px sans-serif'; x.fillText(`${i + 1}.`, 8, i * H + 40);
       x.strokeStyle = '#EEE'; x.beginPath(); x.moveTo(0, (i + 1) * H - 1); x.lineTo(W, (i + 1) * H - 1); x.stroke();
       const src = (dt.pen || [])[i]; if (!src) { if (--left === 0) res(cv.toDataURL('image/jpeg', .6)); return; }
-      const img = new Image(); img.onload = () => { const sc = Math.min((W - 50) / img.width, (H - 8) / img.height); x.drawImage(img, 46, i * H + 4, img.width * sc, img.height * sc); if (--left === 0) res(cv.toDataURL('image/jpeg', .62)); };
+      const img = new Image(); img.onload = () => {
+        // 글씨가 있는 부분만 잘라서 줄을 꽉 채운다 (엄마가 채점할 때 크게 보이게)
+        const [bx, by, bw, bh] = inkBox(img), sc = Math.min((W - 56) / bw, (H - 12) / bh, 2.2);
+        x.drawImage(img, bx, by, bw, bh, 50, i * H + (H - bh * sc) / 2, bw * sc, bh * sc);
+        if (--left === 0) res(cv.toDataURL('image/jpeg', .62)); };
       img.onerror = () => { if (--left === 0) res(cv.toDataURL('image/jpeg', .62)); }; img.src = src;
     });
   });
+}
+
+/* 진한 잉크(글씨)가 있는 사각형. 연한 안내선은 무시. 글씨가 없으면 그림 전체 */
+function inkBox(img){
+  try {
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, w, h).data;
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y += 2) for (let xx = 0; xx < w; xx += 2) { const o = (y * w + xx) * 4; if (d[o] < 150 && d[o + 1] < 150) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+    if (x1 < 0) return [0, 0, w, h];
+    const pad = Math.round(Math.max(w, h) * .02); x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w, x1 + pad); y1 = Math.min(h, y1 + pad);
+    return [x0, y0, Math.max(8, x1 - x0), Math.max(8, y1 - y0)];
+  } catch (e) { return [0, 0, img.width, img.height]; }
 }

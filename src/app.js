@@ -44,6 +44,9 @@ function prunePhotos(){
   // 받아쓰기 사진은 최근 7일 것만 이 폰에 남긴다
   const cut = addDays(todayKey(), -7);
   Object.entries(S.days).forEach(([k, d]) => { if (k < cut && d.dict && d.dict.photo) d.dict.photo = null; });
+  // 문제별 기록은 180일까지만 남긴다 (점수·시간은 계속 남음)
+  const cut2 = addDays(todayKey(), -180);
+  Object.entries(S.days).forEach(([k, d]) => { if (k < cut2 && d.boards) Object.values(d.boards).forEach(b => { if (b && b.log) delete b.log; }); });
 }
 function save(){ saveLocal(); if (!Sync.applying) Sync.schedule(); }
 function saveLocal(){
@@ -721,7 +724,7 @@ function inputHTML(q){
 }
 VIEWS.q = () => {
   const b = RUN.b, q = b.qs[b.idx];
-  RUN.q = q; RUN.tries = 0; RUN.typed = ''; RUN.built = []; RUN.t0 = Date.now(); RUN.locked = false;
+  RUN.q = q; RUN.tries = 0; RUN.wrongs = []; RUN.typed = ''; RUN.built = []; RUN.t0 = Date.now(); RUN.locked = false;
   const pct = Math.round(b.idx / b.qs.length * 100);
   app().innerHTML = `<section class="screen">
     <div class="q-top">
@@ -768,12 +771,13 @@ function answer(val){
     if (RUN.tries === 0) { b.correct++; if (q.rev) reviewRight(q); }
     else addWrong(q, true);
     if (b.cur && (q.lesson || q.unitTest) && !q.review11 && !q.rev) b.cur.items.push({ key:q.key, first:RUN.tries === 0 });
+    logQ(b, q, RUN.tries === 0 ? 1 : 2);
     feedback(esc(pick(PRAISE_LINES)) + (q.eng ? ` <b>${esc(q.explain)}</b>` : ''), 'happy');
     if (q.eng) speak(q.ans, 'en-US');
     setTimeout(() => nextQ(), q.eng ? 1500 : 1100);
     return;
   }
-  RUN.tries++;
+  RUN.tries++; (RUN.wrongs = RUN.wrongs || []).push(String(val));
   SFX.wrong();
   if (q.input === 'choice') markOpt(val, 'wrong');
   if (RUN.tries === 1) {
@@ -785,6 +789,7 @@ function answer(val){
     RUN.locked = true;
     addWrong(q);
     if (b.cur && (q.lesson || q.unitTest) && !q.review11 && !q.rev) b.cur.items.push({ key:q.key, first:false });
+    logQ(b, q, 0);
     if (q.input === 'choice') markOpt(q.ans, 'right');
     if (q.input === 'numpad') { RUN.typed = String(q.ans); rerenderInput(); }
     if (q.input === 'build') { RUN.built = [...q.ans].map(ch => q.tiles.indexOf(ch)); rerenderInput(); }
@@ -1098,17 +1103,10 @@ VIEWS.adult = () => {
   let body = '';
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
-    body = `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>` + todayPanel() + reportPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
-      <div class="panel"><h3>받아쓰기 채점</h3>
-        ${pend.length ? pend.map(([k, dy]) => { const dt = Object.assign({}, dy.dict, gradeOf(k)); const marks = (dt.marks && dt.marks.length ? dt.marks : dt.words.map(() => null));
-          return `<div class="panel" style="padding:12px;background:var(--bg);border:0">
-            <div class="row"><b class="disp" style="font-size:18px;font-weight:400">${shortDate(k)} 받아쓰기</b><span class="spacer"></span>${dt.graded ? `<span class="pill ok">${dt.score}/10점</span>` : `<span class="pill wait">채점 기다리는 중</span>`}</div>
-            ${dt.photo ? `<img src="${dt.photo}" alt="받아쓰기 사진" style="width:100%;border-radius:12px;cursor:zoom-in" data-a="zoom" data-v="${k}">` : `<p class="muted">사진이 없어요. 공책을 직접 보고 채점해 주세요.</p>`}
-            ${dt.graded ? '' : `<div class="list">${dt.words.map((w, i) => `<div class="li" style="background:#fff"><span class="grow"><b class="muted" style="font-weight:400">${i + 1}.</b> ${esc(w)}</span><span class="ox"><button class="o ${marks[i] === true ? 'on' : ''}" data-a="mark" data-v="${k}|${i}|1" aria-label="${i + 1}번 맞음">O</button><button class="x ${marks[i] === false ? 'on' : ''}" data-a="mark" data-v="${k}|${i}|0" aria-label="${i + 1}번 틀림">X</button></span></div>`).join('')}</div>
-            <button class="btn mint" data-a="grade" data-v="${k}" ${marks.some(m => m === null) ? 'disabled' : ''}>채점 완료</button>
-            <p class="muted" style="font-size:14px">틀린 낱말은 다음 받아쓰기에 다시 나와요.</p>`}
-          </div>`; }).join('') : '<p class="muted">재윤이가 받아쓰기를 끝내면 여기에 사진이 와요.</p>'}
-      </div>
+    const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
+    body = `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + (gradeTodo ? dictGradePanel(pend) : '') + todayPanel() + reportPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
+      ${gradeTodo ? '' : dictGradePanel(pend)}
+      ${isInstalled() ? '' : `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>`}
       <div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
         <p class="muted" style="font-size:13px">강의를 볼 때는 "팔 길이만큼 떨어져서 보기" 안내가 먼저 나와요.</p></div>
       <div class="panel"><h3>받아쓰기 쓰는 곳</h3><div class="field"><select id="dictmode" data-ch="dictmode" aria-label="받아쓰기 쓰는 곳">
@@ -1129,7 +1127,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = reportPanel() + weekReportPanel() + `
+    body = `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -1302,7 +1300,7 @@ const ACT = {
   installkid(){ go('install', { who:'kid' }); },
   installmom(){ go('install', { who:'mom' }); },
   dictsay(){ ++SEQ; const dt = day().dict; speak(dt.words[dt.idx], 'ko-KR', .8); },
-  dictnext(){ if (Date.now() - (window.__dictShown || 0) < 900) return; const dt = day().dict; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } dt.pen = dt.pen || []; dt.pen[dt.idx] = penImage(); } SFX.tap(); dt.idx++; if (penMode() && dt.idx >= dt.words.length) { composePen(dt).then(img => { dt.photo = img; dt.pen = null; save(); go('photo'); }); return; } save(); go(dt.idx >= dt.words.length ? 'photo' : 'dict'); },
+  dictnext(){ if (Date.now() - (window.__dictShown || 0) < 900) return; const dt = day().dict; if (penMode()) { if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; } dt.pen = dt.pen || []; dt.pen[dt.idx] = penImage(); } SFX.tap(); dt.idx++; if (penMode() && dt.idx >= dt.words.length) { composePen(dt).then(img => { dt.photo = img; dt.rows = dt.words.length; dt.pen = null; save(); go('photo'); }); return; } save(); go(dt.idx >= dt.words.length ? 'photo' : 'dict'); },
   penclear(){ setupPen(); },
   captap(){ if (!CAP) return; CAP.taps++; SFX.tap(); const b = $('.capsule'); if (b) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } document.querySelectorAll('.cap-dots i').forEach((i, n) => i.classList.toggle('on', n < CAP.taps)); if (CAP.taps >= 3) { CAP = null; setTimeout(openCapsule, 450); } },
   friend(el){ const id = el.dataset.v; S.friends = S.friends || []; if (S.friends.includes(id)) S.friends = S.friends.filter(x => x !== id); else { S.friends.push(id); if (S.friends.length > 3) S.friends.shift(); } SFX.tap(); save(); const y = scrollY; go('book'); scrollTo(0, y); },
@@ -1342,7 +1340,10 @@ const ACT = {
     go('pin');
   },
   atab(el){ S.adultTab = el.dataset.v; RESET_ARMED = false; save(); go('adult'); },
-  mark(el){ const [k, i, v] = el.dataset.v.split('|'); const g = gradeOf(k, true); g.marks[+i] = v === '1'; save(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  mark(el){ const [k, i, v] = el.dataset.v.split('|'); const g = gradeOf(k, true); g.marks[+i] = v === '1'; save(); markRefresh(k); },
+  markrest(el){ const k = el.dataset.v, g = gradeOf(k, true); g.marks = g.marks.map(m => m === null ? true : m); save(); markRefresh(k); },
+  study(el){ go('study', el.dataset.v ? { sel:el.dataset.v } : undefined); },
+  studyset(el){ studySet(el); },
   grade(el){
     const k = el.dataset.v, g = gradeOf(k, true); if (g.marks.some(m => m === null)) return;
     g.graded = true; g.score = g.marks.filter(Boolean).length; g.at = Date.now();

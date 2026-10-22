@@ -237,7 +237,7 @@ window.addEventListener('online', () => { if (!Sync.ready) Sync.start(); else Sy
 document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) Sync.beat(); });
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
-  if (['home','adult','map','gift','cal','room','alldone','book'].includes(SCREEN)) {
+  if (['home','adult','map','gift','cal','room','alldone','book','study'].includes(SCREEN)) {
     const y = scrollY; const active = document.activeElement;
     if (active && /INPUT|TEXTAREA|SELECT/.test(active.tagName)) return;
     VIEWS[SCREEN](); scrollTo(0, y);
