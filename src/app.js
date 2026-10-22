@@ -1234,10 +1234,35 @@ const ACT = {
   lecopt(el){ const [s, n] = el.dataset.v.split('|'); openLecture(s, +n, true); },
   lecdone(el){ const w = LECW; if (!w) return go('home'); const mins = Math.round((Date.now() - w.at) / 60000), li = lectInfo(w.s, w.n);
     if (mins < 10 && !el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 끝까지 다 봤어요!'; speak(`벌써 다 봤어? ${li.no}강은 ${li.mins}분짜리야. 끝까지 봤으면 한 번 더 눌러 줘!`); return; }
-    if (w.opt) { const c = curr(w.s); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins }; notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save(); }
-    else markLectureSeen(w.s, w.n, mins);
+    if (w.opt) { const c = curr(w.s); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins }; notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save();
+      LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {} SFX.sticker(); return afterLecture(true); }
+    w.mins = mins; try { sessionStorage.setItem('lecw', JSON.stringify(w)); } catch (e) {}
+    go('leccheck'); },
+  /* 몇 강 봤는지 고른 결과 */
+  async lecwatched(el){
+    const w = LECW; if (!w) return go('home');
+    const m = +el.dataset.v, li = lectInfo(w.s, w.n), c = curr(w.s), mins = w.mins || 0;
     LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
-    SFX.sticker(); afterLecture(w.opt); },
+    if (m === w.n || m === 0) {
+      markLectureSeen(w.s, w.n, mins);
+      if (m === 0) notify('mom', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강을 봤는지 잘 모르겠대요. 진도 기록에서 확인해 주세요`);
+      SFX.sticker(); return afterLecture(false);
+    }
+    // 다른 강의를 봤어요: 오늘 강의는 내일 다시, 이번 판은 문제로 넘어감
+    const got = m > 0 ? lectInfo(w.s, m) : { no:'다른 ' };
+    if (m > w.n && !c.seen[m]) c.seen[m] = { d:todayKey(), mins, early:true };
+    c.missed = [...new Set([...(c.missed || []).filter(x => !c.seen[x]), w.n])];
+    const b = RUN && RUN.b; if (b && b.cur) b.lecSkip = true;
+    const d = day(); if (d.lec) d.lec.missed = m;
+    notify('mom', `📺 재윤이가 오늘 ${SUBJ_NAME[w.s]} ${li.no}강 대신 ${got.no}강을 봤어요 (${mins}분). ${li.no}강은 내일 다시 나와요`);
+    notify('oppa', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강 대신 ${got.no}강을 봤어요. ${li.no}강은 내일 다시`);
+    save();
+    app().innerHTML = `<section class="screen" style="justify-content:center;align-items:center;text-align:center">${stageHTML(150, { expr:'happy', size:110 })}
+      <div class="bubble" style="font-size:21px">앗, 오늘은 <b>${li.no}강</b>이었어!<br>${m !== w.n ? '그 강의도 잘 봤어! ' : ''}${li.no}강은 내일 같이 보자.<br>오늘은 문제만 풀자!</div>
+      <button class="btn big" data-a="lecafter">좋아!</button></section>`;
+    speak(`앗, 오늘은 숫자 ${li.local}, ${li.local}강이었어! ${m !== w.n ? '그 강의도 잘 봤어! ' : ''}${li.local}강은 내일 같이 보자. 오늘은 문제만 풀자!`);
+  },
+  lecafter(){ SFX.tap(); afterLecture(false); },
   lecfail(){ const w = LECW; LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
     notify('mom', '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
     const b = RUN && RUN.b; if (b && b.cur) { b.lecSkip = true; save(); }

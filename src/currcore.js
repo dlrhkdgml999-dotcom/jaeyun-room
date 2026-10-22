@@ -142,6 +142,8 @@ function ebsOn(s){ return !!CURRS[s].ebs && (S.ebsOn || {})[s] !== false; }
 function dueLecture(s){
   if (!CURRS[s].ebs || !currOn(s) || !ebsOn(s)) return null;
   const c = curr(s); if (c.test) return null;
+  // 다른 강의를 봐서 놓친 강의가 있으면 그것부터 (진도가 넘어갔어도)
+  const miss = (c.missed || []).find(n => !c.seen[n]); if (miss) return miss;
   const l = currentLesson(s); if (!l || !l.ebs) return null;
   return l.ebs.find(n => !c.seen[n]) || null;
 }

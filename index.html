@@ -629,6 +629,25 @@ button.sd:active{transform:scale(.95)}
 .subj-acc .r.tap{cursor:pointer;border-radius:8px} .subj-acc .r.tap:active{background:var(--bg)}
 .sticky-chips{position:static;padding:4px 0 0}
 #dayDetail{scroll-margin-top:8px}
+/* EBS 강의 찾기 */
+.lec-today{display:flex;align-items:center;gap:14px;background:var(--sky-pale);border:3px solid var(--sky-deep);border-radius:var(--r-md);padding:10px 14px;align-self:stretch}
+.lec-big{flex:none;min-width:84px;height:84px;border-radius:22px;background:var(--sky-deep);color:#fff;display:grid;place-items:center;font-family:var(--f-display);font-size:46px;line-height:1;padding:0 8px}
+.lec-big small{font-size:20px;display:block;margin-top:-6px}
+.ebs-list{align-self:stretch;border:2px solid #E5E5E5;border-radius:14px;overflow:hidden;background:#fff;text-align:left}
+.ebs-head{background:#F4F4F4;font-size:13px;color:#666;padding:6px 12px}
+.ebs-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid #EEE;opacity:.5;font:inherit;color:var(--ink);background:#fff;text-align:left;width:100%}
+.ebs-row .ebs-no{font-family:var(--f-display);font-size:18px;min-width:44px}
+.ebs-row .ebs-t{font-size:15px;display:grid;line-height:1.3} .ebs-row .ebs-t small{font-size:12px;color:#888}
+.ebs-row .ebs-play{width:30px;height:30px;border-radius:50%;background:#FF8A3D;color:#fff;display:grid;place-items:center;font-size:12px}
+.ebs-row.me{opacity:1;background:#FFF1E6;outline:3px solid #FF8A3D;outline-offset:-3px}
+.ebs-row.me .ebs-no{font-size:22px;color:#D35400}
+.ebs-pick{background:#FF8A3D;color:#fff;border-radius:999px;padding:4px 10px;font-family:var(--f-display);font-size:16px;white-space:nowrap;animation:pulse 1.4s ease-in-out infinite}
+.lec-pick{display:grid;gap:10px;align-self:stretch;max-width:520px;margin:0 auto;width:100%}
+.ebs-row.big{opacity:1;border:3px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+.ebs-row.big .ebs-no{font-size:28px;min-width:64px;color:var(--sky-deep)}
+.ebs-row.big .ebs-t{font-size:17px}
+.ebs-row.big.other{border-style:dashed} .ebs-row.big.other .ebs-no{color:var(--ink-soft)}
+.ebs-row.big:active{transform:scale(.98)}
 
 </style>
 </head>
@@ -649,7 +668,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261022141057";
+window.APP_VERSION = "20261022145141";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -2129,10 +2148,35 @@ const ACT = {
   lecopt(el){ const [s, n] = el.dataset.v.split('|'); openLecture(s, +n, true); },
   lecdone(el){ const w = LECW; if (!w) return go('home'); const mins = Math.round((Date.now() - w.at) / 60000), li = lectInfo(w.s, w.n);
     if (mins < 10 && !el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 끝까지 다 봤어요!'; speak(`벌써 다 봤어? ${li.no}강은 ${li.mins}분짜리야. 끝까지 봤으면 한 번 더 눌러 줘!`); return; }
-    if (w.opt) { const c = curr(w.s); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins }; notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save(); }
-    else markLectureSeen(w.s, w.n, mins);
+    if (w.opt) { const c = curr(w.s); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins }; notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save();
+      LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {} SFX.sticker(); return afterLecture(true); }
+    w.mins = mins; try { sessionStorage.setItem('lecw', JSON.stringify(w)); } catch (e) {}
+    go('leccheck'); },
+  /* 몇 강 봤는지 고른 결과 */
+  async lecwatched(el){
+    const w = LECW; if (!w) return go('home');
+    const m = +el.dataset.v, li = lectInfo(w.s, w.n), c = curr(w.s), mins = w.mins || 0;
     LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
-    SFX.sticker(); afterLecture(w.opt); },
+    if (m === w.n || m === 0) {
+      markLectureSeen(w.s, w.n, mins);
+      if (m === 0) notify('mom', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강을 봤는지 잘 모르겠대요. 진도 기록에서 확인해 주세요`);
+      SFX.sticker(); return afterLecture(false);
+    }
+    // 다른 강의를 봤어요: 오늘 강의는 내일 다시, 이번 판은 문제로 넘어감
+    const got = m > 0 ? lectInfo(w.s, m) : { no:'다른 ' };
+    if (m > w.n && !c.seen[m]) c.seen[m] = { d:todayKey(), mins, early:true };
+    c.missed = [...new Set([...(c.missed || []).filter(x => !c.seen[x]), w.n])];
+    const b = RUN && RUN.b; if (b && b.cur) b.lecSkip = true;
+    const d = day(); if (d.lec) d.lec.missed = m;
+    notify('mom', `📺 재윤이가 오늘 ${SUBJ_NAME[w.s]} ${li.no}강 대신 ${got.no}강을 봤어요 (${mins}분). ${li.no}강은 내일 다시 나와요`);
+    notify('oppa', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강 대신 ${got.no}강을 봤어요. ${li.no}강은 내일 다시`);
+    save();
+    app().innerHTML = `<section class="screen" style="justify-content:center;align-items:center;text-align:center">${stageHTML(150, { expr:'happy', size:110 })}
+      <div class="bubble" style="font-size:21px">앗, 오늘은 <b>${li.no}강</b>이었어!<br>${m !== w.n ? '그 강의도 잘 봤어! ' : ''}${li.no}강은 내일 같이 보자.<br>오늘은 문제만 풀자!</div>
+      <button class="btn big" data-a="lecafter">좋아!</button></section>`;
+    speak(`앗, 오늘은 숫자 ${li.local}, ${li.local}강이었어! ${m !== w.n ? '그 강의도 잘 봤어! ' : ''}${li.local}강은 내일 같이 보자. 오늘은 문제만 풀자!`);
+  },
+  lecafter(){ SFX.tap(); afterLecture(false); },
   lecfail(){ const w = LECW; LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
     notify('mom', '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
     const b = RUN && RUN.b; if (b && b.cur) { b.lecSkip = true; save(); }
@@ -4815,6 +4859,8 @@ function ebsOn(s){ return !!CURRS[s].ebs && (S.ebsOn || {})[s] !== false; }
 function dueLecture(s){
   if (!CURRS[s].ebs || !currOn(s) || !ebsOn(s)) return null;
   const c = curr(s); if (c.test) return null;
+  // 다른 강의를 봐서 놓친 강의가 있으면 그것부터 (진도가 넘어갔어도)
+  const miss = (c.missed || []).find(n => !c.seen[n]); if (miss) return miss;
   const l = currentLesson(s); if (!l || !l.ebs) return null;
   return l.ebs.find(n => !c.seen[n]) || null;
 }
@@ -4988,20 +5034,32 @@ function mapTileHTML(){
 
 /* ===================== EBS 강의 보기 ===================== */
 let LECW = null;   // { s, n, at, opt }
+/* 같은 강좌 안의 앞 · 오늘 · 다음 강의 (EBS 강의목록과 같은 순서) */
+function lecNeighbors(s, n){
+  const me = lectInfo(s, n); if (!me) return [];
+  return [n - 1, n, n + 1].map(m => lectInfo(s, m)).filter(x => x && x.course === me.course);
+}
+function lecRowHTML(x, mark){
+  return `<div class="ebs-row ${mark ? 'me' : ''}"><span class="ebs-no">${x.no}강</span><span class="ebs-t">${esc(x.title)}<small>${esc(x.desc)}</small></span>${mark ? '<span class="ebs-pick">👉 이거!</span>' : '<span class="ebs-play">▶</span>'}</div>`;
+}
+function lecFinderHTML(s, n){
+  return `<div class="ebs-list" aria-label="EBS 강의목록에서 찾을 강의"><div class="ebs-head">EBS 강의목록에서 이렇게 찾아요</div>${lecNeighbors(s, n).map(x => lecRowHTML(x, x.n === n)).join('')}</div>`;
+}
 function lectureGuardHTML(s, n){
-  const li = lectInfo(s, n), C = CURRS[s];
+  const li = lectInfo(s, n);
   return `${distanceArt()}<p class="disp" style="font-size:21px;line-height:1.4">강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 허리 펴고 바르게 앉아서 봐요.</p>
-    <div class="lec-box" style="align-self:stretch"><span class="lec-no">${li.no}강</span><span style="flex:1;text-align:left"><b>EBS ${esc(li.name)}</b><br><span style="font-size:15px">${esc(li.title)} · ${esc(li.desc)}</span></span></div>
-    <ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b> 옆의 주황색 ▶ 를 눌러요</li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>
+    <div class="lec-today"><span class="lec-big">${li.no}<small>강</small></span><span style="flex:1;text-align:left"><b class="disp" style="font-size:20px;font-weight:400">오늘은 ${li.no}강!</b><br><span style="font-size:15px">EBS ${esc(li.name)}</span></span></div>
+    ${lecFinderHTML(s, n)}
+    <ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b>을 찾아서 주황색 ▶ 를 눌러요 <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>
     <p class="muted" style="font-size:14px">📘 교재가 있으면 Book${li.book} ${li.pages}쪽을 펴 놓아요</p>
-    <a class="btn big" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! 보러 갈게</a>`;
+    <a class="btn big" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! ${li.no}강 보러 갈게</a>`;
 }
 function openLecture(s, n, opt){
   eyeOverlay(lectureGuardHTML(s, n), o => {
     const a = o.querySelector('[data-lecgo]');
     a.addEventListener('click', () => { LECW = { s, n, at:Date.now(), opt:!!opt }; try { sessionStorage.setItem('lecw', JSON.stringify(LECW)); } catch (e) {} setTimeout(() => go('lecwait'), 50); });
   });
-  speak(`강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. ${lectInfo(s, n).no}강이에요.`);
+  { const li = lectInfo(s, n); speak(`강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
 }
 VIEWS.lecwait = () => {
   if (!LECW) { try { LECW = JSON.parse(sessionStorage.getItem('lecw') || 'null'); } catch (e) {} }
@@ -5011,7 +5069,7 @@ VIEWS.lecwait = () => {
     <span style="font-size:64px">📺</span>
     <h1>${li.no}강 보는 중</h1>
     <p class="muted">${esc(li.name)} · ${esc(li.desc)} · ${li.mins}분</p>
-    ${stageHTML(150, { expr:'happy', size:110 })}
+    ${LECW.opt ? stageHTML(150, { expr:'happy', size:110 }) : lecFinderHTML(LECW.s, LECW.n)}
     <div class="bubble">강의를 끝까지 다 보고 나서 눌러 줘!${mins >= 1 ? `<br><span class="muted" style="font-size:15px">지금까지 ${mins}분</span>` : ''}</div>
     <button class="btn big mint" data-a="lecdone">다 봤어요!</button>
     <a class="btn ghost small" href="${ebsCourseUrl(LECW.s, LECW.n)}" target="_blank" rel="noopener">강의 화면 다시 열기</a>
@@ -5019,6 +5077,20 @@ VIEWS.lecwait = () => {
   </section>`;
 };
 document.addEventListener('visibilitychange', () => { if (!document.hidden && SCREEN === 'lecwait') go('lecwait'); });
+/* 다 봤어요 → 몇 강을 봤는지 직접 고르기. 오늘 강의가 아니면 오늘 강의는 내일 다시 나온다 */
+VIEWS.leccheck = () => {
+  if (!LECW) return go('home');
+  const w = LECW, opts = lecNeighbors(w.s, w.n);
+  app().innerHTML = `<section class="screen" style="justify-content:center;align-items:center;text-align:center">
+    ${stageHTML(140, { expr:'think', size:104 })}
+    <h2>재윤아, 몇 강을 봤어?</h2>
+    <p class="muted">방금 본 강의를 눌러 줘</p>
+    <div class="lec-pick">${opts.map(x => `<button class="ebs-row big" data-a="lecwatched" data-v="${x.n}"><span class="ebs-no">${x.no}강</span><span class="ebs-t">${esc(x.title)}<small>${esc(x.desc)}</small></span></button>`).join('')}
+      <div class="row" style="gap:10px"><button class="ebs-row big other" data-a="lecwatched" data-v="-1" style="flex:1"><span class="ebs-no">✋</span><span class="ebs-t">다른 강의를 봤어요</span></button>
+      <button class="ebs-row big other" data-a="lecwatched" data-v="0" style="flex:1"><span class="ebs-no">?</span><span class="ebs-t">잘 모르겠어요</span></button></div></div>
+  </section>`;
+  speak('재윤아, 몇 강을 봤어? 방금 본 강의를 눌러 줘');
+};
 function afterLecture(opt){
   const b = RUN && RUN.b;
   const next = !b || b.done ? 'home' : opt ? 'intro' : b.cur && !b.cur.test && b.idx === 0 ? 'lesson' : 'intro';

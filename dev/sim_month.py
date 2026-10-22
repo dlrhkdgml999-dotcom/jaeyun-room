@@ -21,6 +21,7 @@ async (acc) => {
       ov.remove(); LECW = { s:b.cur.subj, n:b.cur.lec, at:Date.now() - 28 * 60000, opt:false }; go('lecwait'); await sleep(3);
       if (SCREEN !== 'lecwait') log.errs.push('lecwait 아님');
       ACT.lecdone({ dataset:{ sure:'1' } }); await sleep(3);
+      if (SCREEN === 'leccheck') { ACT.lecwatched({ dataset:{ v:String(b.cur.lec) } }); await sleep(3); }
       if (SCREEN !== 'eyebreak') log.errs.push('강의 뒤 눈쉬기 아님 ' + SCREEN);
       log.lec = { s:b.cur.subj, n:b.cur.lec };
       ACT.eyedone({ dataset:{ v:document.querySelector('#eyedone').dataset.v } }); await sleep(3);

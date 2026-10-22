@@ -116,6 +116,7 @@ class Sim:
             await self.ev("(() => { const b = RUN.b; document.querySelector('.eye-overlay').remove(); LECW = { s:b.cur.subj, n:b.cur.lec, at:Date.now() - 28 * 60000, opt:false }; go('lecwait'); })()")
             await self.p.wait_for_timeout(100)
             await self.click('[data-a="lecdone"]'); await self.p.wait_for_timeout(150)
+            if await self.screen() == 'leccheck': await self.click(f'[data-a="lecwatched"][data-v="{await self.ev("RUN.b.cur.lec")}"]'); await self.p.wait_for_timeout(150)
             if await self.screen() == 'eyebreak': await self.ev("ACT.eyedone({ dataset:{ v:document.querySelector('#eyedone').dataset.v } })"); await self.p.wait_for_timeout(150)
         g = 0
         while await self.screen() == 'cards' and g < 8:
