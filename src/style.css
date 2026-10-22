@@ -596,3 +596,17 @@ button.sd:active{transform:scale(.95)}
   .scal{max-width:620px;margin:0 auto}
   .heat-legend{justify-content:center}
 }
+/* 과목별 맞은 · 틀린 문제 */
+.ptabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.ptab{border:2px solid var(--line);background:#fff;border-radius:14px;padding:8px 2px;display:grid;gap:3px;justify-items:center;font:inherit;color:var(--ink);min-width:0}
+.ptab b{font-family:var(--f-display);font-weight:400;font-size:17px;white-space:nowrap}
+.ptab span{font-size:12px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 6px} .ptab i{font-style:normal;white-space:nowrap}
+.ptab.on{border-color:var(--pink-deep);background:var(--pink-pale);box-shadow:0 0 0 2px rgba(238,95,141,.2)}
+@media (max-width:420px){ .ptab b{font-size:15px} .ptab span{font-size:11px} }
+.pdate{font-family:var(--f-display);font-size:15px;color:var(--ink-soft);margin:8px 2px 0}
+.lq.okb{border-color:#CDEBDD;background:#F7FCF9}
+.lq .lr{font-size:14px}
+.ptag{display:inline-block;font-size:11px;background:var(--lav-deep);color:#fff;border-radius:6px;padding:0 5px;margin-right:5px;vertical-align:1px}
+.subj-acc .r.tap{cursor:pointer;border-radius:8px} .subj-acc .r.tap:active{background:var(--bg)}
+.sticky-chips{position:static;padding:4px 0 0}
+#dayDetail{scroll-margin-top:8px}

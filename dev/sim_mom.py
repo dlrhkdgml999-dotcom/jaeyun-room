@@ -103,12 +103,36 @@ async def main():
             # 과목 · 틀린 것만
             await s.click('[data-a="studyset"][data-subj="math"]'); await p.wait_for_timeout(150)
             await s.click('[data-a="studyset"][data-only="1"]'); await p.wait_for_timeout(150)
-            m = await s.ev("""(() => ({ shown:document.querySelectorAll('#dayDetail .lq').length, should:dayLogs(STUDY.sel).filter(x => x.board === 'math' && x.r !== 1).length,
-              wrongPanel:document.querySelectorAll('.panel:last-child .lq').length, wrongShould:Math.min(30, studySummary().logs.filter(x => x.r !== 1 && logSubj(x) === 'math').length) }))()""")
-            print(f'[{tag}] 수학 · 틀린 것만:', m)
+            m = await s.ev("""(() => ({ shown:document.querySelectorAll('#dayDetail .lq').length, should:dayLogs(STUDY.sel).filter(x => x.board === 'math' && x.r !== 1).length }))()""")
+            print(f'[{tag}] 그날 수학 · 틀린 것만:', m)
             s.expect(m['shown'] == m['should'], '수학 틀린 것만 거르기가 맞지 않음')
-            s.expect(m['wrongPanel'] == m['wrongShould'], '기간 틀린 문제 목록 개수가 맞지 않음')
             await vshot(s, '#dayDetail', f'mathwrong_{tag}')
+            # 과목별 맞은 · 틀린 문제 (기간 전체)
+            await s.click('.subj-acc .r.tap[data-psubj="kor"]'); await p.wait_for_timeout(500)
+            top = await s.ev("Math.round(document.querySelector('#subjProblems').getBoundingClientRect().top)")
+            s.expect(-5 < top < 120, f'요약에서 국어를 눌렀는데 과목별 문제로 안 내려감 ({top})')
+            for subj in ['kor', 'math', 'eng', 'dict']:
+                await s.click(f'.ptab[data-psubj="{subj}"]'); await p.wait_for_timeout(120)
+                r = {}
+                for pres in ['wrong', 'right', 'all']:
+                    await s.click(f'[data-a="studyset"][data-pres="{pres}"]'); await p.wait_for_timeout(100)
+                    r[pres] = await s.ev("""(() => { const sm = studySummary(), all = [...sm.logs, ...sm.ks.flatMap(dictLogs)].filter(x => x.subj === STUDY.psubj);
+                      const want = STUDY.pres === 'wrong' ? all.filter(x => x.r !== 1) : STUDY.pres === 'right' ? all.filter(x => x.r === 1) : all;
+                      const rows = document.querySelectorAll('#subjProblems .lq').length; return { rows, want:Math.min(40, want.length), total:want.length,
+                        tab:document.querySelector('.ptab.on span').textContent.trim(), bad:[...document.querySelectorAll('#subjProblems .lq')].some(e => (e.classList.contains('okb')) !== (STUDY.pres !== 'wrong' && e.querySelector('.lr.ok') !== null) && STUDY.pres !== 'all') }; })()""")
+                    s.expect(r[pres]['rows'] == r[pres]['want'], f"{subj} {pres}: {r[pres]['rows']}줄, 기대 {r[pres]['want']}")
+                    s.expect(not r[pres]['bad'], f'{subj} {pres}: 맞은/틀린 문제가 섞여 나옴')
+                s.expect(r['wrong']['total'] + r['right']['total'] == r['all']['total'], f'{subj}: 맞음 + 틀림 ≠ 전부')
+                print(f"[{tag}] {subj}: 탭 '{r['all']['tab']}' · 틀림 {r['wrong']['total']} · 맞음 {r['right']['total']}")
+                if subj == 'dict': s.expect(r['right']['total'] >= 9 and r['wrong']['total'] >= 1, '받아쓰기 채점 결과가 과목별 문제에 안 나옴')
+            await s.click('.ptab[data-psubj="math"]'); await s.click('[data-a="studyset"][data-pres="wrong"]'); await p.wait_for_timeout(150)
+            await vshot(s, '#subjProblems', f'subj_math_wrong_{tag}')
+            await s.click('[data-a="studyset"][data-pres="right"]'); await p.wait_for_timeout(150)
+            await vshot(s, '#subjProblems', f'subj_math_right_{tag}')
+            if await p.locator('[data-a="studyset"][data-pmore="1"]').count():
+                n0 = await s.ev("document.querySelectorAll('#subjProblems .lq').length"); await s.click('[data-a="studyset"][data-pmore="1"]'); await p.wait_for_timeout(120)
+                n1 = await s.ev("document.querySelectorAll('#subjProblems .lq').length"); print('더 보기:', n0, '→', n1); s.expect(n1 > n0, '더 보기가 안 됨')
+            await s.click('[data-a="studyset"][data-pres="wrong"]')
             await s.click('[data-a="studyset"][data-only="1"]'); await s.click('[data-a="studyset"][data-subj="all"]')
             # 직접 기간: 지난주
             await s.click('[data-a="studyset"][data-preset="lastweek"]'); await p.wait_for_timeout(150)

@@ -615,6 +615,20 @@ button.sd:active{transform:scale(.95)}
   .scal{max-width:620px;margin:0 auto}
   .heat-legend{justify-content:center}
 }
+/* 과목별 맞은 · 틀린 문제 */
+.ptabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.ptab{border:2px solid var(--line);background:#fff;border-radius:14px;padding:8px 2px;display:grid;gap:3px;justify-items:center;font:inherit;color:var(--ink);min-width:0}
+.ptab b{font-family:var(--f-display);font-weight:400;font-size:17px;white-space:nowrap}
+.ptab span{font-size:12px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 6px} .ptab i{font-style:normal;white-space:nowrap}
+.ptab.on{border-color:var(--pink-deep);background:var(--pink-pale);box-shadow:0 0 0 2px rgba(238,95,141,.2)}
+@media (max-width:420px){ .ptab b{font-size:15px} .ptab span{font-size:11px} }
+.pdate{font-family:var(--f-display);font-size:15px;color:var(--ink-soft);margin:8px 2px 0}
+.lq.okb{border-color:#CDEBDD;background:#F7FCF9}
+.lq .lr{font-size:14px}
+.ptag{display:inline-block;font-size:11px;background:var(--lav-deep);color:#fff;border-radius:6px;padding:0 5px;margin-right:5px;vertical-align:1px}
+.subj-acc .r.tap{cursor:pointer;border-radius:8px} .subj-acc .r.tap:active{background:var(--bg)}
+.sticky-chips{position:static;padding:4px 0 0}
+#dayDetail{scroll-margin-top:8px}
 
 </style>
 </head>
@@ -635,7 +649,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261022135934";
+window.APP_VERSION = "20261022141057";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -5835,13 +5849,12 @@ function dayDetailHTML(k){
   </div>`;
 }
 VIEWS.study = (arg) => {
-  if (!STUDY) { const [a, b] = studyPreset('month'); STUDY = { from:a, to:b, sel:todayKey(), subj:'all', only:false, preset:'month', wrongAll:false }; }
+  if (!STUDY) { const [a, b] = studyPreset('month'); STUDY = { from:a, to:b, sel:todayKey(), subj:'all', only:false, preset:'month', wrongAll:false, psubj:'math', pres:'wrong', pmore:0 }; }
   if (arg && arg.sel) { STUDY.sel = arg.sel; if (STUDY.sel < STUDY.from || STUDY.sel > STUDY.to) { const [a, b] = studyPreset('month'); Object.assign(STUDY, { from:a, to:b, preset:'month' }); } }
   const sm = studySummary(), f = STUDY.subj;
   const presets = [['today','오늘'],['week','이번 주'],['lastweek','지난주'],['month','이번 달'],['lastmonth','지난달'],['30','최근 30일'],['all','처음부터']];
   const subjRows = [['kor','국어'],['math','수학'],['eng','영어'],['rev','복습']].map(([s, l]) => { const a = sm.acc[s], p = a.n ? Math.round(a.c / a.n * 100) : null;
-    return `<div class="r"><span>${l}</span><span class="m"><i style="width:${p || 0}%;background:${SUBJ_COLOR[s]}"></i></span><span style="text-align:right">${p === null ? '-' : p + '%'}</span><span class="muted" style="text-align:right">${fmtMin(Math.round(a.m / 60))}</span></div>`; }).join('');
-  const wrongs = sm.logs.filter(x => x.r !== 1 && (f === 'all' || logSubj(x) === f));
+    return `<div class="r tap" data-a="studyset" data-psubj="${s === 'rev' ? 'all' : s}" role="button"><span>${l}</span><span class="m"><i style="width:${p || 0}%;background:${SUBJ_COLOR[s]}"></i></span><span style="text-align:right">${p === null ? '-' : p + '%'}</span><span class="muted" style="text-align:right">${fmtMin(Math.round(a.m / 60))}</span></div>`; }).join('');
   const avgDay = sm.days ? Math.round(sm.mins / sm.days) : 0;
   app().innerHTML = `<section class="screen adult study">
     <div class="row"><button class="icon-btn" data-a="go" data-v="adult" aria-label="엄마 · 오빠 메뉴로">${ICON.back}</button><h2 style="flex:1">재윤이 공부 기록</h2></div>
@@ -5862,25 +5875,60 @@ VIEWS.study = (arg) => {
       ${calHTML()}
       <div class="heat-legend"><span class="sw h0"></span>안 함<span class="sw h1"></span>~20<span class="sw h2"></span>~40<span class="sw h3"></span>~60<span class="sw h4"></span>60분+ <span class="lg-ck">✓ 다 함</span><span class="lg-part">점선 = 다 못 함</span></div>
     </div>
-    <div class="chips sticky-chips">${SUBJ_ALL.map(([v, l]) => `<button class="chip ${f === v ? 'on' : ''}" data-a="studyset" data-subj="${v}">${l}</button>`).join('')}<button class="chip ${STUDY.only ? 'on warn' : ''}" data-a="studyset" data-only="1">틀린 것만</button></div>
+    <p class="muted" style="font-size:14px;margin:6px 2px -4px">고른 날짜에 푼 문제</p><div class="chips sticky-chips">${SUBJ_ALL.map(([v, l]) => `<button class="chip ${f === v ? 'on' : ''}" data-a="studyset" data-subj="${v}">${l}</button>`).join('')}<button class="chip ${STUDY.only ? 'on warn' : ''}" data-a="studyset" data-only="1">틀린 것만</button></div>
     ${dayDetailHTML(STUDY.sel)}
-    <div class="panel"><h3>이 기간에 틀린 문제 <span class="pill ${wrongs.length ? 'wait' : 'ok'}" style="vertical-align:middle">${wrongs.length}개</span></h3>
-      <p class="muted" style="font-size:14px">✗ 두 번 다 틀림 · △ 힌트 보고 두 번째에 맞힘. 틀린 문제는 복습 판에 다시 나와요.</p>
-      ${wrongs.length ? `<div class="lqs">${(STUDY.wrongAll ? wrongs : wrongs.slice(-30)).reverse().map(x => logRowHTML(x, true)).join('')}</div>${wrongs.length > 30 && !STUDY.wrongAll ? `<button class="btn ghost small" data-a="studyset" data-wrongall="1">${wrongs.length - 30}개 더 보기</button>` : ''}` : '<p class="muted">없어요!</p>'}
-    </div>
+    ${subjProblemsPanel(sm)}
   </section>`;
 };
 function studySet(el){
   const ds = el.dataset;
-  if (ds.preset) { const [a, b] = studyPreset(ds.preset); Object.assign(STUDY, { from:a, to:b, preset:ds.preset, wrongAll:false }); if (STUDY.sel < a || STUDY.sel > b) STUDY.sel = b; }
-  else if (ds.range) { let a = $('#sfrom').value, b = $('#sto').value; if (!a || !b) return; if (a > b) [a, b] = [b, a]; if (b > todayKey()) b = todayKey(); Object.assign(STUDY, { from:a, to:b, preset:'', wrongAll:false }); if (STUDY.sel < a || STUDY.sel > b) STUDY.sel = b; }
+  if (ds.preset) { const [a, b] = studyPreset(ds.preset); Object.assign(STUDY, { from:a, to:b, preset:ds.preset, wrongAll:false, pmore:0 }); if (STUDY.sel < a || STUDY.sel > b) STUDY.sel = b; }
+  else if (ds.range) { let a = $('#sfrom').value, b = $('#sto').value; if (!a || !b) return; if (a > b) [a, b] = [b, a]; if (b > todayKey()) b = todayKey(); Object.assign(STUDY, { from:a, to:b, preset:'', wrongAll:false, pmore:0 }); if (STUDY.sel < a || STUDY.sel > b) STUDY.sel = b; }
   else if (ds.day) { STUDY.sel = ds.day; const y = scrollY; VIEWS.study(); scrollTo(0, y); const el2 = $('#dayDetail'); if (el2) el2.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
   else if (ds.subj) STUDY.subj = ds.subj;
   else if (ds.only) STUDY.only = !STUDY.only;
   else if (ds.wrongall) STUDY.wrongAll = true;
+  else if (ds.psubj) { STUDY.psubj = ds.psubj; STUDY.pmore = 0; if (el.classList.contains('tap')) { const y0 = scrollY; VIEWS.study(); scrollTo(0, y0); const pp = $('#subjProblems'); if (pp) pp.scrollIntoView({ behavior:'smooth', block:'start' }); return; } }
+  else if (ds.pres) { STUDY.pres = ds.pres; STUDY.pmore = 0; }
+  else if (ds.pmore) STUDY.pmore++;
   const y = scrollY; VIEWS.study(); scrollTo(0, y);
 }
 ACT.gotograde = () => { S.adultTab = 'mom'; go('adult'); setTimeout(() => { const p = $('#gradePanel'); if (p) p.scrollIntoView({ behavior:'smooth', block:'start' }); }, 60); };
+
+/* ---------- 과목별 맞은 문제 · 틀린 문제 (기간 전체) ---------- */
+/* 복습 판에서 푼 문제도 원래 과목으로 센다. 받아쓰기는 엄마가 채점한 것만 */
+function dictLogs(k){
+  const dy = S.days[k], g = gradeOf(k); if (!dy || !dy.dict || !g.graded) return [];
+  return dy.dict.words.map((w, i) => ({ k, board:'eng', t:`받아쓰기 '${w}'`, a:w, w:'', r:g.marks[i] ? 1 : 0, s:0, subj:'dict' }));
+}
+function subjProblemsPanel(sm){
+  const all = [...sm.logs, ...sm.ks.flatMap(dictLogs)];
+  const tabs = [['kor','국어'],['math','수학'],['eng','영어'],['dict','받아쓰기'],['all','전체']];
+  const cnt = s => { const xs = s === 'all' ? all : all.filter(x => x.subj === s); return { ok:xs.filter(x => x.r === 1).length, no:xs.filter(x => x.r !== 1).length, xs }; };
+  const ps = STUDY.psubj, cur = cnt(ps), pres = STUDY.pres;
+  const list = (pres === 'wrong' ? cur.xs.filter(x => x.r !== 1) : pres === 'right' ? cur.xs.filter(x => x.r === 1) : cur.xs).slice().reverse();
+  const shown = list.slice(0, 40 * (STUDY.pmore + 1));
+  // 날짜별로 묶기
+  let html = '', last = '';
+  shown.forEach(x => { if (x.k !== last) { last = x.k; const [y, m, d] = x.k.split('-').map(Number); html += `<div class="pdate">${m}월 ${d}일 ${DOW[new Date(y, m - 1, d).getDay()]}</div>`; } html += probRowHTML(x); });
+  const nm = { kor:'국어', math:'수학', eng:'영어', dict:'받아쓰기', all:'전체' }[ps];
+  const rate = cur.ok + cur.no ? Math.round(cur.ok / (cur.ok + cur.no) * 100) : null;
+  return `<div class="panel" id="subjProblems"><h3>과목별 맞은 문제 · 틀린 문제</h3>
+    <div class="ptabs">${tabs.map(([v, l]) => { const c = cnt(v); return `<button class="ptab ${ps === v ? 'on' : ''}" data-a="studyset" data-psubj="${v}"><b>${l}</b><span><i class="ok">⭕ ${c.ok}</i> <i class="no">❌ ${c.no}</i></span></button>`; }).join('')}</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin:10px 0 4px">
+      ${[['wrong',`틀린 문제 ${cur.no}`],['right',`맞은 문제 ${cur.ok}`],['all',`전부 ${cur.ok + cur.no}`]].map(([v, l]) => `<button class="chip ${pres === v ? 'on' : ''} ${v === 'wrong' && pres === v ? 'warn' : ''}" data-a="studyset" data-pres="${v}">${l}</button>`).join('')}
+      <span class="spacer"></span>${rate === null ? '' : `<span class="muted" style="font-size:14px">${nm} 한 번에 맞힘 <b style="color:var(--ink)">${rate}%</b></span>`}</div>
+    <p class="muted" style="font-size:13px;margin:0 0 6px">⭕ 한 번에 맞힘 · ❌ 틀림 (△ 힌트 보고 두 번째에 맞힌 것 포함). 복습 판에서 푼 문제도 원래 과목에 들어가요. 받아쓰기는 채점한 것만.</p>
+    ${shown.length ? `<div class="lqs">${html}</div>${list.length > shown.length ? `<button class="btn ghost small" data-a="studyset" data-pmore="1" style="margin-top:8px">${list.length - shown.length}개 더 보기</button>` : ''}`
+      : `<p class="muted">${pres === 'wrong' ? '이 기간에 틀린 문제가 없어요!' : '이 기간에 기록이 없어요.'}</p>`}
+  </div>`;
+}
+function probRowHTML(x){
+  const icon = x.r === 1 ? '<span class="lr ok">⭕</span>' : x.r === 2 ? '<span class="lr re" title="두 번째에 맞힘">△</span>' : '<span class="lr no">❌</span>';
+  const tag = x.board === 'rev' ? '<span class="ptag">복습</span>' : '';
+  return `<div class="lq ${x.r === 1 ? 'okb' : x.r === 2 ? 're' : 'no'}">${icon}<div class="lt"><span>${tag}${esc(x.t)}</span>
+    <span class="la">정답 <b>${esc(x.a)}</b>${x.w ? ` · 재윤이 답 <s>${esc(x.w)}</s>` : ''}${x.r === 2 ? ' · 힌트 보고 두 번째에 맞힘' : ''}</span></div></div>`;
+}
 
 /* ===================== 매일 뽑기 캡슐 · 도감 · 오늘 순서 고르기 ===================== */
 /* 하루 공부를 다 끝내면 캡슐 하나. 안에는 토리 친구가 랜덤으로 (보통 · 반짝 · 무지개) */
