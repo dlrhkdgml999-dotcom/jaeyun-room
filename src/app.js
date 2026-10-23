@@ -1282,7 +1282,7 @@ const ACT = {
   },
   lecafter(){ SFX.tap(); afterLecture(false); },
   lecfail(){ const w = LECW; LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
-    notify('mom', '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
+    notify('mom', ebsUseApp() ? '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿에 EBS 초등 앱이 깔려 있고 로그인돼 있는지 확인해 주세요' : '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
     const b = RUN && RUN.b; if (b && b.cur) { b.lecSkip = true; save(); }
     speak('괜찮아! 엄마한테 알려 둘게. 오늘은 토리랑 개념을 배우자!');
     if (w && !w.opt && b && b.cur && !b.done && !b.cur.test) return go('cards', { lesson:b.cur.lesson, fromBoard:true });
@@ -1348,6 +1348,7 @@ const ACT = {
     S.ebsLinks = Object.assign({}, S.ebsLinks, { [cid]:map }); save();
     toast(urls.length > 1 ? `${li.no}강부터 ${urls.length}개 저장했어요` : `${li.no}강 바로가기를 저장했어요`); go('adult');
   },
+  ebsmode(el){ S.ebsMode = el.dataset.v; save(); toast(S.ebsMode === 'app' ? '강의를 EBS 초등 앱으로 열어요' : '강의를 인터넷 EBS 사이트로 열어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsplayer(){ S.ebsPlayer = !S.ebsPlayer; save(); toast(S.ebsPlayer ? '강의를 바로 재생해요. "시험" 버튼으로 열리는지 확인해 주세요' : '강좌 화면을 열고 강의목록에서 찾게 해요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsclear(el){ if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 지울까요? 한 번 더 누르면 지워져요'; return; } S.ebsLinks = {}; save(); go('adult'); },
   savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },

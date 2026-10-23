@@ -702,7 +702,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261024031958";
+window.APP_VERSION = "20261024034315";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -2232,7 +2232,7 @@ const ACT = {
   },
   lecafter(){ SFX.tap(); afterLecture(false); },
   lecfail(){ const w = LECW; LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
-    notify('mom', '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
+    notify('mom', ebsUseApp() ? '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿에 EBS 초등 앱이 깔려 있고 로그인돼 있는지 확인해 주세요' : '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
     const b = RUN && RUN.b; if (b && b.cur) { b.lecSkip = true; save(); }
     speak('괜찮아! 엄마한테 알려 둘게. 오늘은 토리랑 개념을 배우자!');
     if (w && !w.opt && b && b.cur && !b.done && !b.cur.test) return go('cards', { lesson:b.cur.lesson, fromBoard:true });
@@ -2298,6 +2298,7 @@ const ACT = {
     S.ebsLinks = Object.assign({}, S.ebsLinks, { [cid]:map }); save();
     toast(urls.length > 1 ? `${li.no}강부터 ${urls.length}개 저장했어요` : `${li.no}강 바로가기를 저장했어요`); go('adult');
   },
+  ebsmode(el){ S.ebsMode = el.dataset.v; save(); toast(S.ebsMode === 'app' ? '강의를 EBS 초등 앱으로 열어요' : '강의를 인터넷 EBS 사이트로 열어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsplayer(){ S.ebsPlayer = !S.ebsPlayer; save(); toast(S.ebsPlayer ? '강의를 바로 재생해요. "시험" 버튼으로 열리는지 확인해 주세요' : '강좌 화면을 열고 강의목록에서 찾게 해요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsclear(el){ if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 지울까요? 한 번 더 누르면 지워져요'; return; } S.ebsLinks = {}; save(); go('adult'); },
   savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },
@@ -4852,6 +4853,15 @@ function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.
   // 오빠가 "로그인된 태블릿에서 재생 주소가 바로 열림"을 확인하면 S.ebsPlayer = true로 재생 주소를 씀
   if (lk && lk.sid && S.ebsPlayer) return `${EBS_PLAYER}?cid=${cid}&sid=${lk.sid}&lid=${lk.id}&eno=1&encType=${lk.enc || 'M05'}&captionYn=N&indexPosition=`;
   return `https://primary.ebs.co.kr/course/view?courseId=${cid}${lk ? `&lectId=${lk.id}` : ''}`; }
+/* ---------- EBS 초등 앱으로 열기 (2026-10-24 오빠가 확인: 앱은 로그인이 유지됨, 웹은 브라우저를 닫으면 풀림) ----------
+   안드로이드에서는 intent 주소로 앱을 연다. 앱이 없거나 못 열면 Play 스토어(설치·열기)로.
+   S.ebsMode: 'app'(기본, EBS 초등 앱) | 'web'(인터넷 EBS 사이트, 로그인 필요) */
+const EBS_APP_PKG = 'kr.ebs.primary.player', EBS_APP_STORE = 'https://play.google.com/store/apps/details?id=kr.ebs.primary.player';
+function isAndroid(){ return window.__forceAndroid || /Android/i.test(navigator.userAgent || ''); }
+function ebsUseApp(){ return (S.ebsMode || 'app') === 'app' && isAndroid(); }
+function ebsAppUrl(){ return `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${EBS_APP_PKG};S.browser_fallback_url=${encodeURIComponent(EBS_APP_STORE)};end`; }
+function ebsOpenUrl(s, n){ return ebsUseApp() ? ebsAppUrl() : ebsCourseUrl(s, n); }
+function ebsOpenAttrs(s, n){ return ebsUseApp() ? `href="${ebsAppUrl()}"` : `href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener"`; }
 /* 주소에서 강좌·강의 번호 읽기: 재생 주소(cid·sid·lid)와 강좌 주소(courseId·lectId) 둘 다 */
 function parseEbsUrl(str){
   let u; try { u = new URL(String(str || '').trim()); } catch (e) { return null; }
@@ -5159,22 +5169,23 @@ function lecFinderHTML(s, n){
   return `<div class="ebs-list" aria-label="EBS 강의목록에서 찾을 강의"><div class="ebs-head">EBS 강의목록에서 이렇게 찾아요</div>${lecNeighbors(s, n).map(x => lecRowHTML(x, x.n === n)).join('')}</div>`;
 }
 function lectureGuardHTML(s, n){
-  const li = lectInfo(s, n), direct = !!ebsLinkOf(s, n) && !!S.ebsPlayer;
+  const li = lectInfo(s, n), app = ebsUseApp(), direct = !app && !!ebsLinkOf(s, n) && !!S.ebsPlayer;
   // 바로가기가 있으면 강의목록 찾는 그림은 필요 없어서 빼고 짧게 (버튼이 화면 안에 들어오게)
   return `${distanceArt()}<p class="disp" style="font-size:21px;line-height:1.4">강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 허리 펴고 바르게 앉아서 봐요.</p>
     <div class="lec-today"><span class="lec-big">${li.no}<small>강</small></span><span style="flex:1;text-align:left"><b class="disp" style="font-size:20px;font-weight:400">오늘은 ${li.no}강!</b><br><span style="font-size:15px">EBS ${esc(li.name)}</span><br><span style="font-size:15px">${esc(li.title)}</span></span></div>
     ${direct ? '' : lecFinderHTML(s, n)}
-    ${direct ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>바로 ${li.no}강</b>이 나와요</li><li>다 보면 이 화면으로 돌아와서 <b>"다 봤어요!"</b></li></ol>`
+    ${app ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>EBS 초등 앱</b>이 열려요</li><li><b>나의 학습방</b> → <b>${esc(li.name)}</b> → <b>${li.no}강</b> ▶ <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 재윤이 공부방으로 돌아와서 <b>"다 봤어요!"</b></li></ol>`
+    : direct ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>바로 ${li.no}강</b>이 나와요</li><li>다 보면 이 화면으로 돌아와서 <b>"다 봤어요!"</b></li></ol>`
     : `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b>을 찾아서 주황색 ▶ 를 눌러요 <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>`}
     <p class="muted" style="font-size:14px">📘 교재가 있으면 Book${li.book} ${li.pages}쪽을 펴 놓아요</p>
-    <a class="btn big lec-go" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! ${li.no}강 보러 갈게</a>`;
+    <a class="btn big lec-go" ${ebsOpenAttrs(s, n)} data-close data-lecgo="1">${app ? `EBS 앱 열고 ${li.no}강 보러 갈게` : `알겠어! ${li.no}강 보러 갈게`}</a>`;
 }
 function openLecture(s, n, opt){
   eyeOverlay(lectureGuardHTML(s, n), o => {
     const a = o.querySelector('[data-lecgo]');
     a.addEventListener('click', () => { LECW = { s, n, at:Date.now(), opt:!!opt }; try { sessionStorage.setItem('lecw', JSON.stringify(LECW)); } catch (e) {} setTimeout(() => go('lecwait'), 50); });
   });
-  { const li = lectInfo(s, n); speak(ebsLinkOf(s, n) && S.ebsPlayer ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
+  { const li = lectInfo(s, n); speak(ebsUseApp() ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 이 에스 앱이 열리면 나의 학습방에서 ${li.local}강을 찾아서 눌러!` : ebsLinkOf(s, n) && S.ebsPlayer ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
 }
 VIEWS.lecwait = () => {
   if (!LECW) { try { LECW = JSON.parse(sessionStorage.getItem('lecw') || 'null'); } catch (e) {} }
@@ -5187,7 +5198,7 @@ VIEWS.lecwait = () => {
     ${LECW.opt ? stageHTML(150, { expr:'happy', size:110 }) : lecFinderHTML(LECW.s, LECW.n)}
     <div class="bubble">강의를 끝까지 다 보고 나서 눌러 줘!${mins >= 1 ? `<br><span class="muted" style="font-size:15px">지금까지 ${mins}분</span>` : ''}</div>
     <button class="btn big mint" data-a="lecdone">다 봤어요!</button>
-    <a class="btn ghost small" href="${ebsCourseUrl(LECW.s, LECW.n)}" target="_blank" rel="noopener">강의 화면 다시 열기</a>
+    <a class="btn ghost small" ${ebsOpenAttrs(LECW.s, LECW.n)}>${ebsUseApp() ? 'EBS 앱 다시 열기' : '강의 화면 다시 열기'}</a>
     <button class="grown-up" data-a="lecfail">강의가 안 열려요</button>
   </section>`;
 };
@@ -5256,9 +5267,14 @@ function ebsUpcoming(s, k = 4){
 function ebsLinkPanel(){
   // 앱에 다 들어 있는 강좌(수학 1-2 등)는 넣을 필요가 없어서 빼고 보여 준다
   const subs = ['math','kor'].filter(s => ebsUpcoming(s).some(li => { const lk = ebsLinkOf(s, li.n); return !lk || !lk.builtin; }));
-  const playerSw = `<div class="panel"><h3>EBS 강의 여는 방식</h3>
-    <div class="row"><span style="flex:1">버튼 한 번에 강의 바로 재생<br><span class="muted" style="font-size:13px">재윤이 태블릿에서 EBS에 <b>로그인</b>하고 이 강좌를 <b>학습신청</b>해 둔 뒤에 켜 주세요. 로그인이 안 돼 있으면 EBS 첫 화면으로 가 버려요. 꺼져 있으면 강좌 화면을 열고 강의목록에서 찾게 안내해요.</span></span><button class="switch ${S.ebsPlayer ? 'on' : ''}" data-a="ebsplayer" aria-label="강의 바로 재생"></button></div>
-    ${S.ebsPlayer ? `<a class="btn ghost small" href="${ebsCourseUrl('kor', CURRS.kor.now.lectOff + 1)}" target="_blank" rel="noopener" style="justify-self:start">시험: 국어 01강 열어 보기</a>` : ''}</div>`;
+  const mode = S.ebsMode || 'app';
+  const playerSw = `<div class="panel"><h3>EBS 강의 여는 곳</h3>
+    <div class="row" style="flex-wrap:wrap;gap:8px">${[['app','EBS 초등 앱 (추천)'],['web','인터넷 사이트']].map(([v, l]) => `<button class="btn small ${mode === v ? '' : 'ghost'}" data-a="ebsmode" data-v="${v}">${mode === v ? '✓ ' : ''}${l}</button>`).join('')}</div>
+    ${mode === 'app' ? `<p class="muted" style="font-size:14px">재윤이 태블릿에 <b>EBS 초등</b> 앱을 깔고 로그인한 뒤, 앱에서 <b>${esc(CURRS.math.now.ebs ? CURRS.math.now.ebs.name : '')}</b>, <b>${esc(CURRS.kor.now.ebs ? CURRS.kor.now.ebs.name : '')}</b>을 학습신청해 두세요. 앱은 로그인이 계속 유지돼요. 강의 버튼을 누르면 앱이 열리고, 앱이 없으면 설치 화면이 나와요.</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px"><a class="btn ghost small" href="${EBS_APP_STORE}" target="_blank" rel="noopener">EBS 초등 앱 설치</a>${isAndroid() ? `<a class="btn ghost small" href="${ebsAppUrl()}">시험: EBS 앱 열기</a>` : ''}</div>`
+    : `<div class="row"><span style="flex:1">버튼 한 번에 강의 바로 재생<br><span class="muted" style="font-size:13px">재윤이 태블릿에서 EBS에 <b>로그인</b>하고 이 강좌를 <b>학습신청</b>해 둔 뒤에 켜 주세요. 로그인이 안 돼 있으면 EBS 첫 화면으로 가 버려요. 꺼져 있으면 강좌 화면을 열고 강의목록에서 찾게 안내해요.</span></span><button class="switch ${S.ebsPlayer ? 'on' : ''}" data-a="ebsplayer" aria-label="강의 바로 재생"></button></div>
+    ${S.ebsPlayer ? `<a class="btn ghost small" href="${ebsCourseUrl('kor', CURRS.kor.now.lectOff + 1)}" target="_blank" rel="noopener" style="justify-self:start">시험: 국어 01강 열어 보기</a>` : ''}
+    <p class="muted" style="font-size:13px">인터넷 EBS는 브라우저를 닫으면 로그인이 풀려서, 로그인 안 된 상태로 열면 EBS 첫 화면이 나와요.</p>`}</div>`;
   if (!subs.length) return playerSw;
   const SN = { math:'수학', kor:'국어' };
   const rows = subs.flatMap(s => ebsUpcoming(s).map(li => ({ s, li, lk:ebsLinkOf(s, li.n) })));
@@ -5284,7 +5300,7 @@ function ebsLinkPanel(){
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
 const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports','collect','friends'];
-const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey','ntfyOff','ebsPlayer'];
+const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey','ntfyOff','ebsPlayer','ebsMode'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
 function linked(){ return !!(S.local && S.local.fid); }

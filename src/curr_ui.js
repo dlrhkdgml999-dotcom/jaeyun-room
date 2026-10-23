@@ -141,22 +141,23 @@ function lecFinderHTML(s, n){
   return `<div class="ebs-list" aria-label="EBS 강의목록에서 찾을 강의"><div class="ebs-head">EBS 강의목록에서 이렇게 찾아요</div>${lecNeighbors(s, n).map(x => lecRowHTML(x, x.n === n)).join('')}</div>`;
 }
 function lectureGuardHTML(s, n){
-  const li = lectInfo(s, n), direct = !!ebsLinkOf(s, n) && !!S.ebsPlayer;
+  const li = lectInfo(s, n), app = ebsUseApp(), direct = !app && !!ebsLinkOf(s, n) && !!S.ebsPlayer;
   // 바로가기가 있으면 강의목록 찾는 그림은 필요 없어서 빼고 짧게 (버튼이 화면 안에 들어오게)
   return `${distanceArt()}<p class="disp" style="font-size:21px;line-height:1.4">강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 허리 펴고 바르게 앉아서 봐요.</p>
     <div class="lec-today"><span class="lec-big">${li.no}<small>강</small></span><span style="flex:1;text-align:left"><b class="disp" style="font-size:20px;font-weight:400">오늘은 ${li.no}강!</b><br><span style="font-size:15px">EBS ${esc(li.name)}</span><br><span style="font-size:15px">${esc(li.title)}</span></span></div>
     ${direct ? '' : lecFinderHTML(s, n)}
-    ${direct ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>바로 ${li.no}강</b>이 나와요</li><li>다 보면 이 화면으로 돌아와서 <b>"다 봤어요!"</b></li></ol>`
+    ${app ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>EBS 초등 앱</b>이 열려요</li><li><b>나의 학습방</b> → <b>${esc(li.name)}</b> → <b>${li.no}강</b> ▶ <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 재윤이 공부방으로 돌아와서 <b>"다 봤어요!"</b></li></ol>`
+    : direct ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>바로 ${li.no}강</b>이 나와요</li><li>다 보면 이 화면으로 돌아와서 <b>"다 봤어요!"</b></li></ol>`
     : `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b>을 찾아서 주황색 ▶ 를 눌러요 <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>`}
     <p class="muted" style="font-size:14px">📘 교재가 있으면 Book${li.book} ${li.pages}쪽을 펴 놓아요</p>
-    <a class="btn big lec-go" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! ${li.no}강 보러 갈게</a>`;
+    <a class="btn big lec-go" ${ebsOpenAttrs(s, n)} data-close data-lecgo="1">${app ? `EBS 앱 열고 ${li.no}강 보러 갈게` : `알겠어! ${li.no}강 보러 갈게`}</a>`;
 }
 function openLecture(s, n, opt){
   eyeOverlay(lectureGuardHTML(s, n), o => {
     const a = o.querySelector('[data-lecgo]');
     a.addEventListener('click', () => { LECW = { s, n, at:Date.now(), opt:!!opt }; try { sessionStorage.setItem('lecw', JSON.stringify(LECW)); } catch (e) {} setTimeout(() => go('lecwait'), 50); });
   });
-  { const li = lectInfo(s, n); speak(ebsLinkOf(s, n) && S.ebsPlayer ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
+  { const li = lectInfo(s, n); speak(ebsUseApp() ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 이 에스 앱이 열리면 나의 학습방에서 ${li.local}강을 찾아서 눌러!` : ebsLinkOf(s, n) && S.ebsPlayer ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
 }
 VIEWS.lecwait = () => {
   if (!LECW) { try { LECW = JSON.parse(sessionStorage.getItem('lecw') || 'null'); } catch (e) {} }
@@ -169,7 +170,7 @@ VIEWS.lecwait = () => {
     ${LECW.opt ? stageHTML(150, { expr:'happy', size:110 }) : lecFinderHTML(LECW.s, LECW.n)}
     <div class="bubble">강의를 끝까지 다 보고 나서 눌러 줘!${mins >= 1 ? `<br><span class="muted" style="font-size:15px">지금까지 ${mins}분</span>` : ''}</div>
     <button class="btn big mint" data-a="lecdone">다 봤어요!</button>
-    <a class="btn ghost small" href="${ebsCourseUrl(LECW.s, LECW.n)}" target="_blank" rel="noopener">강의 화면 다시 열기</a>
+    <a class="btn ghost small" ${ebsOpenAttrs(LECW.s, LECW.n)}>${ebsUseApp() ? 'EBS 앱 다시 열기' : '강의 화면 다시 열기'}</a>
     <button class="grown-up" data-a="lecfail">강의가 안 열려요</button>
   </section>`;
 };
@@ -238,9 +239,14 @@ function ebsUpcoming(s, k = 4){
 function ebsLinkPanel(){
   // 앱에 다 들어 있는 강좌(수학 1-2 등)는 넣을 필요가 없어서 빼고 보여 준다
   const subs = ['math','kor'].filter(s => ebsUpcoming(s).some(li => { const lk = ebsLinkOf(s, li.n); return !lk || !lk.builtin; }));
-  const playerSw = `<div class="panel"><h3>EBS 강의 여는 방식</h3>
-    <div class="row"><span style="flex:1">버튼 한 번에 강의 바로 재생<br><span class="muted" style="font-size:13px">재윤이 태블릿에서 EBS에 <b>로그인</b>하고 이 강좌를 <b>학습신청</b>해 둔 뒤에 켜 주세요. 로그인이 안 돼 있으면 EBS 첫 화면으로 가 버려요. 꺼져 있으면 강좌 화면을 열고 강의목록에서 찾게 안내해요.</span></span><button class="switch ${S.ebsPlayer ? 'on' : ''}" data-a="ebsplayer" aria-label="강의 바로 재생"></button></div>
-    ${S.ebsPlayer ? `<a class="btn ghost small" href="${ebsCourseUrl('kor', CURRS.kor.now.lectOff + 1)}" target="_blank" rel="noopener" style="justify-self:start">시험: 국어 01강 열어 보기</a>` : ''}</div>`;
+  const mode = S.ebsMode || 'app';
+  const playerSw = `<div class="panel"><h3>EBS 강의 여는 곳</h3>
+    <div class="row" style="flex-wrap:wrap;gap:8px">${[['app','EBS 초등 앱 (추천)'],['web','인터넷 사이트']].map(([v, l]) => `<button class="btn small ${mode === v ? '' : 'ghost'}" data-a="ebsmode" data-v="${v}">${mode === v ? '✓ ' : ''}${l}</button>`).join('')}</div>
+    ${mode === 'app' ? `<p class="muted" style="font-size:14px">재윤이 태블릿에 <b>EBS 초등</b> 앱을 깔고 로그인한 뒤, 앱에서 <b>${esc(CURRS.math.now.ebs ? CURRS.math.now.ebs.name : '')}</b>, <b>${esc(CURRS.kor.now.ebs ? CURRS.kor.now.ebs.name : '')}</b>을 학습신청해 두세요. 앱은 로그인이 계속 유지돼요. 강의 버튼을 누르면 앱이 열리고, 앱이 없으면 설치 화면이 나와요.</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px"><a class="btn ghost small" href="${EBS_APP_STORE}" target="_blank" rel="noopener">EBS 초등 앱 설치</a>${isAndroid() ? `<a class="btn ghost small" href="${ebsAppUrl()}">시험: EBS 앱 열기</a>` : ''}</div>`
+    : `<div class="row"><span style="flex:1">버튼 한 번에 강의 바로 재생<br><span class="muted" style="font-size:13px">재윤이 태블릿에서 EBS에 <b>로그인</b>하고 이 강좌를 <b>학습신청</b>해 둔 뒤에 켜 주세요. 로그인이 안 돼 있으면 EBS 첫 화면으로 가 버려요. 꺼져 있으면 강좌 화면을 열고 강의목록에서 찾게 안내해요.</span></span><button class="switch ${S.ebsPlayer ? 'on' : ''}" data-a="ebsplayer" aria-label="강의 바로 재생"></button></div>
+    ${S.ebsPlayer ? `<a class="btn ghost small" href="${ebsCourseUrl('kor', CURRS.kor.now.lectOff + 1)}" target="_blank" rel="noopener" style="justify-self:start">시험: 국어 01강 열어 보기</a>` : ''}
+    <p class="muted" style="font-size:13px">인터넷 EBS는 브라우저를 닫으면 로그인이 풀려서, 로그인 안 된 상태로 열면 EBS 첫 화면이 나와요.</p>`}</div>`;
   if (!subs.length) return playerSw;
   const SN = { math:'수학', kor:'국어' };
   const rows = subs.flatMap(s => ebsUpcoming(s).map(li => ({ s, li, lk:ebsLinkOf(s, li.n) })));

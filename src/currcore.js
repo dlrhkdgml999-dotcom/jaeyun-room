@@ -64,6 +64,15 @@ function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.
   // 오빠가 "로그인된 태블릿에서 재생 주소가 바로 열림"을 확인하면 S.ebsPlayer = true로 재생 주소를 씀
   if (lk && lk.sid && S.ebsPlayer) return `${EBS_PLAYER}?cid=${cid}&sid=${lk.sid}&lid=${lk.id}&eno=1&encType=${lk.enc || 'M05'}&captionYn=N&indexPosition=`;
   return `https://primary.ebs.co.kr/course/view?courseId=${cid}${lk ? `&lectId=${lk.id}` : ''}`; }
+/* ---------- EBS 초등 앱으로 열기 (2026-10-24 오빠가 확인: 앱은 로그인이 유지됨, 웹은 브라우저를 닫으면 풀림) ----------
+   안드로이드에서는 intent 주소로 앱을 연다. 앱이 없거나 못 열면 Play 스토어(설치·열기)로.
+   S.ebsMode: 'app'(기본, EBS 초등 앱) | 'web'(인터넷 EBS 사이트, 로그인 필요) */
+const EBS_APP_PKG = 'kr.ebs.primary.player', EBS_APP_STORE = 'https://play.google.com/store/apps/details?id=kr.ebs.primary.player';
+function isAndroid(){ return window.__forceAndroid || /Android/i.test(navigator.userAgent || ''); }
+function ebsUseApp(){ return (S.ebsMode || 'app') === 'app' && isAndroid(); }
+function ebsAppUrl(){ return `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${EBS_APP_PKG};S.browser_fallback_url=${encodeURIComponent(EBS_APP_STORE)};end`; }
+function ebsOpenUrl(s, n){ return ebsUseApp() ? ebsAppUrl() : ebsCourseUrl(s, n); }
+function ebsOpenAttrs(s, n){ return ebsUseApp() ? `href="${ebsAppUrl()}"` : `href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener"`; }
 /* 주소에서 강좌·강의 번호 읽기: 재생 주소(cid·sid·lid)와 강좌 주소(courseId·lectId) 둘 다 */
 function parseEbsUrl(str){
   let u; try { u = new URL(String(str || '').trim()); } catch (e) { return null; }
