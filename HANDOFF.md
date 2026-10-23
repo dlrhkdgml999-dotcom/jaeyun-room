@@ -80,22 +80,17 @@ git add -A && git commit && git push
 - **오늘 한눈에** (`glancePanel`, study.js): 엄마·오빠 탭 맨 위. 오늘 상태(다 함 / 하는 중 n/4판 / 알림 시간 지났는데 시작 안 함), 판별 칩, 공부 시간(강의 포함)·한 번에 정답·틀린 문제 수, 본 강의, 틀린 문제 정답 4개. 누르면 공부 기록 화면 오늘 날짜로. 예전 `todayPanel`은 안 씀.
 - **하루 공부 시간** (`dayGoalPanel`, app.js): 엄마 탭·설정 탭. `S.dayGoal`(40~80분, 기본 60, ADULT_KEYS)로 `countFor` 목표 시간과 최소·최대 문제 수를 같이 늘리고 줄임(`goalFactor`). 최근 7일 다 끝낸 날 평균 실제 시간과 비교 문구. 문제 수 자동 조절은 원래 있던 `avgSec`(한 문제 8~120초로 잘라 지수평균) 그대로.
 - **EBS 강의 바로가기** (currcore.js `EBS_BUILTIN`·`ebsLinkOf`·`parseEbsUrl`·`ebsGuess`, curr_ui.js `ebsLinkPanel`): EBS 강의 재생 주소는 `primary.ebs.co.kr/pleasure/course/player/main/index?cid=강좌&sid=STEP…&lid=LS…&eno=1&encType=M…`. **lid는 강 번호마다 1씩 늘어요.** 오빠가 보내 준 첫 강·마지막 강 주소로 확인해서 앱에 넣어 둠: 수학 1-2(cid 100005137, sid STEP1000010212, 01강 LS00000000152376470 ~ 65강 …534, encType M05), 국어 1-2(cid 100006226, sid STEP1000011301, 01강 LS00000000152384353 ~ 48강 …400, encType M10). 다른 강좌(2-1 등)는 오빠 탭 "EBS 강의 바로가기"에 재생 주소를 붙여 넣으면 `S.ebsLinks[cid] = {sid, enc, 강번호:lid}`(넣어 둔 게 우선), 3개 이상 일정 간격이면 나머지 짐작. **2-1 강좌가 가까워지면 오빠에게 첫 강·마지막 강 재생 주소를 받아 `EBS_BUILTIN`에 넣기.** 앱에 다 들어 있는 강좌는 붙여넣기 칸을 안 보여 줌.
-- **폰 알림** (push.js, functions/index.js, sw.js push 처리): 아래 "폰 알림 설치".
+- **폰 알림** (push.js, firebase/apps_script.gs, sw.js push 처리): 아래 "폰 알림".
 
-## 폰 알림 설치 (오빠가 한 번만)
-구조: 엄마·오빠 폰에서 "알림 켜기" → FCM 토큰을 `families/{fid}/push/{id} = {token, roles:['mom'|'oppa'…], at, who}`에 저장 → 서버 함수 `notePush`가 `notes`에 새 글이 생기면 roles가 맞는 폰으로 data 메시지 → `sw.js`의 push 이벤트가 알림을 띄움(누르면 앱). `lateNudge`는 10분마다 오늘 알림 시간 + 30분~3시간 사이인데 오늘 판이 하나도 없으면 엄마 폰에 하루 한 번(`meta/nudge`).
-1. Firebase 콘솔 → 요금제 **Blaze(종량제)** 로 업그레이드 (결제 카드 필요. 이 정도 사용량은 무료 한도 안이라 사실상 0원. 예산 알림을 1,000원 정도로 걸어 두기).
-2. 프로젝트 설정 → **클라우드 메시징** → 웹 구성 "웹 푸시 인증서" → 키 쌍 생성 → 긴 키 복사 → 앱 **오빠 폰 설정 탭 → 폰 알림 → 웹 푸시 키**에 붙여넣기(`S.fcmKey`, 가족 기기에 같이 저장).
-3. 서버 함수 배포 (PC에서, 또는 shell.cloud.google.com 의 Cloud Shell에서):
-   ```
-   git clone https://github.com/dlrhkdgml999-dotcom/jaeyun-room && cd jaeyun-room
-   npm i -g firebase-tools && firebase login --no-localhost
-   cd functions && npm i && cd ..
-   firebase deploy --only functions --project jaeyun-room
-   ```
-   - 함수 지역은 `asia-northeast3`(서울). Firestore 위치가 다르면 배포 오류에 위치가 나옴 → `functions/index.js`의 `REGION`을 그 위치로 바꿔 다시 배포.
-4. 엄마·오빠 폰에서 앱을 열면 맨 위에 "🔔 알림 켜기" → 허용. 설정 탭에서 받을 알림(엄마/오빠) 고르기·테스트.
-- 샌드박스에서는 npm 레지스트리가 막혀 있어서 functions를 진짜 SDK로 못 돌려 봤어요. Firebase 모듈을 흉내 낸 단위 테스트로 논리(역할별 전송, 죽은 토큰 지우기, 오래된 알림 건너뛰기, 늦음 알림 하루 한 번·시작했으면 안 보냄)만 확인함.
+## 폰 알림 (Apps Script 방식, 무료 · 2026-10-24 결정)
+오빠는 Firebase 요금제(Blaze) 바꾸기 싫다고 함 → Cloud Functions(functions/) 대신 **오빠 구글 계정의 Apps Script**가 알림 서버.
+- 흐름: 알림이 생긴 기기의 `notify()` → `Relay.send()`(push.js)가 웹 앱 URL로 `{key, type:'note', to, text, at}` POST (no-cors, 끊기면 localStorage `jaeyun-relayq`에 쌓았다가 online 때 다시, 3시간 지나면 버림) → `firebase/apps_script.gs`의 `doPost`가 Firestore REST로 `families/{FID}/push` 읽고 → FCM HTTP v1으로 roles 맞는 폰에 data 메시지 → `sw.js` push 이벤트가 알림 표시. 없어진 토큰(404/UNREGISTERED)은 지움.
+- 오빠 계정 OAuth 토큰(`ScriptApp.getOAuthToken`)으로 Firestore·FCM 호출. 기본 Apps Script 프로젝트에서 부르니까 **`x-goog-user-project: jaeyun-room` 헤더**로 jaeyun-room 할당량을 씀. 필요한 범위는 `firebase/appsscript.json`(매니페스트)에.
+- `checkLate`: `setup()`이 10분마다 트리거를 만듦. 오늘 알림 시간 + 30분~3시간 사이인데 오늘 판이 없으면 엄마에게 하루 한 번(ScriptProperties `late`).
+- 주간 메일도 같은 스크립트(`type` 없이 `subject`·`html`). 메일 주소는 안 넣어도 됨.
+- 앱: 설정 탭 "🔔 알림 · 메일 서버"(`mailPanel`, weekly.js)에서 [코드 만들기] → 매니페스트·코드(`RELAY_GS`/`RELAY_MANIFEST`, 빌드 때 firebase/에서 넣음, KEY·TO·FID 채움) 복사 → URL 저장. 그다음 "폰 알림"(`pushPanel`)에서 웹 푸시 키(`S.fcmKey`, Firebase 콘솔 클라우드 메시징 → 웹 푸시 인증서, 무료 요금제에서도 됨) → 엄마·오빠 폰에서 알림 켜기. `Push.state()`: noserver → nokey → off/on.
+- 검증: 샌드박스에서 진짜 구글을 못 불러서 `apps_script.gs`는 가짜 구글 서비스로 Node에서 돌려 봄(키 확인, 역할별 전송, 죽은 토큰 지우기, 오래된 알림 건너뛰기, 늦음 알림 하루 한 번·시작했으면 안 보냄, 메일). **진짜에서 처음 안 되면 Apps Script 실행 로그의 오류(Firestore 403, FCM 403 등)를 받아서 고치기.**
+- 처음에 엄마·오빠 폰 둘 다 알림 켜고 테스트 버튼으로 확인.
 
 ## EBS 강좌 (오빠가 보내 준 강의목록 그대로 입력함)
 | 코스 | 강좌 | courseId | 강의 |
@@ -135,7 +130,7 @@ git add -A && git commit && git push
 4. **교재와 비교:** 1-2 차시는 강의 제목과 키워드로 추정해 짰어요. 교재와 다르면 오빠 피드백대로 고쳐요. 예: 국어 5단원 "스크롤·메일·와이파이"는 "다른 나라에서 온 말"로 해석했어요.
 5. **2학년 2학기:** 12월 전에 EBS 2-2 강의목록 캡처를 받아서 같은 방식으로 만들어요.
 7. **EBS 바로가기:** 1-2 수학·국어는 다 넣음(10/24). 2-1 시작 전에 2-1 수학·국어 첫 강·마지막 강 재생 주소 받기.
-8. **폰 알림 다시 정하기:** 오빠가 요금제(Blaze) 바꾸기는 싫다고 함(10/24). 앱 쪽 알림 켜기·서버 코드(functions/)는 들어가 있지만 서버를 못 켜서 지금은 폰 알림이 안 와요. 무료로 할 방법(ntfy 앱, 카톡 숙제로봇, Gmail+Apps Script 등)을 오빠와 다시 정해야 해요. 정해지기 전까지 엄마·오빠 메뉴의 "🔔 알림 켜기" 권유는 숨기는 게 좋아요.
+8. **폰 알림 설정:** Apps Script 방식으로 정함(10/24). 오빠가 컴퓨터로 설정 탭 "알림 · 메일 서버" 순서대로 하고, 웹 푸시 키 넣고, 엄마·오빠 폰 알림 켜기. 진짜에서 잘 오는지 확인.
 6-1. **주간 메일:** 오빠가 Apps Script를 설정하면 주간 메일이 가요. 엄마 메뉴 → 설정에 안내가 있어요.
 7. 태블릿 동기화가 실제로 붙는지 확인 (오빠 폰 맨 위에 "재윤이 태블릿 마지막 연결 ✓"가 떠야 함).
 8. 2-1 국어(k-차시) 일부는 서로 다른 문제가 12~20개뿐이에요 (k7-2, k7-3, k8-2, k8-3 등). 2-1은 약 9주 뒤라 그 전에 늘리면 좋아요.

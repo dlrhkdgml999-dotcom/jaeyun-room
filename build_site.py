@@ -7,7 +7,8 @@ site.mkdir(parents=True, exist_ok=True)
 
 css = (src / 'style.css').read_text()
 order = ['content.js', 'content2.js', 'voices.js', 'app.js', 'levels.js', 'draw.js', 'curriculum.js', 'kor_curr.js', 'eng_curr.js', 'eng2.js', 'math12.js', 'kor12.js', 'currcore.js', 'curr_ui.js', 'sync.js', 'push.js', 'pen.js', 'write.js', 'report.js', 'weekly.js', 'study.js', 'capsule.js', 'tori.js', 'boot.js']
-js = '\n'.join((src / f).read_text() for f in order)
+relay = 'const RELAY_GS = ' + json.dumps((root / 'firebase' / 'apps_script.gs').read_text(), ensure_ascii=False) + ';\nconst RELAY_MANIFEST = ' + json.dumps((root / 'firebase' / 'appsscript.json').read_text(), ensure_ascii=False) + ';\n'
+js = relay + '\n'.join((src / f).read_text() for f in order)
 cfg = (root / 'firebase' / 'firebase-config.js').read_text().replace('const firebaseConfig', 'window.FIREBASE_CONFIG')
 version = time.strftime('%Y%m%d%H%M%S')
 FB = '10.14.1'

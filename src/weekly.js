@@ -86,24 +86,30 @@ function reportPanel(){
     <button class="btn sky small" data-a="repshare" data-v="${sel || ''}" style="justify-self:start">카톡으로 보내기 · 복사</button>
   </div>`;
 }
+/* 알림 · 메일 서버: 오빠 구글 계정의 Apps Script 하나로 폰 알림 + 주간 메일 (무료) */
+function relayCode(){ const m = S.mail || {}; return RELAY_GS.replace('{{KEY}}', m.key || '').replace('{{TO}}', [m.mom, m.oppa].filter(Boolean).join(',')).replace('{{FID}}', (S.local && S.local.fid) || ''); }
 function mailPanel(){
-  const m = S.mail || {};
-  const code = `const KEY = '${m.key || '(먼저 저장을 눌러 주세요)'}';\nconst TO = '${[m.mom, m.oppa].filter(Boolean).join(',')}';\nfunction doPost(e) {\n  const d = JSON.parse(e.postData.contents);\n  if (d.key !== KEY || !TO) return ContentService.createTextOutput('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html).slice(0, 20000) });\n  return ContentService.createTextOutput('ok');\n}`;
-  return `<div class="panel"><h3>📧 주간 리포트 메일로 받기</h3>
-    <p class="muted" style="font-size:14px">매주 월요일 재윤이 태블릿이 지난주 리포트를 엄마·오빠 메일로 보내요. 오빠 구글 계정으로 한 번만 설정하면 돼요 (무료).</p>
-    <div class="field"><label for="mmom">엄마 메일</label><input type="text" id="mmom" inputmode="email" value="${esc(m.mom || '')}" placeholder="mom@gmail.com"></div>
-    <div class="field"><label for="moppa">오빠 메일</label><input type="text" id="moppa" inputmode="email" value="${esc(m.oppa || '')}" placeholder="oppa@gmail.com"></div>
-    <button class="btn small" data-a="mailsave" style="justify-self:start">메일 주소 저장</button>
-    ${m.key ? `<ol style="font-size:14px;line-height:1.7;padding-left:20px;margin:0">
-      <li>컴퓨터로 <b>script.google.com</b> → <b>새 프로젝트</b></li>
-      <li>원래 있는 글을 지우고 아래 코드를 붙여 넣고 저장 (💾)</li>
-      <li><b>배포 → 새 배포</b> → 톱니바퀴에서 <b>웹 앱</b> → 실행: <b>나</b>, 액세스: <b>모든 사용자</b> → 배포</li>
-      <li>권한 허용 (확인되지 않은 앱 경고가 나오면 <b>고급 → 이동</b>)</li>
-      <li>나온 <b>웹 앱 URL</b>을 아래 칸에 붙여 넣고 저장 → <b>테스트 메일 보내기</b></li></ol>
-      <textarea id="mailcode" readonly rows="8" style="width:100%;font-family:monospace;font-size:12px;border:2px solid var(--line);border-radius:12px;padding:8px">${esc(code)}</textarea>
-      <button class="btn ghost small" data-a="mailcopy" style="justify-self:start">코드 복사</button>
+  const m = S.mail || {}, ready = !!(m.key && linked());
+  return `<div class="panel"><h3>🔔 알림 · 메일 서버 <span class="muted" style="font-size:14px">(오빠가 컴퓨터로 한 번만)</span></h3>
+    <p class="muted" style="font-size:14px">오빠 구글 계정의 Apps Script(무료)가 재윤이 소식을 엄마·오빠 폰 알림으로 보내 줘요. 메일 주소를 넣으면 매주 월요일 주간 리포트 메일도 가요. ${Relay.url() ? '<b style="color:var(--mint-deep)">설정됨 ✓</b>' : ''}</p>
+    <div class="field"><label for="mmom">엄마 메일 (주간 리포트, 안 넣어도 돼요)</label><input type="text" id="mmom" inputmode="email" value="${esc(m.mom || '')}" placeholder="mom@gmail.com"></div>
+    <div class="field"><label for="moppa">오빠 메일 (안 넣어도 돼요)</label><input type="text" id="moppa" inputmode="email" value="${esc(m.oppa || '')}" placeholder="oppa@gmail.com"></div>
+    <button class="btn small" data-a="mailsave" style="justify-self:start">${m.key ? '메일 주소 저장 · 코드 다시 만들기' : '코드 만들기'}</button>
+    ${!linked() ? '<p class="demo-note">가족 기기 연결을 먼저 해 주세요.</p>' : ready ? `<ol style="font-size:14px;line-height:1.7;padding-left:20px;margin:0">
+      <li>컴퓨터에서 <b>script.google.com</b> → <b>새 프로젝트</b> (Firebase와 <b>같은 구글 계정</b>)</li>
+      <li>왼쪽 <b>⚙️ 프로젝트 설정</b> → <b>"appsscript.json" 매니페스트 파일을 편집기에 표시</b> 체크</li>
+      <li>왼쪽 <b>&lt;&gt; 편집기</b> → <b>appsscript.json</b>을 열어 내용을 모두 지우고 아래 [설정 파일]을 붙여 넣기</li>
+      <li><b>Code.gs</b>를 열어 내용을 모두 지우고 아래 [코드]를 붙여 넣고 저장 💾</li>
+      <li>위쪽 함수 목록에서 <b>setup</b>을 고르고 <b>▶ 실행</b> → 권한 허용 ("확인되지 않은 앱"이 나오면 <b>고급 → 이동</b>) → 아래 실행 로그에 <b>준비 끝</b>이 나오면 성공</li>
+      <li><b>배포 → 새 배포</b> → 톱니바퀴에서 <b>웹 앱</b> → 실행: <b>나</b>, 액세스: <b>모든 사용자</b> → 배포 → 나온 <b>웹 앱 URL</b>을 아래 칸에 저장</li></ol>
+      <label class="muted" style="font-size:14px">[설정 파일] appsscript.json</label>
+      <textarea id="mailmani" readonly rows="5" style="width:100%;font-family:monospace;font-size:12px;border:2px solid var(--line);border-radius:12px;padding:8px">${esc(RELAY_MANIFEST)}</textarea>
+      <button class="btn ghost small" data-a="mailcopy" data-v="#mailmani" style="justify-self:start">설정 파일 복사</button>
+      <label class="muted" style="font-size:14px">[코드] Code.gs</label>
+      <textarea id="mailcode" readonly rows="6" style="width:100%;font-family:monospace;font-size:12px;border:2px solid var(--line);border-radius:12px;padding:8px">${esc(relayCode())}</textarea>
+      <button class="btn ghost small" data-a="mailcopy" data-v="#mailcode" style="justify-self:start">코드 복사</button>
       <div class="field"><label for="murl">웹 앱 URL</label><input type="text" id="murl" value="${esc(m.url || '')}" placeholder="https://script.google.com/macros/s/.../exec"></div>
-      <div class="row" style="flex-wrap:wrap"><button class="btn small" data-a="mailurl">URL 저장</button>${m.url ? `<button class="btn mint small" data-a="mailtest">테스트 메일 보내기</button>` : ''}</div>
-      <p class="muted" style="font-size:13px">메일 주소나 URL을 바꾸면 코드를 다시 붙여 넣고 "배포 관리 → 새 버전"으로 다시 배포해 주세요.</p>` : ''}
+      <div class="row" style="flex-wrap:wrap"><button class="btn small" data-a="mailurl">URL 저장</button>${m.url && (m.mom || m.oppa) ? `<button class="btn mint small" data-a="mailtest">테스트 메일 보내기</button>` : ''}</div>
+      <p class="muted" style="font-size:13px">메일 주소를 바꾸면 코드를 다시 붙여 넣고 <b>배포 → 배포 관리 → ✏️ → 버전: 새 버전</b>으로 다시 배포해 주세요 (URL은 그대로).</p>` : ''}
   </div>`;
 }

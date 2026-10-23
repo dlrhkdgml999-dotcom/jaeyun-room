@@ -1,10 +1,33 @@
 /* ===================== 폰 알림 (Firebase 클라우드 메시징) =====================
    - 엄마·오빠 폰에서 "이 폰으로 알림 받기"를 누르면 이 폰의 알림 주소(토큰)를 families/{fid}/push/{id}에 저장
      { token, roles:['mom'] 처럼 받을 알림 종류, at, ua }
-   - 서버(functions/index.js)가 알림함(notes)에 새 글이 생기면 roles에 맞는 폰으로 보낸다
+   - 알림이 생긴 기기가 Relay로 알림 서버(Apps Script, firebase/apps_script.gs)에 보내면 서버가 roles에 맞는 폰으로 보낸다
+     (functions/index.js는 Firebase 유료 요금제용 같은 일을 하는 서버 — 오빠가 요금제 안 바꾸기로 해서 안 씀)
    - 웹 푸시 키(VAPID 공개키)는 오빠가 설정 탭에 붙여 넣는다 → S.fcmKey (공개돼도 되는 값, 가족 기기에 같이 저장)
    - 알림을 받으면 sw.js가 띄운다 (push 이벤트)                                                  */
 const PUSH_LS = 'jaeyun-push';
+/* 알림 서버(오빠 구글 계정의 Apps Script, firebase/apps_script.gs)로 알림 보내기.
+   알림이 생긴 기기가 바로 보낸다 → 서버가 엄마·오빠 폰으로 앱 알림. 인터넷이 끊겨 못 보낸 건 기기에 잠깐 쌓아 두었다가 다시 (3시간 지나면 버림) */
+const RELAY_LS = 'jaeyun-relayq';
+const Relay = {
+  url(){ const m = S.mail || {}; return m.key && m.url && /^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(m.url) ? m.url : ''; },
+  q(){ try { return JSON.parse(localStorage.getItem(RELAY_LS) || '[]'); } catch (e) { return []; } },
+  setQ(q){ try { localStorage.setItem(RELAY_LS, JSON.stringify(q.slice(-30))); } catch (e) {} },
+  send(n){ if (!this.url() || !linked()) return; const q = this.q(); q.push({ to:n.to, text:n.text, at:n.at || Date.now() }); this.setQ(q); this.flush(); },
+  flushing:false,
+  async flush(){
+    const url = this.url(); if (!url || this.flushing) return; this.flushing = true;
+    try {
+      let q = this.q().filter(x => Date.now() - x.at < 3 * 3600000);
+      for (const x of q.slice()) {
+        try { await fetch(url, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain' }, body:JSON.stringify({ key:S.mail.key, type:'note', to:x.to, text:x.text, at:x.at }) }); q = q.filter(y => y !== x); }
+        catch (e) { break; }   // 인터넷이 안 되면 다음에
+      }
+      this.setQ(q);
+    } finally { this.flushing = false; }
+  },
+};
+window.addEventListener('online', () => Relay.flush());
 const Push = {
   busy:false, err:'',
   key(){ return (S.fcmKey || window.FCM_VAPID_KEY || '').trim(); },
@@ -16,6 +39,7 @@ const Push = {
     if (!this.sdk()) return 'unsupported';
     if (!linked()) return 'nolink';
     if (Notification.permission === 'denied') return 'denied';
+    if (!Relay.url()) return 'noserver';
     if (!this.key()) return 'nokey';
     return this.mine() && Notification.permission === 'granted' ? 'on' : 'off';
   },
@@ -68,13 +92,14 @@ function pushPanel(){
   let body;
   if (st === 'unsupported') body = `<p class="muted" style="font-size:15px">이 브라우저에서는 폰 알림을 받을 수 없어요. 안드로이드는 <b>크롬</b>이나 <b>삼성 인터넷</b>에서 열어 주세요.${/iPhone|iPad/.test(navigator.userAgent) ? ' 아이폰은 사파리에서 "홈 화면에 추가"로 설치한 앱에서만 알림이 돼요.' : ''}</p>`;
   else if (st === 'nolink') body = `<p class="muted" style="font-size:15px">가족 기기 연결을 먼저 해 주세요.</p>`;
+  else if (st === 'noserver') body = `<p class="muted" style="font-size:15px">오빠가 아래 <b>알림 · 메일 서버</b> 설정을 끝내면 이 폰으로 알림을 켤 수 있어요.</p>`;
   else if (st === 'nokey') body = `<p class="muted" style="font-size:15px">오빠가 아래에 <b>웹 푸시 키</b>를 넣으면 알림을 켤 수 있어요.</p>`;
   else if (st === 'denied') body = `<p class="demo-note">이 폰에서 알림이 막혀 있어요. 폰 <b>설정 → 애플리케이션 → (크롬 또는 삼성 인터넷) → 알림</b>, 또는 주소창 옆 자물쇠 → 권한 → 알림을 "허용"으로 바꾼 뒤 다시 와 주세요.</p>`;
   else if (st === 'off') body = `<p class="muted" style="font-size:15px">재윤이가 공부를 시작하거나 끝냈을 때, 받아쓰기 사진을 보냈을 때, 알림 시간이 지났는데 시작을 안 했을 때 이 폰으로 알려 줘요.</p><button class="btn" data-a="pushon">이 폰으로 알림 받기</button>`;
   else body = `<div class="row"><span style="flex:1">이 폰으로 알림 받는 중 ✓</span><button class="btn ghost small" data-a="pushtest">테스트</button></div>
     <div class="row" style="flex-wrap:wrap;gap:8px"><span class="muted" style="font-size:15px">받을 알림:</span>${[['mom','엄마 알림'],['oppa','오빠 알림']].map(([v, l]) => `<button class="btn small ${rs.includes(v) ? '' : 'ghost'}" data-a="pushrole" data-v="${v}">${rs.includes(v) ? '✓ ' : ''}${l}</button>`).join('')}</div>
     <button class="btn ghost small" data-a="pushoff" style="justify-self:start">이 폰 알림 끄기</button>`;
-  const keyField = role() !== 'mom' && st !== 'unsupported' && st !== 'nolink' ? `<details ${st === 'nokey' ? 'open' : ''} style="margin-top:6px"><summary class="muted" style="font-size:14px">웹 푸시 키 (오빠가 한 번만 설정)</summary>
+  const keyField = role() !== 'mom' && st !== 'unsupported' && st !== 'nolink' && st !== 'noserver' ? `<details ${st === 'nokey' ? 'open' : ''} style="margin-top:6px"><summary class="muted" style="font-size:14px">웹 푸시 키 (오빠가 한 번만 설정)</summary>
     <p class="muted" style="font-size:13px">Firebase 콘솔 → 프로젝트 설정 → <b>클라우드 메시징</b> → 웹 구성의 "웹 푸시 인증서" → 키 쌍 생성 → 나온 긴 키를 복사해서 붙여넣기. 가족 기기에 같이 저장돼요.</p>
     <div class="field"><input type="text" id="fcmkey" value="${esc(S.fcmKey || '')}" placeholder="B로 시작하는 긴 키" autocomplete="off"></div><button class="btn sky small" data-a="savefcmkey" style="justify-self:start">키 저장</button></details>` : '';
   return `<div class="panel"><h3>폰 알림</h3>${body}${Push.err ? `<p class="demo-note">${esc(Push.err)}</p>` : ''}${keyField}</div>`;

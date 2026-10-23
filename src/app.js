@@ -473,7 +473,7 @@ function boardState(k, d = day()){
 function nextBoard(d = day()){ return orderedBoards(d).find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) Sync.addNote(n); S.notes.unshift(n); trimNotes(); }
+function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); Relay.send(n); } S.notes.unshift(n); trimNotes(); }
 function trimNotes(){ const cnt = {}; S.notes = S.notes.filter(x => (cnt[x.to] = (cnt[x.to] || 0) + 1) <= 60); }
 function alarmInfo(){
   const d = now(), dow = d.getDay();
@@ -1365,9 +1365,9 @@ const ACT = {
   repshare(el){ const r = el.dataset.v && S.reports[el.dataset.v] ? S.reports[el.dataset.v] : buildWeekReport(mondayOf(todayKey())); const text = reportText(r);
     if (navigator.share) navigator.share({ title:reportTitle(r), text }).catch(() => {}); else { try { navigator.clipboard.writeText(text).then(() => toast('복사했어요. 카톡에 붙여 넣어 주세요')); } catch (e) { toast('복사가 안 됐어요'); } } },
   mailsave(){ const mom = $('#mmom').value.trim(), oppa = $('#moppa').value.trim(); const ok = x => !x || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
-    if (!ok(mom) || !ok(oppa) || (!mom && !oppa)) { toast('메일 주소를 확인해 주세요'); return; }
-    S.mail = Object.assign({}, S.mail || {}, { mom, oppa }); if (!S.mail.key) S.mail.key = newFid().slice(0, 16); save(); toast('저장했어요. 아래 순서대로 설정해 주세요'); const y = scrollY; go('adult'); scrollTo(0, y); },
-  mailcopy(){ const t = $('#mailcode').value; try { navigator.clipboard.writeText(t).then(() => toast('코드를 복사했어요'), () => { $('#mailcode').select(); }); } catch (e) { $('#mailcode').select(); } },
+    if (!ok(mom) || !ok(oppa)) { toast('메일 주소를 확인해 주세요'); return; }
+    S.mail = Object.assign({}, S.mail || {}, { mom, oppa }); if (!S.mail.key) S.mail.key = newFid().slice(0, 16); save(); toast(S.mail.url ? '저장했어요. 코드를 다시 붙여 넣고 새 버전으로 배포해 주세요' : '코드를 만들었어요. 아래 순서대로 설정해 주세요'); const y = scrollY; go('adult'); scrollTo(0, y); },
+  mailcopy(el){ const t = $(el.dataset.v || '#mailcode').value; try { navigator.clipboard.writeText(t).then(() => toast('코드를 복사했어요'), () => { $('#mailcode').select(); }); } catch (e) { $('#mailcode').select(); } },
   mailurl(){ const u = $('#murl').value.trim(); if (u && !/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(u)) { toast('https://script.google.com/macros/s/…/exec 모양의 주소를 넣어 주세요'); return; } S.mail = Object.assign({}, S.mail || {}, { url:u }); save(); toast(u ? 'URL을 저장했어요' : 'URL을 지웠어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   mailtest(){ const ok = sendReportMail(buildWeekReport(mondayOf(todayKey())), true); toast(ok ? '테스트 메일을 보냈어요. 1분 안에 메일함을 확인해 주세요' : 'URL을 먼저 저장해 주세요'); },
   revnext(){ reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
