@@ -649,6 +649,28 @@ button.sd:active{transform:scale(.95)}
 .ebs-row.big.other{border-style:dashed} .ebs-row.big.other .ebs-no{color:var(--ink-soft)}
 .ebs-row.big:active{transform:scale(.98)}
 
+/* 오늘 한눈에 (엄마·오빠 메뉴 맨 위) */
+.glance{display:grid;gap:10px;width:100%;text-align:left;border-radius:var(--r-md);padding:14px 16px;border:2.5px solid var(--line);background:var(--paper,#fff);color:inherit;font:inherit;cursor:pointer}
+.glance.ok{background:var(--mint-pale);border-color:var(--mint-deep)}
+.glance.doing{background:var(--sky-pale,#EAF5FF);border-color:var(--sky-deep)}
+.glance.late{background:#FFF1E6;border-color:#F2A65A}
+.gl-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.gl-head b{font-family:var(--f-display);font-weight:400;font-size:21px;flex:1;min-width:0}
+.gl-head .muted{font-size:14px}
+.gl-chips{display:flex;gap:6px;flex-wrap:wrap}
+.gl-chip{font-size:14px;padding:3px 10px;border-radius:999px;background:var(--bg);color:var(--ink-soft)}
+.gl-chip.done{background:var(--mint-deep);color:#fff}
+.gl-chip.doing{background:var(--butter-pale);color:#7A5A00;border:1.5px dashed var(--butter-deep)}
+.gl-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gl-stats span{background:rgba(255,255,255,.7);border-radius:var(--r-sm);padding:8px 4px;text-align:center;display:grid;gap:2px;font-size:13px;color:var(--ink-soft)}
+.gl-stats b{font-family:var(--f-display);font-weight:400;font-size:21px;color:var(--ink);font-variant-numeric:tabular-nums}
+.gl-stats b.bad{color:var(--pink-deep,#D94A7A)}
+.gl-line{font-size:14px;line-height:1.45;color:var(--ink-soft);overflow-wrap:anywhere}
+.gl-more{font-size:14px;color:var(--pink-deep,#D94A7A);justify-self:end}
+/* 폰 알림 권하기 (엄마·오빠 메뉴 맨 위) */
+.push-nudge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--butter-pale);border:2.5px solid var(--butter-deep);border-radius:var(--r-md);padding:12px 14px;font-size:15px;line-height:1.45}
+.push-nudge > span:nth-child(2){min-width:180px}
+
 </style>
 </head>
 <body>
@@ -656,6 +678,7 @@ button.sd:active{transform:scale(.95)}
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 <script>
 // 재윤이 공부방 · Firebase 웹 앱 설정 (공개돼도 되는 값. 보안은 Firestore 규칙으로 지킨다)
 window.FIREBASE_CONFIG = {
@@ -668,7 +691,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261023233838";
+window.APP_VERSION = "20261024004815";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -939,7 +962,7 @@ function freshState(){
     praise:null, voices:{}, notes:[], kidNotes:[],
     alarms:{on:[true,true,true,true,true,true,true], time:['10:00','16:00','16:00','16:00','16:00','16:00','10:00'], nudge:true},
     adultTab:'mom', local:null,
-    level:{ kor:1, math:1, eng:0 }, mathMode:'curr', curr:null, currs:{}, modes:{ kor:'curr', eng:'curr' }, ebsOn:{ math:true, kor:true }, lastLec:null,
+    level:{ kor:1, math:1, eng:0 }, mathMode:'curr', curr:null, currs:{}, modes:{ kor:'curr', eng:'curr' }, ebsOn:{ math:true, kor:true }, ebsLinks:{}, lastLec:null,
     tts:{ preset:'tori', voice:'', pitch:1.35, rate:.86, enVoice:'' },
     gift:{ name:'', goal:30, round:1, start:null, achieved:null, history:[] }, giftAch:{}, grades:{},
   };
@@ -1373,7 +1396,11 @@ const BOARDS = [
   { k:'rev',  name:'복습', sub:'전에 틀린 문제 다시 풀기', badge:'다시', cls:'k-rev', mom:'m6' },
 ];
 const BNAME = Object.fromEntries(BOARDS.map(b => [b.k, b.name]));
-function countFor(k){ const target = k === 'eng' ? 420 : 900; return clamp(Math.round(target / (S.avgSec[k] || 45)), k === 'eng' ? 8 : 10, 24); }
+/* 판마다 문제 수: 재윤이가 실제로 푸는 속도(avgSec, 한 문제 8~120초로 잘라서 평균)로 목표 시간을 나눈다.
+   엄마가 고른 하루 목표(dayGoal, 기본 60분)에 맞춰 목표 시간과 최소·최대 문제 수가 같이 늘고 준다 */
+function goalFactor(){ return clamp((+S.dayGoal || 60) / 60, .5, 1.5); }
+function countFor(k){ const f = goalFactor(), target = (k === 'eng' ? 420 : 900) * f;
+  return clamp(Math.round(target / (S.avgSec[k] || 45)), Math.max(5, Math.round((k === 'eng' ? 8 : 10) * f)), Math.round(24 * Math.max(1, f))); }
 function boardState(k, d = day()){
   const b = d.boards[k];
   if (!b) return 'todo';
@@ -1999,6 +2026,19 @@ function adultHead(){
   return `<div class="row"><button class="icon-btn" data-a="home" aria-label="재윤이 화면으로">${ICON.back}</button><h2 style="flex:1">엄마 · 오빠 메뉴</h2></div>
   <div class="tabs">${[['mom','엄마'],['oppa','오빠'],['set','설정']].map(([v, l]) => `<button class="${S.adultTab === v ? 'on' : ''}" data-a="atab" data-v="${v}">${l}</button>`).join('')}</div>`;
 }
+/* 엄마: 하루 공부 시간 목표 + 최근 7일 실제로 걸린 시간 */
+function dayGoalPanel(){
+  const goal = +S.dayGoal || 60, keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), -i - 1)).concat(todayKey());
+  const per = {}; BOARDS.forEach(b => per[b.k] = []);
+  const tot = [];
+  keys.forEach(k => { const dy = S.days[k]; if (!dy || !dy.done) return; tot.push(dayMins(k).total); BOARDS.forEach(b => { const bo = dy.boards[b.k]; if (bo && bo.done) per[b.k].push(bo.secs / 60); }); });
+  const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null, avgT = avg(tot);
+  const verdict = avgT == null ? '다 끝낸 날이 생기면 실제로 걸린 시간이 여기 나와요.' : avgT > goal + 10 ? `목표보다 ${avgT - goal}분 길어요. 문제를 푸는 속도에 맞춰 판마다 문제 수가 저절로 줄어요. 그래도 길면 목표를 줄여 주세요.` : avgT < goal - 15 ? `목표보다 ${goal - avgT}분 짧게 끝내고 있어요. 문제가 쉬워서 빨리 푸는 거라면 목표를 늘려도 좋아요.` : '목표와 비슷하게 공부하고 있어요 👍';
+  return `<div class="panel"><h3>하루 공부 시간</h3>
+    <div class="field"><label for="daygoal">하루 목표 (EBS 강의 포함)</label><select id="daygoal" data-ch="daygoal">${[40, 50, 60, 70, 80].map(m => `<option value="${m}" ${m === goal ? 'selected' : ''}>${m}분${m === 60 ? ' (기본)' : ''}</option>`).join('')}</select></div>
+    <div class="stat-row"><div class="stat"><b>${avgT == null ? '-' : avgT + '분'}</b><span>최근 하루 평균</span></div>${['kor','math','eng'].map(k => `<div class="stat"><b>${countFor(k)}<small>문제</small></b><span>${BNAME[k].replace(/ · .*/, '')} ${avg(per[k]) == null ? '' : `· ${avg(per[k])}분`}</span></div>`).join('')}</div>
+    <p class="muted" style="font-size:14px">${verdict}<br>문제 수는 재윤이가 한 문제에 걸리는 시간을 보고 날마다 자동으로 맞춰요 (한 문제가 2분을 넘으면 2분으로 쳐서, 딴짓한 시간이 섞여도 크게 안 흔들려요).</p></div>`;
+}
 function todayPanel(){
   const d = day();
   return `<div class="panel"><h3>오늘 재윤이 (${korDate(now())})</h3><div class="list">${BOARDS.map(b => { const bo = d.boards[b.k], st = boardState(b.k, d);
@@ -2010,7 +2050,7 @@ function notesPanel(to, title){
   if (to === 'mom' && S.alarms.nudge && al && al.late && !al.started) extra.push({ text:`⏰ ${al.time} 공부 알림 뒤 30분이 지났는데 재윤이가 아직 시작하지 않았어요`, at:Date.now() });
   const list = [...extra, ...S.notes.filter(n => n.to === to)].slice(0, 12);
   return `<div class="panel"><h3>${title}</h3>${list.length ? `<div class="list">${list.map(n => `<div class="li"><span class="grow">${esc(n.text)}</span><span class="muted" style="font-size:13px;white-space:nowrap">${new Date(n.at).getHours()}:${String(new Date(n.at).getMinutes()).padStart(2,'0')}</span></div>`).join('')}</div>` : '<p class="muted">아직 알림이 없어요</p>'}
-  <p class="demo-note">체험판에서는 알림이 여기에만 쌓여요. 서버를 연결하면 이 내용이 폰 푸시 알림으로 가요.</p></div>`;
+  ${linked() ? (Push.state() === 'on' ? '' : `<p class="muted" style="font-size:13px">설정 탭 → 폰 알림을 켜면 이 내용이 폰으로도 와요.</p>`) : `<p class="demo-note">체험판에서는 알림이 여기에만 쌓여요.</p>`}</div>`;
 }
 VIEWS.adult = () => {
   const tab = S.adultTab;
@@ -2018,7 +2058,7 @@ VIEWS.adult = () => {
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
     const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
-    body = `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + (gradeTodo ? dictGradePanel(pend) : '') + todayPanel() + reportPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
+    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + (gradeTodo ? dictGradePanel(pend) : '') + reportPanel() + dayGoalPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
       ${gradeTodo ? '' : dictGradePanel(pend)}
       ${isInstalled() ? '' : `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>`}
       <div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
@@ -2026,9 +2066,9 @@ VIEWS.adult = () => {
       <div class="panel"><h3>받아쓰기 쓰는 곳</h3><div class="field"><select id="dictmode" data-ch="dictmode" aria-label="받아쓰기 쓰는 곳">
         <option value="auto" ${(S.dictMode || 'auto') === 'auto' ? 'selected' : ''}>자동 (태블릿은 펜, 폰은 공책)</option><option value="pen" ${S.dictMode === 'pen' ? 'selected' : ''}>항상 화면에 펜으로</option><option value="paper" ${S.dictMode === 'paper' ? 'selected' : ''}>항상 공책에 쓰고 사진</option></select></div>
         <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
-      <div class="panel"><h3>공부 알림 시간</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 화면 맨 위에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 앱이 닫혀 있을 때 폰으로 가는 알림은 아직 없어서, 그 시간에 태블릿 알람을 같이 맞춰 두면 좋아요.</p>
+      <div class="panel"><h3>공부 알림 시간</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 화면 맨 위에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 태블릿 앱이 닫혀 있으면 안 들리니, 그 시간에 태블릿 알람을 같이 맞춰 두면 좋아요.</p>
         ${[1,2,3,4,5,6,0].map(i => `<div class="alarm-row"><span class="dn">${DOW[i]}</span><input type="time" id="al${i}" value="${S.alarms.time[i]}" data-ch="altime" data-v="${i}" ${S.alarms.on[i] ? '' : 'disabled'}><button class="switch ${S.alarms.on[i] ? 'on' : ''}" data-a="alon" data-v="${i}" aria-label="${DOW[i]}요일 알림 켜기"></button></div>`).join('')}
-        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림</span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
+        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림<br><span class="muted" style="font-size:13px">폰 알림을 켜면 앱을 안 열어도 와요</span></span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
       </div>` + notesPanel('mom', '엄마 알림함');
   } else if (tab === 'oppa') {
     const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), i - 6));
@@ -2041,7 +2081,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + reportPanel() + weekReportPanel() + `
+    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -2070,10 +2110,11 @@ VIEWS.adult = () => {
         <div class="subj-acc">${[['kor','국어','var(--pink)'],['math','수학','var(--sky-deep)'],['eng','영어','var(--mint-deep)'],['rev','복습','var(--lav-deep)']].map(([s, l, c]) => { const p = acc[s][1] ? Math.round(acc[s][0] / acc[s][1] * 100) : 0; return `<div class="r"><span>${l}</span><span class="m"><i style="width:${p}%;background:${c}"></i></span><span style="text-align:right;font-variant-numeric:tabular-nums">${acc[s][1] ? p + '%' : '-'}</span></div>`; }).join('')}</div>
       </div>
       <div class="panel"><h3>자주 틀리는 문제</h3>${top.length ? `<div class="list">${top.map(w => `<div class="li"><span class="grow">${esc(qText(w))}</span><span class="pill">${w.misses}번</span></div>`).join('')}</div>` : '<p class="muted">아직 없어요</p>'}<p class="muted" style="font-size:14px">복습 판에서 두 번 연속 맞히면 목록에서 빠져요. 지금 복습 대기 ${S.wrong.filter(w => w.subj !== 'dict').length}문제.</p></div>
+      ${ebsLinkPanel()}
       ${reviewPanel()}
       ${notesPanel('oppa', '오빠 알림함')}`;
   } else {
-    body = familyPanel() + mailPanel() + `
+    body = familyPanel() + (linked() ? pushPanel() : '') + mailPanel() + `
       <div class="panel"><h3>토리 목소리</h3>
         <p class="muted" style="font-size:15px">폰에 들어 있는 음성으로 읽어 줘요. 재윤이가 좋아하는 소리로 골라 주세요.</p>
         <div class="list">${Object.entries(TTS_PRESETS).map(([k, pr]) => `<button class="li" style="text-align:left;${S.tts.preset === k ? 'outline:3px solid var(--pink)' : ''}" data-a="ttspreset" data-v="${k}"><span class="grow">${pr.name}</span>${S.tts.preset === k ? '<span class="pill">사용 중</span>' : ''}</button>`).join('')}</div>
@@ -2084,7 +2125,7 @@ VIEWS.adult = () => {
       </div>
       <div class="panel"><h3>토끼 친구 이름</h3><div class="field"><input type="text" id="bname" maxlength="8" value="${esc(S.bunnyName)}"></div><button class="btn small" data-a="savename" style="justify-self:start">이름 저장</button></div>
       <div class="panel"><h3>비밀번호 바꾸기</h3><div class="field"><input type="password" inputmode="numeric" id="newpin" maxlength="4" placeholder="숫자 4자리"></div><button class="btn small" data-a="savepin" style="justify-self:start">바꾸기</button></div>
-      <div class="panel"><h3>한 판 문제 수</h3><p class="muted" style="font-size:15px">재윤이가 푸는 속도를 보고 하루 1시간 안에 끝나도록 자동으로 맞춰요. 지금 기준: 국어 ${countFor('kor')}문제, 수학 ${countFor('math')}문제, 영어 ${countFor('eng')}문제 + 받아쓰기 10개, 복습 ${countFor('rev')}문제.</p></div>
+      ${dayGoalPanel()}
       <div class="panel"><h3>체험판 도구</h3>
         <p class="muted" style="font-size:15px">지금 보는 날짜: ${korDate(now())}</p>
         <button class="btn sky small" data-a="nextday" style="justify-self:start">하루 넘기기 (내일로)</button>
@@ -2092,7 +2133,7 @@ VIEWS.adult = () => {
         <p class="demo-note">지금은 이 폰 하나에 재윤이·엄마·오빠 화면이 함께 들어 있는 체험판이에요. 서버를 연결하면 세 폰이 같은 기록을 나눠 써요.</p>
       </div>`;
   }
-  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${body}</section>`;
+  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${tab !== 'set' ? pushNudge() : ''}${body}</section>`;
 };
 let RESET_ARMED = false;
 
@@ -2231,6 +2272,19 @@ const ACT = {
   ttstest(){ ttsSample(); },
   poke(el, ev){ Tori.tap(el, ev); },   // 토리 누르기: tori.js
   giftgoal(el){ if (giftAch()) { toast('이번 약속은 이미 달성했어요'); return; } S.gift.goal = +el.dataset.v; S.gift.name = $('#gname').value.trim(); checkGift(); save(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  ebslink(){
+    const urls = ($('#ebsurl').value.match(/https?:\/\/\S+/g) || []).map(parseEbsUrl);
+    if (!urls.length || urls.some(x => !x)) return toast('강의 주소를 못 찾았어요. "lectId=LS…"가 들어 있는 주소를 붙여 주세요');
+    const [s, n] = $('#ebsat').value.split('|'); const li = lectInfo(s, +n);
+    const cid = String(li.course.ebs.id);
+    if (urls.some(x => x.course !== cid)) return toast(`다른 강좌의 주소예요. ${li.course.ebs.name} 강의 주소를 넣어 주세요`);
+    if (urls.length > 1 && li.local + urls.length - 1 > (li.course.lect || []).length) return toast('주소가 강의 수보다 많아요');
+    S.ebsLinks = S.ebsLinks || {}; const map = Object.assign({}, S.ebsLinks[cid] || {});
+    urls.forEach((x, i) => map[li.local + i] = x.lect);
+    S.ebsLinks = Object.assign({}, S.ebsLinks, { [cid]:map }); save();
+    toast(urls.length > 1 ? `${li.no}강부터 ${urls.length}개 저장했어요` : `${li.no}강 바로가기를 저장했어요`); go('adult');
+  },
+  ebsclear(el){ if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 지울까요? 한 번 더 누르면 지워져요'; return; } S.ebsLinks = {}; save(); go('adult'); },
   savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },
   giftgiven(){ const g = S.gift, ach = giftAch(); g.history.unshift({ round:g.round, name:g.name, achieved:ach }); S.gift = { name:'', goal:g.goal, round:g.round + 1, start:addDays(ach, 1), achieved:null, history:g.history }; if (S.gift.start > todayKey()) S.gift.start = addDays(todayKey(), day().done ? 1 : 0); save(); toast('다음 선물 약속을 시작했어요'); go('adult'); },
   instbr(el){ INSTALL.br = el.dataset.v; go('install'); },
@@ -2326,6 +2380,8 @@ document.addEventListener('change', async ev => {
   } else if (el.dataset.ch === 'cmode') {
     const s = el.dataset.v; if (s === 'math') S.mathMode = el.value; else { S.modes = S.modes || {}; S.modes[s] = el.value; }
     save(); toast(`${SUBJ_NAME[s]}: ${el.value === 'curr' ? '진도 방식' : '자유 연습'}으로 바꿨어요. 다음에 시작하는 판부터 적용돼요`); const y = scrollY; go('adult'); scrollTo(0, y);
+  } else if (el.dataset.ch === 'daygoal') {
+    S.dayGoal = +el.value; save(); toast(`하루 ${S.dayGoal}분에 맞춰요. 내일 새로 시작하는 판부터 바뀌어요`); go('adult');
   } else if (el.dataset.ch === 'pace') {
     S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
   } else if (el.dataset.ch === 'revlesson') {
@@ -4764,7 +4820,30 @@ const ALL_L = Object.values(CURRS).flatMap(C => C.all);
 const ALL_LESSONS = CURRS.math.all;
 /* 코스 이름표: "1-2 3단원" */
 function unitTag(u){ return u.course && u.course.short2 && CURRS[u.course.subj].courses.length > 1 ? `${u.course.short2} ${u.n}단원` : `${u.n}단원`; }
-function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now; return `https://primary.ebs.co.kr/course/view?courseId=${co.ebs.id}`; }
+function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now, lk = n ? ebsLinkOf(s, n) : null;
+  return `https://primary.ebs.co.kr/course/view?courseId=${co.ebs.id}${lk ? `&lectId=${lk.id}` : ''}`; }
+/* ---------- EBS 강의 바로가기 ----------
+   오빠가 붙여 넣은 강의 주소: S.ebsLinks[courseId][코스 안 강 번호] = lectId ("LS000…")
+   붙여 넣은 강의가 3개 이상 한 줄로 늘어서면(번호가 일정하게 늘면) 나머지 강의 번호도 짐작해서 연다(sure:false).
+   2개뿐이면 바로 옆 강의끼리 번호가 1 차이일 때만 짐작한다. 잘못 열려도 "몇 강 봤어?"에서 걸러진다 */
+function parseEbsUrl(str){ const m = String(str || '').match(/courseId=(\d+)[^\s]*?lectId=(LS\d+)/) || String(str || '').match(/lectId=(LS\d+)[^\s]*?courseId=(\d+)/);
+  if (!m) return null; return /^LS/.test(m[1]) ? { course:m[2], lect:m[1] } : { course:m[1], lect:m[2] }; }
+function ebsGuess(map, local){
+  const pts = Object.entries(map || {}).map(([k, v]) => [+k, v]).filter(([k, v]) => k > 0 && /^LS\d+$/.test(v)).sort((a, b) => a[0] - b[0]);
+  if (pts.length < 2) return null;
+  const num = v => Number(v.slice(2)), W = pts[0][1].length;
+  const [n0, v0] = pts[0], [n1, v1] = pts[1], step = (num(v1) - num(v0)) / (n1 - n0);
+  if (!(step > 0) || step !== Math.round(step) || !Number.isSafeInteger(num(v0))) return null;
+  if (pts.length === 2 && step !== 1) return null;
+  if (!pts.every(([n, v]) => num(v) === num(v0) + (n - n0) * step && v.length === W)) return null;
+  return 'LS' + String(num(v0) + (local - n0) * step).padStart(W - 2, '0');
+}
+function ebsLinkOf(s, n){
+  const li = lectInfo(s, n); if (!li || !li.course.ebs) return null;
+  const map = (S.ebsLinks || {})[li.course.ebs.id] || {};
+  if (map[li.local]) return { id:map[li.local], sure:true };
+  const g = ebsGuess(map, li.local); return g ? { id:g, sure:false } : null;
+}
 function lectInfo(s, n){
   const L = EBS_LECT[s], x = L[n - 1]; if (!x) return null;
   const co = x.co, local = n - co.lectOff, part = L.slice(co.lectOff, n).filter(y => y.u === x.u).length, u = co.units[x.u - 1];
@@ -5050,7 +5129,8 @@ function lectureGuardHTML(s, n){
   return `${distanceArt()}<p class="disp" style="font-size:21px;line-height:1.4">강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 허리 펴고 바르게 앉아서 봐요.</p>
     <div class="lec-today"><span class="lec-big">${li.no}<small>강</small></span><span style="flex:1;text-align:left"><b class="disp" style="font-size:20px;font-weight:400">오늘은 ${li.no}강!</b><br><span style="font-size:15px">EBS ${esc(li.name)}</span></span></div>
     ${lecFinderHTML(s, n)}
-    <ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b>을 찾아서 주황색 ▶ 를 눌러요 <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>
+    ${ebsLinkOf(s, n) ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>바로 ${li.no}강</b>이 열려요</li><li>강의 제목이 <b>${esc(li.title)}</b>인지 확인해요 <span class="muted">(아니면 강의목록에서 ${li.no}강을 찾아요)</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>`
+    : `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b>을 찾아서 주황색 ▶ 를 눌러요 <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>`}
     <p class="muted" style="font-size:14px">📘 교재가 있으면 Book${li.book} ${li.pages}쪽을 펴 놓아요</p>
     <a class="btn big" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! ${li.no}강 보러 갈게</a>`;
 }
@@ -5059,7 +5139,7 @@ function openLecture(s, n, opt){
     const a = o.querySelector('[data-lecgo]');
     a.addEventListener('click', () => { LECW = { s, n, at:Date.now(), opt:!!opt }; try { sessionStorage.setItem('lecw', JSON.stringify(LECW)); } catch (e) {} setTimeout(() => go('lecwait'), 50); });
   });
-  { const li = lectInfo(s, n); speak(`강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
+  { const li = lectInfo(s, n); speak(ebsLinkOf(s, n) ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
 }
 VIEWS.lecwait = () => {
   if (!LECW) { try { LECW = JSON.parse(sessionStorage.getItem('lecw') || 'null'); } catch (e) {} }
@@ -5130,6 +5210,32 @@ VIEWS.eyebreak = (next) => {
   }, 1000);
 };
 
+/* ---------- 오빠 메뉴: EBS 강의 바로가기 주소 넣기 ---------- */
+function ebsUpcoming(s, k = 4){
+  if (!CURRS[s] || !CURRS[s].ebs || !ebsOn(s)) return [];
+  const c = curr(s), co = CURRS[s].now, from = co.lectOff + 1, to = co.lectOff + (co.lect || []).length, out = [];
+  const due = dueLecture(s); if (due) out.push(due);
+  for (let n = from; n <= to && out.length < k; n++) if (!c.seen[n] && !out.includes(n)) out.push(n);
+  return out.sort((a, b) => a - b).map(n => lectInfo(s, n)).filter(Boolean);
+}
+function ebsLinkPanel(){
+  const subs = ['math','kor'].filter(s => ebsUpcoming(s).length);
+  if (!subs.length) return '';
+  const SN = { math:'수학', kor:'국어' };
+  const rows = subs.flatMap(s => ebsUpcoming(s).map(li => ({ s, li, lk:ebsLinkOf(s, li.n) })));
+  const first = rows.find(r => !r.lk || !r.lk.sure) || rows[0];
+  const known = subs.reduce((a, s) => a + Object.keys((S.ebsLinks || {})[CURRS[s].now.ebs.id] || {}).length, 0);
+  return `<div class="panel"><h3>EBS 강의 바로가기</h3>
+    <p class="muted" style="font-size:15px">강의 주소를 넣어 두면 재윤이가 목록에서 찾지 않고 <b>버튼 한 번에 그 강의</b>로 가요. 같은 강좌에서 서너 개만 넣으면 나머지 강의도 번호를 짐작해서 열어 줘요.</p>
+    <ol class="eye-list" style="list-style:decimal;padding-left:22px;font-size:15px"><li>폰에서 EBS 초등 강좌를 열고 강의 하나를 재생해요</li><li>주소창의 주소(또는 공유 → 링크 복사)를 복사해요</li><li>아래에 붙여넣고 몇 강인지 고른 뒤 저장</li></ol>
+    <div class="field"><label for="ebsurl">강의 주소 (여러 개면 줄마다 하나씩, 강 순서대로)</label><textarea id="ebsurl" rows="2" style="width:100%;border:2px solid var(--line);border-radius:12px;padding:8px;font-size:14px" placeholder="https://primary.ebs.co.kr/course/view?courseId=…&lectId=LS…"></textarea></div>
+    <div class="field"><label for="ebsat">이 주소는 (여러 개면 첫 번째가)</label><select id="ebsat">${rows.map(r => `<option value="${r.s}|${r.li.n}" ${r === first ? 'selected' : ''}>${SN[r.s]} ${r.li.no}강 · ${esc(r.li.title)}</option>`).join('')}</select></div>
+    <button class="btn sky small" data-a="ebslink" style="justify-self:start">저장</button>
+    <div class="list">${rows.map(r => `<div class="li"><span class="grow" style="font-size:15px">${SN[r.s]} ${r.li.no}강 <span class="muted" style="font-size:13px">${esc(r.li.title)}</span></span>${r.lk ? `<span class="pill ${r.lk.sure ? 'ok' : 'wait'}">${r.lk.sure ? '바로가기 ✓' : '짐작'}</span>` : '<span class="pill no">목록에서 찾기</span>'}</div>`).join('')}</div>
+    ${known ? `<button class="btn ghost small" data-a="ebsclear" style="justify-self:start">넣은 주소 모두 지우기</button>` : ''}
+  </div>`;
+}
+
 /* ===================== 가족 연결 (Firebase) =====================
    - 한 가족 = families/{fid}. fid는 20자 이상 무작위 → 링크를 아는 가족만 들어올 수 있다.
    - S의 큰 칸(키)마다 문서 하나: families/{fid}/s/{key} = { v: 값 }
@@ -5139,7 +5245,7 @@ VIEWS.eyebreak = (next) => {
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
 const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports','collect','friends'];
-const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail'];
+const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
 function linked(){ return !!(S.local && S.local.fid); }
@@ -5451,6 +5557,98 @@ function syncAlert(){
   if (Date.now() - seen > 2 * 86400000) return box(`재윤이 태블릿 마지막 연결: <b>${agoText(seen)}</b><br>태블릿이 인터넷에 연결돼 있는지 확인해 주세요.`, 'soft');
   return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓`, 'ok');
 }
+
+/* ===================== 폰 알림 (Firebase 클라우드 메시징) =====================
+   - 엄마·오빠 폰에서 "이 폰으로 알림 받기"를 누르면 이 폰의 알림 주소(토큰)를 families/{fid}/push/{id}에 저장
+     { token, roles:['mom'] 처럼 받을 알림 종류, at, ua }
+   - 서버(functions/index.js)가 알림함(notes)에 새 글이 생기면 roles에 맞는 폰으로 보낸다
+   - 웹 푸시 키(VAPID 공개키)는 오빠가 설정 탭에 붙여 넣는다 → S.fcmKey (공개돼도 되는 값, 가족 기기에 같이 저장)
+   - 알림을 받으면 sw.js가 띄운다 (push 이벤트)                                                  */
+const PUSH_LS = 'jaeyun-push';
+const Push = {
+  busy:false, err:'',
+  key(){ return (S.fcmKey || window.FCM_VAPID_KEY || '').trim(); },
+  sdk(){ return !!(window.firebase && firebase.messaging && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window); },
+  mine(){ try { const x = JSON.parse(localStorage.getItem(PUSH_LS) || 'null'); return x && x.fid === (S.local && S.local.fid) ? x : null; } catch (e) { return null; } },
+  setMine(x){ try { x ? localStorage.setItem(PUSH_LS, JSON.stringify(x)) : localStorage.removeItem(PUSH_LS); } catch (e) {} },
+  /* off: 꺼짐 · on: 받는 중 · denied: 폰에서 막힘 · nokey: 오빠가 키를 아직 안 넣음 · unsupported: 이 브라우저는 안 됨 · nolink: 가족 연결 전 */
+  state(){
+    if (!this.sdk()) return 'unsupported';
+    if (!linked()) return 'nolink';
+    if (Notification.permission === 'denied') return 'denied';
+    if (!this.key()) return 'nokey';
+    return this.mine() && Notification.permission === 'granted' ? 'on' : 'off';
+  },
+  docId(token){ return hashStr(token).slice(0, 24); },
+  async token(){
+    // 서비스워커가 준비 안 되면 영영 기다리지 않게 15초에서 끊는다
+    const limit = (pr, msg) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no(new Error(msg)), 15000))]);
+    const reg = await limit(navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready), '앱 준비가 안 됐어요. 앱을 껐다 켜고 다시 해 주세요');
+    return limit(firebase.messaging().getToken({ vapidKey:this.key(), serviceWorkerRegistration:reg }), '알림 서버에 연결하지 못했어요. 인터넷을 확인하고 다시 해 주세요');
+  },
+  async enable(roles){
+    if (this.busy) return; this.busy = true; this.err = '';
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { this.err = perm === 'denied' ? '알림이 막혀 있어요. 폰 설정 → 앱(또는 인터넷 브라우저) → 알림에서 이 사이트 알림을 허용해 주세요.' : '알림 허용을 누르지 않았어요.'; return false; }
+      await Sync.fs();
+      const token = await this.token(); if (!token) throw new Error('알림 주소를 못 받았어요');
+      const old = this.mine(); roles = roles || (old && old.roles) || [role()];
+      if (old && old.id !== this.docId(token)) { try { await Sync.db.doc(`${Sync.base()}/push/${old.id}`).delete(); } catch (e) {} }
+      const id = this.docId(token);
+      await Sync.db.doc(`${Sync.base()}/push/${id}`).set({ token, roles, at:Date.now(), who:role(), ua:navigator.userAgent.slice(0, 120) });
+      this.setMine({ fid:S.local.fid, id, roles, at:Date.now() });
+      return true;
+    } catch (e) { this.err = String(e && e.message || e); console.warn('push', e); return false; }
+    finally { this.busy = false; }
+  },
+  async disable(){
+    const m = this.mine(); this.setMine(null);
+    try { if (m) await Sync.db.doc(`${Sync.base()}/push/${m.id}`).delete(); } catch (e) {}
+    try { await firebase.messaging().deleteToken(); } catch (e) {}
+  },
+  async setRoles(roles){ const m = this.mine(); if (!m) return; m.roles = roles; this.setMine(m); try { await Sync.db.doc(`${Sync.base()}/push/${m.id}`).set({ roles }, { merge:true }); } catch (e) {} },
+  /* 알림 주소는 가끔 바뀐다 → 앱을 열 때 하루 한 번 새로 받아서 저장 */
+  async refresh(){
+    const m = this.mine(); if (!m || this.state() !== 'on' || Date.now() - (m.at || 0) < 86400000) return;
+    try { await this.enable(m.roles); } catch (e) {}
+  },
+  test(){ notify(role() === 'mom' ? 'mom' : 'oppa', '🔔 알림 테스트: 이 알림이 폰에 오면 성공이에요'); },
+};
+
+/* 엄마·오빠 메뉴 맨 위: 알림을 아직 안 켠 폰이면 한 줄로 권하기 */
+function pushNudge(){
+  if (!linked() || role() === 'kid' || Push.state() !== 'off') return '';
+  try { if (localStorage.getItem('jaeyun-push-later') === todayKey()) return ''; } catch (e) {}
+  return `<div class="push-nudge"><span style="font-size:26px">🔔</span><span style="flex:1">재윤이가 공부를 끝내거나 받아쓰기를 보내면 <b>이 폰으로 알림</b>을 받을 수 있어요</span>
+    <button class="btn small" data-a="pushon">알림 켜기</button><button class="btn ghost small" data-a="pushlater" aria-label="오늘은 그만 보기">나중에</button></div>`;
+}
+function pushPanel(){
+  const st = Push.state(), m = Push.mine(), rs = (m && m.roles) || [role()];
+  let body;
+  if (st === 'unsupported') body = `<p class="muted" style="font-size:15px">이 브라우저에서는 폰 알림을 받을 수 없어요. 안드로이드는 <b>크롬</b>이나 <b>삼성 인터넷</b>에서 열어 주세요.${/iPhone|iPad/.test(navigator.userAgent) ? ' 아이폰은 사파리에서 "홈 화면에 추가"로 설치한 앱에서만 알림이 돼요.' : ''}</p>`;
+  else if (st === 'nolink') body = `<p class="muted" style="font-size:15px">가족 기기 연결을 먼저 해 주세요.</p>`;
+  else if (st === 'nokey') body = `<p class="muted" style="font-size:15px">오빠가 아래에 <b>웹 푸시 키</b>를 넣으면 알림을 켤 수 있어요.</p>`;
+  else if (st === 'denied') body = `<p class="demo-note">이 폰에서 알림이 막혀 있어요. 폰 <b>설정 → 애플리케이션 → (크롬 또는 삼성 인터넷) → 알림</b>, 또는 주소창 옆 자물쇠 → 권한 → 알림을 "허용"으로 바꾼 뒤 다시 와 주세요.</p>`;
+  else if (st === 'off') body = `<p class="muted" style="font-size:15px">재윤이가 공부를 시작하거나 끝냈을 때, 받아쓰기 사진을 보냈을 때, 알림 시간이 지났는데 시작을 안 했을 때 이 폰으로 알려 줘요.</p><button class="btn" data-a="pushon">이 폰으로 알림 받기</button>`;
+  else body = `<div class="row"><span style="flex:1">이 폰으로 알림 받는 중 ✓</span><button class="btn ghost small" data-a="pushtest">테스트</button></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px"><span class="muted" style="font-size:15px">받을 알림:</span>${[['mom','엄마 알림'],['oppa','오빠 알림']].map(([v, l]) => `<button class="btn small ${rs.includes(v) ? '' : 'ghost'}" data-a="pushrole" data-v="${v}">${rs.includes(v) ? '✓ ' : ''}${l}</button>`).join('')}</div>
+    <button class="btn ghost small" data-a="pushoff" style="justify-self:start">이 폰 알림 끄기</button>`;
+  const keyField = role() !== 'mom' && st !== 'unsupported' && st !== 'nolink' ? `<details ${st === 'nokey' ? 'open' : ''} style="margin-top:6px"><summary class="muted" style="font-size:14px">웹 푸시 키 (오빠가 한 번만 설정)</summary>
+    <p class="muted" style="font-size:13px">Firebase 콘솔 → 프로젝트 설정 → <b>클라우드 메시징</b> → 웹 구성의 "웹 푸시 인증서" → 키 쌍 생성 → 나온 긴 키를 복사해서 붙여넣기. 가족 기기에 같이 저장돼요.</p>
+    <div class="field"><input type="text" id="fcmkey" value="${esc(S.fcmKey || '')}" placeholder="B로 시작하는 긴 키" autocomplete="off"></div><button class="btn sky small" data-a="savefcmkey" style="justify-self:start">키 저장</button></details>` : '';
+  return `<div class="panel"><h3>폰 알림</h3>${body}${Push.err ? `<p class="demo-note">${esc(Push.err)}</p>` : ''}${keyField}</div>`;
+}
+const PUSH_ACTIONS = {
+  async pushon(el){ el.disabled = true; el.textContent = '켜는 중…'; const ok = await Push.enable(); toast(ok ? '알림을 켰어요! 테스트 알림을 보내 볼게요' : '알림을 켜지 못했어요'); if (ok) setTimeout(() => Push.test(), 800); go('adult'); },
+  pushlater(){ try { localStorage.setItem('jaeyun-push-later', todayKey()); } catch (e) {} go('adult'); },
+  async pushoff(){ await Push.disable(); toast('이 폰 알림을 껐어요'); go('adult'); },
+  pushtest(){ Push.test(); toast('테스트 알림을 보냈어요. 몇 초 안에 와야 해요'); },
+  async pushrole(el){ const m = Push.mine(); if (!m) return; const v = el.dataset.v, rs = new Set(m.roles || []); rs.has(v) ? rs.delete(v) : rs.add(v); if (!rs.size) return toast('하나는 골라 주세요'); await Push.setRoles([...rs]); go('adult'); },
+  savefcmkey(){ const v = $('#fcmkey').value.trim(); if (v && !/^[A-Za-z0-9_-]{60,}$/.test(v)) return toast('키 모양이 이상해요. 긴 키 전체를 복사해 주세요'); S.fcmKey = v; save(); toast(v ? '키를 저장했어요. 이제 알림을 켤 수 있어요' : '키를 지웠어요'); go('adult'); },
+};
+
+Object.assign(ACT, PUSH_ACTIONS);
 
 /* ===================== 펜으로 받아쓰기 (태블릿) ===================== */
 function penMode(){ const m = S.dictMode || 'auto'; if (m === 'pen') return true; if (m === 'paper') return false; return Math.min(screen.width, screen.height) >= 600; }
@@ -6011,6 +6209,30 @@ function probRowHTML(x){
     <span class="la">정답 <b>${esc(x.a)}</b>${x.w ? ` · 재윤이 답 <s>${esc(x.w)}</s>` : ''}${x.r === 2 ? ' · 힌트 보고 두 번째에 맞힘' : ''}</span></div></div>`;
 }
 
+/* ---------- 오늘 한눈에: 엄마·오빠 메뉴 맨 위 (들어오자마자 오늘 상태 확인) ---------- */
+function glancePanel(){
+  const t = todayKey(), dy = S.days[t], boards = (dy && dy.boards) || {};
+  const doneN = BOARDS.filter(b => boards[b.k] && boards[b.k].done).length, started = BOARDS.some(b => boards[b.k]);
+  const dm = dayMins(t), logs = dayLogs(t), wrongs = logs.filter(x => x.r !== 1), firstOk = logs.length - wrongs.length;
+  const lecs = lecturesOn(t), al = alarmInfo();
+  let head, tone;
+  if (dy && dy.done) { head = '✅ 오늘 공부를 다 했어요'; tone = 'ok'; }
+  else if (started) { head = `✏️ 공부하는 중 (${doneN}/${BOARDS.length}판)`; tone = 'doing'; }
+  else if (al && al.late) { head = `⏰ 아직 시작 안 했어요 (알림 ${al.time})`; tone = 'late'; }
+  else { head = '🌙 아직 시작 안 했어요'; tone = 'idle'; }
+  const chip = b => { const bo = boards[b.k], st = !bo ? 'todo' : bo.done ? 'done' : 'doing';
+    return `<span class="gl-chip ${st}">${st === 'done' ? '✓ ' : st === 'doing' ? '… ' : ''}${b.k === 'eng' ? '영어' : b.name}</span>`; };
+  const wtext = x => String(x.a || x.t).slice(0, 16);
+  return `<button class="glance ${tone}" data-a="study" data-v="${t}" aria-label="오늘 공부 자세히 보기">
+    <span class="gl-head"><b>${head}</b><span class="muted">${shortDate(t)} (${DOW[now().getDay()]})</span></span>
+    <span class="gl-chips">${BOARDS.map(chip).join('')}</span>
+    <span class="gl-stats"><span><b>${fmtMin(dm.total)}</b>공부 시간</span><span><b>${logs.length ? `${firstOk}/${logs.length}` : '-'}</b>한 번에 정답</span><span><b class="${wrongs.length ? 'bad' : ''}">${wrongs.length}</b>틀린 문제</span></span>
+    ${lecs.length ? `<span class="gl-line">📺 ${lecs.map(x => esc(`${{ math:'수학', kor:'국어', eng:'영어' }[x.s] || ''} ${x.info ? `${x.info.no}강 ${x.info.title}` : `${x.n}강`}`)).join(' · ')} 봤어요</span>` : ''}
+    ${wrongs.length ? `<span class="gl-line">❌ 틀린 문제 정답: ${wrongs.slice(0, 4).map(x => esc(wtext(x))).join(' · ')}${wrongs.length > 4 ? ` 외 ${wrongs.length - 4}개` : ''}</span>` : ''}
+    <span class="gl-more">자세히 보기 →</span>
+  </button>`;
+}
+
 /* ===================== 매일 뽑기 캡슐 · 도감 · 오늘 순서 고르기 ===================== */
 /* 하루 공부를 다 끝내면 캡슐 하나. 안에는 토리 친구가 랜덤으로 (보통 · 반짝 · 무지개) */
 const COLLECT = [
@@ -6345,7 +6567,7 @@ const Tori = (() => {
   }
   const m = location.hash.match(/#join=([a-z0-9]{20,})/);
   if (m && !(S.local && S.local.fid === m[1])) { JOIN_FID = m[1]; return go('join'); }
-  if (linked()) { Sync.start().then(() => { if (SCREEN === 'adult' || SCREEN === 'home') refreshIfIdle(); }); if (role() !== 'kid') { S.adultTab = S.adultTab === 'set' ? 'set' : role(); return go('adult'); } }
+  if (linked()) { Sync.start().then(() => { if (SCREEN === 'adult' || SCREEN === 'home') refreshIfIdle(); if (role() !== 'kid') Push.refresh(); }); if (role() !== 'kid') { S.adultTab = S.adultTab === 'set' ? 'set' : role(); return go('adult'); } }
   go('home');
 })();
 

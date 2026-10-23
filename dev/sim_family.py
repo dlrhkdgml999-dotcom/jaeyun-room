@@ -18,16 +18,17 @@ def fs_handler(source, op, path, data):
     if op == 'set':
         STORE[path] = json.loads(data); WRITES['n'] += 1
         asyncio.get_event_loop().create_task(push(path)); return 'null'
+    if op == 'del': STORE.pop(path, None); return 'null'
     if op == 'get': return json.dumps(STORE.get(path))
     if op == 'list':
         pre = path + '/'
         return json.dumps([[k[len(pre):], v] for k, v in STORE.items() if k.startswith(pre) and '/' not in k[len(pre):]])
 
 class Device(Sim):
-    def __init__(self, name, browser, vw, vh, url):
-        super().__init__(name); self.browser = browser; self.vw = vw; self.vh = vh; self.url = url
+    def __init__(self, name, browser, vw, vh, url, sw='block'):
+        super().__init__(name); self.browser = browser; self.vw = vw; self.vh = vh; self.url = url; self.sw = sw
     async def open(self):
-        self.ctx = await self.browser.new_context(viewport={'width': self.vw, 'height': self.vh}, device_scale_factor=2, is_mobile=True, has_touch=True, service_workers='block')
+        self.ctx = await self.browser.new_context(viewport={'width': self.vw, 'height': self.vh}, device_scale_factor=2, is_mobile=True, has_touch=True, service_workers=getattr(self, 'sw', 'block'))
         await self.ctx.add_init_script(FAKE_TTS)
         await self.ctx.expose_binding('__fs', fs_handler)
         await self.ctx.route('**/firebasejs/**', lambda r: r.fulfill(body=MOCK if r.request.url.endswith('firebase-app-compat.js') else '', content_type='text/javascript'))
@@ -174,4 +175,4 @@ async def main():
         await br.close()
     srv.terminate()
 
-asyncio.run(main())
+if __name__ == '__main__': asyncio.run(main())

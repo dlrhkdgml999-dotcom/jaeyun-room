@@ -146,7 +146,7 @@ async def main():
             await s.click('[data-a="studyset"][data-preset="month"]')
             await s.ev("go('adult')")
         # 4) 오빠 탭에도 바로가기
-        await s.adult('oppa'); s.expect(await p.locator('[data-a="study"]').count() == 1, '오빠 탭에 공부 기록 바로가기 없음')
+        await s.adult('oppa'); s.expect(await p.locator('.study-tile').count() == 1 and await p.locator('.glance').count() == 1, '오빠 탭에 공부 기록 바로가기 없음')
         # 5) 저장 크기: 100일이면?
         per_day = st['logBytes'] / 9
         print(f'문제 기록 하루 약 {per_day/1000:.1f}KB → 180일 보관 약 {per_day*180/1e6:.2f}MB')

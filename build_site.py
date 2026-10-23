@@ -6,7 +6,7 @@ site = root / 'dist' / 'site'
 site.mkdir(parents=True, exist_ok=True)
 
 css = (src / 'style.css').read_text()
-order = ['content.js', 'content2.js', 'voices.js', 'app.js', 'levels.js', 'draw.js', 'curriculum.js', 'kor_curr.js', 'eng_curr.js', 'eng2.js', 'math12.js', 'kor12.js', 'currcore.js', 'curr_ui.js', 'sync.js', 'pen.js', 'write.js', 'report.js', 'weekly.js', 'study.js', 'capsule.js', 'tori.js', 'boot.js']
+order = ['content.js', 'content2.js', 'voices.js', 'app.js', 'levels.js', 'draw.js', 'curriculum.js', 'kor_curr.js', 'eng_curr.js', 'eng2.js', 'math12.js', 'kor12.js', 'currcore.js', 'curr_ui.js', 'sync.js', 'push.js', 'pen.js', 'write.js', 'report.js', 'weekly.js', 'study.js', 'capsule.js', 'tori.js', 'boot.js']
 js = '\n'.join((src / f).read_text() for f in order)
 cfg = (root / 'firebase' / 'firebase-config.js').read_text().replace('const firebaseConfig', 'window.FIREBASE_CONFIG')
 version = time.strftime('%Y%m%d%H%M%S')
@@ -39,6 +39,7 @@ body{{margin:0}} img{{max-width:100%}} [hidden]{{display:none!important}}
 <script src="https://www.gstatic.com/firebasejs/{FB}/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/{FB}/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/{FB}/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/{FB}/firebase-messaging-compat.js"></script>
 <script>
 {cfg}
 window.APP_VERSION = "{version}";
@@ -81,7 +82,20 @@ self.addEventListener('fetch', e => {{
     e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {{ const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res; }})));
   }}
 }});
+// 폰 알림: 서버(Firebase)가 보낸 알림을 띄운다. 누르면 앱으로
+self.addEventListener('push', e => {{
+  let d = {{}};
+  try {{ const j = e.data ? e.data.json() : {{}}; d = j.data || j.notification || j; }} catch (x) {{ d = {{ body: e.data ? e.data.text() : '' }}; }}
+  e.waitUntil(self.registration.showNotification(d.title || '재윤이 공부방', {{ body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png', tag: d.tag || undefined, renotify: !!d.tag, data: {{ url: d.url || './' }} }}));
+}});
+self.addEventListener('notificationclick', e => {{
+  e.notification.close();
+  e.waitUntil(clients.matchAll({{ type: 'window', includeUncontrolled: true }}).then(cs => {{ for (const c of cs) if ('focus' in c) return c.focus(); return clients.openWindow((e.notification.data && e.notification.data.url) || './'); }}));
+}});
 '''
 (site / 'sw.js').write_text(sw)
 (site / '.nojekyll').write_text('')
+# 아이콘도 같이 (서비스워커가 설치할 때 미리 받아 둠 → 없으면 설치 실패)
+for ic in ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png']:
+    if (root / ic).exists(): shutil.copy(root / ic, site / ic)
 print('site built', version, len(html))

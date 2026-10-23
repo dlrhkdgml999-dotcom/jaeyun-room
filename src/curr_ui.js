@@ -145,7 +145,8 @@ function lectureGuardHTML(s, n){
   return `${distanceArt()}<p class="disp" style="font-size:21px;line-height:1.4">강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 허리 펴고 바르게 앉아서 봐요.</p>
     <div class="lec-today"><span class="lec-big">${li.no}<small>강</small></span><span style="flex:1;text-align:left"><b class="disp" style="font-size:20px;font-weight:400">오늘은 ${li.no}강!</b><br><span style="font-size:15px">EBS ${esc(li.name)}</span></span></div>
     ${lecFinderHTML(s, n)}
-    <ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b>을 찾아서 주황색 ▶ 를 눌러요 <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>
+    ${ebsLinkOf(s, n) ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>바로 ${li.no}강</b>이 열려요</li><li>강의 제목이 <b>${esc(li.title)}</b>인지 확인해요 <span class="muted">(아니면 강의목록에서 ${li.no}강을 찾아요)</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>`
+    : `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b>을 찾아서 주황색 ▶ 를 눌러요 <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>`}
     <p class="muted" style="font-size:14px">📘 교재가 있으면 Book${li.book} ${li.pages}쪽을 펴 놓아요</p>
     <a class="btn big" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! ${li.no}강 보러 갈게</a>`;
 }
@@ -154,7 +155,7 @@ function openLecture(s, n, opt){
     const a = o.querySelector('[data-lecgo]');
     a.addEventListener('click', () => { LECW = { s, n, at:Date.now(), opt:!!opt }; try { sessionStorage.setItem('lecw', JSON.stringify(LECW)); } catch (e) {} setTimeout(() => go('lecwait'), 50); });
   });
-  { const li = lectInfo(s, n); speak(`강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
+  { const li = lectInfo(s, n); speak(ebsLinkOf(s, n) ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
 }
 VIEWS.lecwait = () => {
   if (!LECW) { try { LECW = JSON.parse(sessionStorage.getItem('lecw') || 'null'); } catch (e) {} }
@@ -224,3 +225,29 @@ VIEWS.eyebreak = (next) => {
     if (left <= 0) { clearInterval(window.__eyeT); const b = $('#eyedone'); if (b) { b.disabled = false; b.textContent = '다 쉬었어요!'; } tone([[880,0,.12],[1175,.12,.2]]); speak('잘 쉬었어! 이제 다음 공부 하러 가자!'); }
   }, 1000);
 };
+
+/* ---------- 오빠 메뉴: EBS 강의 바로가기 주소 넣기 ---------- */
+function ebsUpcoming(s, k = 4){
+  if (!CURRS[s] || !CURRS[s].ebs || !ebsOn(s)) return [];
+  const c = curr(s), co = CURRS[s].now, from = co.lectOff + 1, to = co.lectOff + (co.lect || []).length, out = [];
+  const due = dueLecture(s); if (due) out.push(due);
+  for (let n = from; n <= to && out.length < k; n++) if (!c.seen[n] && !out.includes(n)) out.push(n);
+  return out.sort((a, b) => a - b).map(n => lectInfo(s, n)).filter(Boolean);
+}
+function ebsLinkPanel(){
+  const subs = ['math','kor'].filter(s => ebsUpcoming(s).length);
+  if (!subs.length) return '';
+  const SN = { math:'수학', kor:'국어' };
+  const rows = subs.flatMap(s => ebsUpcoming(s).map(li => ({ s, li, lk:ebsLinkOf(s, li.n) })));
+  const first = rows.find(r => !r.lk || !r.lk.sure) || rows[0];
+  const known = subs.reduce((a, s) => a + Object.keys((S.ebsLinks || {})[CURRS[s].now.ebs.id] || {}).length, 0);
+  return `<div class="panel"><h3>EBS 강의 바로가기</h3>
+    <p class="muted" style="font-size:15px">강의 주소를 넣어 두면 재윤이가 목록에서 찾지 않고 <b>버튼 한 번에 그 강의</b>로 가요. 같은 강좌에서 서너 개만 넣으면 나머지 강의도 번호를 짐작해서 열어 줘요.</p>
+    <ol class="eye-list" style="list-style:decimal;padding-left:22px;font-size:15px"><li>폰에서 EBS 초등 강좌를 열고 강의 하나를 재생해요</li><li>주소창의 주소(또는 공유 → 링크 복사)를 복사해요</li><li>아래에 붙여넣고 몇 강인지 고른 뒤 저장</li></ol>
+    <div class="field"><label for="ebsurl">강의 주소 (여러 개면 줄마다 하나씩, 강 순서대로)</label><textarea id="ebsurl" rows="2" style="width:100%;border:2px solid var(--line);border-radius:12px;padding:8px;font-size:14px" placeholder="https://primary.ebs.co.kr/course/view?courseId=…&lectId=LS…"></textarea></div>
+    <div class="field"><label for="ebsat">이 주소는 (여러 개면 첫 번째가)</label><select id="ebsat">${rows.map(r => `<option value="${r.s}|${r.li.n}" ${r === first ? 'selected' : ''}>${SN[r.s]} ${r.li.no}강 · ${esc(r.li.title)}</option>`).join('')}</select></div>
+    <button class="btn sky small" data-a="ebslink" style="justify-self:start">저장</button>
+    <div class="list">${rows.map(r => `<div class="li"><span class="grow" style="font-size:15px">${SN[r.s]} ${r.li.no}강 <span class="muted" style="font-size:13px">${esc(r.li.title)}</span></span>${r.lk ? `<span class="pill ${r.lk.sure ? 'ok' : 'wait'}">${r.lk.sure ? '바로가기 ✓' : '짐작'}</span>` : '<span class="pill no">목록에서 찾기</span>'}</div>`).join('')}</div>
+    ${known ? `<button class="btn ghost small" data-a="ebsclear" style="justify-self:start">넣은 주소 모두 지우기</button>` : ''}
+  </div>`;
+}

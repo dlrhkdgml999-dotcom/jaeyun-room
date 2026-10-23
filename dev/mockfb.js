@@ -18,7 +18,9 @@
   function docSnap(id, data){ return { id, exists: data != null, data: () => clone(data), metadata:{ hasPendingWrites:false } }; }
   class DocRef { constructor(p){ this.path = p; this.id = p.split('/').pop(); }
     // 진짜 Firestore처럼: 잘못된 값이면 set()을 부르는 순간 바로 던진다 (배열 안 배열, undefined, 함수, 1MB 넘는 문서)
-    set(d){ validate(d, this.path); return (async () => { if (window.__offline) throw new Error('offline'); await call('set', this.path, d); })(); }
+    set(d, opt){ validate(d, this.path); return (async () => { if (window.__offline) throw new Error('offline');
+      if (opt && opt.merge) { const cur = JSON.parse(await call('get', this.path)) || {}; d = Object.assign(cur, d); } await call('set', this.path, d); })(); }
+    async delete(){ if (window.__offline) throw new Error('offline'); await call('del', this.path); }
     async get(){ const r = JSON.parse(await call('get', this.path)); return docSnap(this.id, r); }
     onSnapshot(cb){ const l = { kind:'doc', path:this.path, cb }; listeners.push(l); this.get().then(cb); return () => listeners.splice(listeners.indexOf(l), 1); } }
   class ColRef { constructor(p, o = {}){ this.path = p; this.o = o; }
@@ -33,5 +35,7 @@
     if (l.kind === 'doc' && l.path === path) new DocRef(path).get().then(l.cb);
     if (l.kind === 'col' && path.startsWith(l.path + '/') && !path.slice(l.path.length + 1).includes('/')) l.ref.get().then(l.cb); }); };
   const db = { doc: p => new DocRef(p), collection: p => new ColRef(p) };
-  window.firebase = { apps:[], initializeApp(){ this.apps.push({}); }, auth: () => ({ signInAnonymously: async () => ({ user:{ uid:'u' } }) }), firestore: () => db };
+  // 폰 알림(FCM) 흉내: 알림 주소는 기기마다 하나
+  const msg = { async getToken(o){ if (!o || !o.vapidKey) throw new Error('no vapid'); return window.__fcmTok || (window.__fcmTok = 'tok' + Math.random().toString(36).slice(2, 10)); }, async deleteToken(){ window.__fcmTok = null; return true; } };
+  window.firebase = { apps:[], initializeApp(){ this.apps.push({}); }, auth: () => ({ signInAnonymously: async () => ({ user:{ uid:'u' } }) }), firestore: () => db, messaging: () => msg };
 })();

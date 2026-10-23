@@ -20,6 +20,7 @@ async def fan(path):
 
 def fs_handler(source, op, path, data):
     if op == 'set': STORE[path] = json.loads(data); asyncio.get_event_loop().create_task(fan(path)); return 'null'
+    if op == 'del': STORE.pop(path, None); return 'null'
     if op == 'get': return json.dumps(STORE.get(path))
     if op == 'list':
         pre = path + '/'; return json.dumps([[k[len(pre):], v] for k, v in STORE.items() if k.startswith(pre) and '/' not in k[len(pre):]])

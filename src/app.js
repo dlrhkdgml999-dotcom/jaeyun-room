@@ -25,7 +25,7 @@ function freshState(){
     praise:null, voices:{}, notes:[], kidNotes:[],
     alarms:{on:[true,true,true,true,true,true,true], time:['10:00','16:00','16:00','16:00','16:00','16:00','10:00'], nudge:true},
     adultTab:'mom', local:null,
-    level:{ kor:1, math:1, eng:0 }, mathMode:'curr', curr:null, currs:{}, modes:{ kor:'curr', eng:'curr' }, ebsOn:{ math:true, kor:true }, lastLec:null,
+    level:{ kor:1, math:1, eng:0 }, mathMode:'curr', curr:null, currs:{}, modes:{ kor:'curr', eng:'curr' }, ebsOn:{ math:true, kor:true }, ebsLinks:{}, lastLec:null,
     tts:{ preset:'tori', voice:'', pitch:1.35, rate:.86, enVoice:'' },
     gift:{ name:'', goal:30, round:1, start:null, achieved:null, history:[] }, giftAch:{}, grades:{},
   };
@@ -459,7 +459,11 @@ const BOARDS = [
   { k:'rev',  name:'복습', sub:'전에 틀린 문제 다시 풀기', badge:'다시', cls:'k-rev', mom:'m6' },
 ];
 const BNAME = Object.fromEntries(BOARDS.map(b => [b.k, b.name]));
-function countFor(k){ const target = k === 'eng' ? 420 : 900; return clamp(Math.round(target / (S.avgSec[k] || 45)), k === 'eng' ? 8 : 10, 24); }
+/* 판마다 문제 수: 재윤이가 실제로 푸는 속도(avgSec, 한 문제 8~120초로 잘라서 평균)로 목표 시간을 나눈다.
+   엄마가 고른 하루 목표(dayGoal, 기본 60분)에 맞춰 목표 시간과 최소·최대 문제 수가 같이 늘고 준다 */
+function goalFactor(){ return clamp((+S.dayGoal || 60) / 60, .5, 1.5); }
+function countFor(k){ const f = goalFactor(), target = (k === 'eng' ? 420 : 900) * f;
+  return clamp(Math.round(target / (S.avgSec[k] || 45)), Math.max(5, Math.round((k === 'eng' ? 8 : 10) * f)), Math.round(24 * Math.max(1, f))); }
 function boardState(k, d = day()){
   const b = d.boards[k];
   if (!b) return 'todo';
@@ -1085,6 +1089,19 @@ function adultHead(){
   return `<div class="row"><button class="icon-btn" data-a="home" aria-label="재윤이 화면으로">${ICON.back}</button><h2 style="flex:1">엄마 · 오빠 메뉴</h2></div>
   <div class="tabs">${[['mom','엄마'],['oppa','오빠'],['set','설정']].map(([v, l]) => `<button class="${S.adultTab === v ? 'on' : ''}" data-a="atab" data-v="${v}">${l}</button>`).join('')}</div>`;
 }
+/* 엄마: 하루 공부 시간 목표 + 최근 7일 실제로 걸린 시간 */
+function dayGoalPanel(){
+  const goal = +S.dayGoal || 60, keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), -i - 1)).concat(todayKey());
+  const per = {}; BOARDS.forEach(b => per[b.k] = []);
+  const tot = [];
+  keys.forEach(k => { const dy = S.days[k]; if (!dy || !dy.done) return; tot.push(dayMins(k).total); BOARDS.forEach(b => { const bo = dy.boards[b.k]; if (bo && bo.done) per[b.k].push(bo.secs / 60); }); });
+  const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null, avgT = avg(tot);
+  const verdict = avgT == null ? '다 끝낸 날이 생기면 실제로 걸린 시간이 여기 나와요.' : avgT > goal + 10 ? `목표보다 ${avgT - goal}분 길어요. 문제를 푸는 속도에 맞춰 판마다 문제 수가 저절로 줄어요. 그래도 길면 목표를 줄여 주세요.` : avgT < goal - 15 ? `목표보다 ${goal - avgT}분 짧게 끝내고 있어요. 문제가 쉬워서 빨리 푸는 거라면 목표를 늘려도 좋아요.` : '목표와 비슷하게 공부하고 있어요 👍';
+  return `<div class="panel"><h3>하루 공부 시간</h3>
+    <div class="field"><label for="daygoal">하루 목표 (EBS 강의 포함)</label><select id="daygoal" data-ch="daygoal">${[40, 50, 60, 70, 80].map(m => `<option value="${m}" ${m === goal ? 'selected' : ''}>${m}분${m === 60 ? ' (기본)' : ''}</option>`).join('')}</select></div>
+    <div class="stat-row"><div class="stat"><b>${avgT == null ? '-' : avgT + '분'}</b><span>최근 하루 평균</span></div>${['kor','math','eng'].map(k => `<div class="stat"><b>${countFor(k)}<small>문제</small></b><span>${BNAME[k].replace(/ · .*/, '')} ${avg(per[k]) == null ? '' : `· ${avg(per[k])}분`}</span></div>`).join('')}</div>
+    <p class="muted" style="font-size:14px">${verdict}<br>문제 수는 재윤이가 한 문제에 걸리는 시간을 보고 날마다 자동으로 맞춰요 (한 문제가 2분을 넘으면 2분으로 쳐서, 딴짓한 시간이 섞여도 크게 안 흔들려요).</p></div>`;
+}
 function todayPanel(){
   const d = day();
   return `<div class="panel"><h3>오늘 재윤이 (${korDate(now())})</h3><div class="list">${BOARDS.map(b => { const bo = d.boards[b.k], st = boardState(b.k, d);
@@ -1096,7 +1113,7 @@ function notesPanel(to, title){
   if (to === 'mom' && S.alarms.nudge && al && al.late && !al.started) extra.push({ text:`⏰ ${al.time} 공부 알림 뒤 30분이 지났는데 재윤이가 아직 시작하지 않았어요`, at:Date.now() });
   const list = [...extra, ...S.notes.filter(n => n.to === to)].slice(0, 12);
   return `<div class="panel"><h3>${title}</h3>${list.length ? `<div class="list">${list.map(n => `<div class="li"><span class="grow">${esc(n.text)}</span><span class="muted" style="font-size:13px;white-space:nowrap">${new Date(n.at).getHours()}:${String(new Date(n.at).getMinutes()).padStart(2,'0')}</span></div>`).join('')}</div>` : '<p class="muted">아직 알림이 없어요</p>'}
-  <p class="demo-note">체험판에서는 알림이 여기에만 쌓여요. 서버를 연결하면 이 내용이 폰 푸시 알림으로 가요.</p></div>`;
+  ${linked() ? (Push.state() === 'on' ? '' : `<p class="muted" style="font-size:13px">설정 탭 → 폰 알림을 켜면 이 내용이 폰으로도 와요.</p>`) : `<p class="demo-note">체험판에서는 알림이 여기에만 쌓여요.</p>`}</div>`;
 }
 VIEWS.adult = () => {
   const tab = S.adultTab;
@@ -1104,7 +1121,7 @@ VIEWS.adult = () => {
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
     const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
-    body = `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + (gradeTodo ? dictGradePanel(pend) : '') + todayPanel() + reportPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
+    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + (gradeTodo ? dictGradePanel(pend) : '') + reportPanel() + dayGoalPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
       ${gradeTodo ? '' : dictGradePanel(pend)}
       ${isInstalled() ? '' : `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>`}
       <div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
@@ -1112,9 +1129,9 @@ VIEWS.adult = () => {
       <div class="panel"><h3>받아쓰기 쓰는 곳</h3><div class="field"><select id="dictmode" data-ch="dictmode" aria-label="받아쓰기 쓰는 곳">
         <option value="auto" ${(S.dictMode || 'auto') === 'auto' ? 'selected' : ''}>자동 (태블릿은 펜, 폰은 공책)</option><option value="pen" ${S.dictMode === 'pen' ? 'selected' : ''}>항상 화면에 펜으로</option><option value="paper" ${S.dictMode === 'paper' ? 'selected' : ''}>항상 공책에 쓰고 사진</option></select></div>
         <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
-      <div class="panel"><h3>공부 알림 시간</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 화면 맨 위에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 앱이 닫혀 있을 때 폰으로 가는 알림은 아직 없어서, 그 시간에 태블릿 알람을 같이 맞춰 두면 좋아요.</p>
+      <div class="panel"><h3>공부 알림 시간</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 화면 맨 위에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 태블릿 앱이 닫혀 있으면 안 들리니, 그 시간에 태블릿 알람을 같이 맞춰 두면 좋아요.</p>
         ${[1,2,3,4,5,6,0].map(i => `<div class="alarm-row"><span class="dn">${DOW[i]}</span><input type="time" id="al${i}" value="${S.alarms.time[i]}" data-ch="altime" data-v="${i}" ${S.alarms.on[i] ? '' : 'disabled'}><button class="switch ${S.alarms.on[i] ? 'on' : ''}" data-a="alon" data-v="${i}" aria-label="${DOW[i]}요일 알림 켜기"></button></div>`).join('')}
-        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림</span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
+        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림<br><span class="muted" style="font-size:13px">폰 알림을 켜면 앱을 안 열어도 와요</span></span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
       </div>` + notesPanel('mom', '엄마 알림함');
   } else if (tab === 'oppa') {
     const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), i - 6));
@@ -1127,7 +1144,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + reportPanel() + weekReportPanel() + `
+    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -1156,10 +1173,11 @@ VIEWS.adult = () => {
         <div class="subj-acc">${[['kor','국어','var(--pink)'],['math','수학','var(--sky-deep)'],['eng','영어','var(--mint-deep)'],['rev','복습','var(--lav-deep)']].map(([s, l, c]) => { const p = acc[s][1] ? Math.round(acc[s][0] / acc[s][1] * 100) : 0; return `<div class="r"><span>${l}</span><span class="m"><i style="width:${p}%;background:${c}"></i></span><span style="text-align:right;font-variant-numeric:tabular-nums">${acc[s][1] ? p + '%' : '-'}</span></div>`; }).join('')}</div>
       </div>
       <div class="panel"><h3>자주 틀리는 문제</h3>${top.length ? `<div class="list">${top.map(w => `<div class="li"><span class="grow">${esc(qText(w))}</span><span class="pill">${w.misses}번</span></div>`).join('')}</div>` : '<p class="muted">아직 없어요</p>'}<p class="muted" style="font-size:14px">복습 판에서 두 번 연속 맞히면 목록에서 빠져요. 지금 복습 대기 ${S.wrong.filter(w => w.subj !== 'dict').length}문제.</p></div>
+      ${ebsLinkPanel()}
       ${reviewPanel()}
       ${notesPanel('oppa', '오빠 알림함')}`;
   } else {
-    body = familyPanel() + mailPanel() + `
+    body = familyPanel() + (linked() ? pushPanel() : '') + mailPanel() + `
       <div class="panel"><h3>토리 목소리</h3>
         <p class="muted" style="font-size:15px">폰에 들어 있는 음성으로 읽어 줘요. 재윤이가 좋아하는 소리로 골라 주세요.</p>
         <div class="list">${Object.entries(TTS_PRESETS).map(([k, pr]) => `<button class="li" style="text-align:left;${S.tts.preset === k ? 'outline:3px solid var(--pink)' : ''}" data-a="ttspreset" data-v="${k}"><span class="grow">${pr.name}</span>${S.tts.preset === k ? '<span class="pill">사용 중</span>' : ''}</button>`).join('')}</div>
@@ -1170,7 +1188,7 @@ VIEWS.adult = () => {
       </div>
       <div class="panel"><h3>토끼 친구 이름</h3><div class="field"><input type="text" id="bname" maxlength="8" value="${esc(S.bunnyName)}"></div><button class="btn small" data-a="savename" style="justify-self:start">이름 저장</button></div>
       <div class="panel"><h3>비밀번호 바꾸기</h3><div class="field"><input type="password" inputmode="numeric" id="newpin" maxlength="4" placeholder="숫자 4자리"></div><button class="btn small" data-a="savepin" style="justify-self:start">바꾸기</button></div>
-      <div class="panel"><h3>한 판 문제 수</h3><p class="muted" style="font-size:15px">재윤이가 푸는 속도를 보고 하루 1시간 안에 끝나도록 자동으로 맞춰요. 지금 기준: 국어 ${countFor('kor')}문제, 수학 ${countFor('math')}문제, 영어 ${countFor('eng')}문제 + 받아쓰기 10개, 복습 ${countFor('rev')}문제.</p></div>
+      ${dayGoalPanel()}
       <div class="panel"><h3>체험판 도구</h3>
         <p class="muted" style="font-size:15px">지금 보는 날짜: ${korDate(now())}</p>
         <button class="btn sky small" data-a="nextday" style="justify-self:start">하루 넘기기 (내일로)</button>
@@ -1178,7 +1196,7 @@ VIEWS.adult = () => {
         <p class="demo-note">지금은 이 폰 하나에 재윤이·엄마·오빠 화면이 함께 들어 있는 체험판이에요. 서버를 연결하면 세 폰이 같은 기록을 나눠 써요.</p>
       </div>`;
   }
-  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${body}</section>`;
+  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${tab !== 'set' ? pushNudge() : ''}${body}</section>`;
 };
 let RESET_ARMED = false;
 
@@ -1317,6 +1335,19 @@ const ACT = {
   ttstest(){ ttsSample(); },
   poke(el, ev){ Tori.tap(el, ev); },   // 토리 누르기: tori.js
   giftgoal(el){ if (giftAch()) { toast('이번 약속은 이미 달성했어요'); return; } S.gift.goal = +el.dataset.v; S.gift.name = $('#gname').value.trim(); checkGift(); save(); const y = scrollY; go('adult'); scrollTo(0, y); },
+  ebslink(){
+    const urls = ($('#ebsurl').value.match(/https?:\/\/\S+/g) || []).map(parseEbsUrl);
+    if (!urls.length || urls.some(x => !x)) return toast('강의 주소를 못 찾았어요. "lectId=LS…"가 들어 있는 주소를 붙여 주세요');
+    const [s, n] = $('#ebsat').value.split('|'); const li = lectInfo(s, +n);
+    const cid = String(li.course.ebs.id);
+    if (urls.some(x => x.course !== cid)) return toast(`다른 강좌의 주소예요. ${li.course.ebs.name} 강의 주소를 넣어 주세요`);
+    if (urls.length > 1 && li.local + urls.length - 1 > (li.course.lect || []).length) return toast('주소가 강의 수보다 많아요');
+    S.ebsLinks = S.ebsLinks || {}; const map = Object.assign({}, S.ebsLinks[cid] || {});
+    urls.forEach((x, i) => map[li.local + i] = x.lect);
+    S.ebsLinks = Object.assign({}, S.ebsLinks, { [cid]:map }); save();
+    toast(urls.length > 1 ? `${li.no}강부터 ${urls.length}개 저장했어요` : `${li.no}강 바로가기를 저장했어요`); go('adult');
+  },
+  ebsclear(el){ if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 지울까요? 한 번 더 누르면 지워져요'; return; } S.ebsLinks = {}; save(); go('adult'); },
   savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },
   giftgiven(){ const g = S.gift, ach = giftAch(); g.history.unshift({ round:g.round, name:g.name, achieved:ach }); S.gift = { name:'', goal:g.goal, round:g.round + 1, start:addDays(ach, 1), achieved:null, history:g.history }; if (S.gift.start > todayKey()) S.gift.start = addDays(todayKey(), day().done ? 1 : 0); save(); toast('다음 선물 약속을 시작했어요'); go('adult'); },
   instbr(el){ INSTALL.br = el.dataset.v; go('install'); },
@@ -1412,6 +1443,8 @@ document.addEventListener('change', async ev => {
   } else if (el.dataset.ch === 'cmode') {
     const s = el.dataset.v; if (s === 'math') S.mathMode = el.value; else { S.modes = S.modes || {}; S.modes[s] = el.value; }
     save(); toast(`${SUBJ_NAME[s]}: ${el.value === 'curr' ? '진도 방식' : '자유 연습'}으로 바꿨어요. 다음에 시작하는 판부터 적용돼요`); const y = scrollY; go('adult'); scrollTo(0, y);
+  } else if (el.dataset.ch === 'daygoal') {
+    S.dayGoal = +el.value; save(); toast(`하루 ${S.dayGoal}분에 맞춰요. 내일 새로 시작하는 판부터 바뀌어요`); go('adult');
   } else if (el.dataset.ch === 'pace') {
     S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
   } else if (el.dataset.ch === 'revlesson') {

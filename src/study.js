@@ -246,3 +246,27 @@ function probRowHTML(x){
   return `<div class="lq ${x.r === 1 ? 'okb' : x.r === 2 ? 're' : 'no'}">${icon}<div class="lt"><span>${tag}${esc(x.t)}</span>
     <span class="la">정답 <b>${esc(x.a)}</b>${x.w ? ` · 재윤이 답 <s>${esc(x.w)}</s>` : ''}${x.r === 2 ? ' · 힌트 보고 두 번째에 맞힘' : ''}</span></div></div>`;
 }
+
+/* ---------- 오늘 한눈에: 엄마·오빠 메뉴 맨 위 (들어오자마자 오늘 상태 확인) ---------- */
+function glancePanel(){
+  const t = todayKey(), dy = S.days[t], boards = (dy && dy.boards) || {};
+  const doneN = BOARDS.filter(b => boards[b.k] && boards[b.k].done).length, started = BOARDS.some(b => boards[b.k]);
+  const dm = dayMins(t), logs = dayLogs(t), wrongs = logs.filter(x => x.r !== 1), firstOk = logs.length - wrongs.length;
+  const lecs = lecturesOn(t), al = alarmInfo();
+  let head, tone;
+  if (dy && dy.done) { head = '✅ 오늘 공부를 다 했어요'; tone = 'ok'; }
+  else if (started) { head = `✏️ 공부하는 중 (${doneN}/${BOARDS.length}판)`; tone = 'doing'; }
+  else if (al && al.late) { head = `⏰ 아직 시작 안 했어요 (알림 ${al.time})`; tone = 'late'; }
+  else { head = '🌙 아직 시작 안 했어요'; tone = 'idle'; }
+  const chip = b => { const bo = boards[b.k], st = !bo ? 'todo' : bo.done ? 'done' : 'doing';
+    return `<span class="gl-chip ${st}">${st === 'done' ? '✓ ' : st === 'doing' ? '… ' : ''}${b.k === 'eng' ? '영어' : b.name}</span>`; };
+  const wtext = x => String(x.a || x.t).slice(0, 16);
+  return `<button class="glance ${tone}" data-a="study" data-v="${t}" aria-label="오늘 공부 자세히 보기">
+    <span class="gl-head"><b>${head}</b><span class="muted">${shortDate(t)} (${DOW[now().getDay()]})</span></span>
+    <span class="gl-chips">${BOARDS.map(chip).join('')}</span>
+    <span class="gl-stats"><span><b>${fmtMin(dm.total)}</b>공부 시간</span><span><b>${logs.length ? `${firstOk}/${logs.length}` : '-'}</b>한 번에 정답</span><span><b class="${wrongs.length ? 'bad' : ''}">${wrongs.length}</b>틀린 문제</span></span>
+    ${lecs.length ? `<span class="gl-line">📺 ${lecs.map(x => esc(`${{ math:'수학', kor:'국어', eng:'영어' }[x.s] || ''} ${x.info ? `${x.info.no}강 ${x.info.title}` : `${x.n}강`}`)).join(' · ')} 봤어요</span>` : ''}
+    ${wrongs.length ? `<span class="gl-line">❌ 틀린 문제 정답: ${wrongs.slice(0, 4).map(x => esc(wtext(x))).join(' · ')}${wrongs.length > 4 ? ` 외 ${wrongs.length - 4}개` : ''}</span>` : ''}
+    <span class="gl-more">자세히 보기 →</span>
+  </button>`;
+}
