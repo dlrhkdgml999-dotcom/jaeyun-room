@@ -10,8 +10,9 @@ os.makedirs(SHOTS, exist_ok=True)
 def build_page():
     H = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'dist', 'jaeyun-room.html'), encoding='utf8').read()
     doc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>' + H + '</body></html>'
-    open(SP + '/page3.html', 'w', encoding='utf8').write(doc)
-    return 'file://' + SP + '/page3.html'
+    pf = f'{SP}/page3_{os.getpid()}.html'   # 여러 시뮬레이션을 동시에 돌려도 안 겹치게
+    open(pf, 'w', encoding='utf8').write(doc)
+    return 'file://' + pf
 
 # 음성 엔진 흉내: 무엇을 읽었는지 기록하고, 0.35초 뒤 끝난 걸로 처리
 FAKE_TTS = """
