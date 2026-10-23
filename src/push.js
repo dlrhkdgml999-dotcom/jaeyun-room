@@ -5,6 +5,9 @@
      (functions/index.js는 Firebase 유료 요금제용 같은 일을 하는 서버 — 오빠가 요금제 안 바꾸기로 해서 안 씀)
    - 웹 푸시 키(VAPID 공개키)는 오빠가 설정 탭에 붙여 넣는다 → S.fcmKey (공개돼도 되는 값, 가족 기기에 같이 저장)
    - 알림을 받으면 sw.js가 띄운다 (push 이벤트)                                                  */
+/* 2026-10-24: 오빠가 요금제 안 바꾸기로 하고 ntfy 앱(ntfy.js)으로 정함 → 아래 FCM·Apps Script 방식은 꺼 둠 (USE_FCM).
+   다시 쓰려면 true로 바꾸고 HANDOFF.md "폰 알림 (Apps Script 방식)" 참고 */
+const USE_FCM = false;
 const PUSH_LS = 'jaeyun-push';
 /* 알림 서버(오빠 구글 계정의 Apps Script, firebase/apps_script.gs)로 알림 보내기.
    알림이 생긴 기기가 바로 보낸다 → 서버가 엄마·오빠 폰으로 앱 알림. 인터넷이 끊겨 못 보낸 건 기기에 잠깐 쌓아 두었다가 다시 (3시간 지나면 버림) */

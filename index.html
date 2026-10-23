@@ -671,6 +671,13 @@ button.sd:active{transform:scale(.95)}
 .push-nudge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--butter-pale);border:2.5px solid var(--butter-deep);border-radius:var(--r-md);padding:12px 14px;font-size:15px;line-height:1.45}
 .push-nudge > span:nth-child(2){min-width:180px}
 
+/* ntfy 알림 연결 3단계 */
+.ntfy-steps{display:grid;gap:8px;margin:6px 0;padding-left:22px;font-size:15px;line-height:1.45}
+.ntfy-steps li{display:list-item}
+.ntfy-steps li > span{display:block;margin-bottom:4px}
+.ntfy-who{border-top:2px dashed var(--line);padding:8px 0;display:grid;gap:6px}
+.ntfy-who summary{cursor:pointer;font-size:17px;padding:4px 0}
+
 </style>
 </head>
 <body>
@@ -691,7 +698,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261024020012";
+window.APP_VERSION = "20261024021456";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -1412,7 +1419,7 @@ function boardState(k, d = day()){
 function nextBoard(d = day()){ return orderedBoards(d).find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); Relay.send(n); } S.notes.unshift(n); trimNotes(); }
+function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); Ntfy.send(n); if (USE_FCM) Relay.send(n); } S.notes.unshift(n); trimNotes(); }
 function trimNotes(){ const cnt = {}; S.notes = S.notes.filter(x => (cnt[x.to] = (cnt[x.to] || 0) + 1) <= 60); }
 function alarmInfo(){
   const d = now(), dow = d.getDay();
@@ -2052,7 +2059,7 @@ function notesPanel(to, title){
   if (to === 'mom' && S.alarms.nudge && al && al.late && !al.started) extra.push({ text:`⏰ ${al.time} 공부 알림 뒤 30분이 지났는데 재윤이가 아직 시작하지 않았어요`, at:Date.now() });
   const list = [...extra, ...S.notes.filter(n => n.to === to)].slice(0, 12);
   return `<div class="panel"><h3>${title}</h3>${list.length ? `<div class="list">${list.map(n => `<div class="li"><span class="grow">${esc(n.text)}</span><span class="muted" style="font-size:13px;white-space:nowrap">${new Date(n.at).getHours()}:${String(new Date(n.at).getMinutes()).padStart(2,'0')}</span></div>`).join('')}</div>` : '<p class="muted">아직 알림이 없어요</p>'}
-  ${linked() ? (Push.state() === 'on' ? '' : `<p class="muted" style="font-size:13px">설정 탭 → 폰 알림을 켜면 이 내용이 폰으로도 와요.</p>`) : `<p class="demo-note">체험판에서는 알림이 여기에만 쌓여요.</p>`}</div>`;
+  ${linked() ? (Ntfy.done(role()) ? '' : `<p class="muted" style="font-size:13px">설정 탭 → 폰 알림을 연결하면 이 내용이 폰으로도 와요.</p>`) : `<p class="demo-note">체험판에서는 알림이 여기에만 쌓여요.</p>`}</div>`;
 }
 VIEWS.adult = () => {
   const tab = S.adultTab;
@@ -2070,7 +2077,7 @@ VIEWS.adult = () => {
         <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
       <div class="panel"><h3>공부 알림 시간</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 화면 맨 위에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 태블릿 앱이 닫혀 있으면 안 들리니, 그 시간에 태블릿 알람을 같이 맞춰 두면 좋아요.</p>
         ${[1,2,3,4,5,6,0].map(i => `<div class="alarm-row"><span class="dn">${DOW[i]}</span><input type="time" id="al${i}" value="${S.alarms.time[i]}" data-ch="altime" data-v="${i}" ${S.alarms.on[i] ? '' : 'disabled'}><button class="switch ${S.alarms.on[i] ? 'on' : ''}" data-a="alon" data-v="${i}" aria-label="${DOW[i]}요일 알림 켜기"></button></div>`).join('')}
-        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림<br><span class="muted" style="font-size:13px">폰 알림을 켜면 앱을 안 열어도 와요</span></span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
+        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림<br><span class="muted" style="font-size:13px">엄마·오빠 메뉴를 열었을 때 보여요 (태블릿이 꺼져 있으면 폰 알림은 못 보내요)</span></span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
       </div>` + notesPanel('mom', '엄마 알림함');
   } else if (tab === 'oppa') {
     const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), i - 6));
@@ -2116,7 +2123,7 @@ VIEWS.adult = () => {
       ${reviewPanel()}
       ${notesPanel('oppa', '오빠 알림함')}`;
   } else {
-    body = familyPanel() + (linked() ? pushPanel() : '') + mailPanel() + `
+    body = familyPanel() + ntfyPanel() + (linked() && USE_FCM ? pushPanel() : '') + mailPanel() + `
       <div class="panel"><h3>토리 목소리</h3>
         <p class="muted" style="font-size:15px">폰에 들어 있는 음성으로 읽어 줘요. 재윤이가 좋아하는 소리로 골라 주세요.</p>
         <div class="list">${Object.entries(TTS_PRESETS).map(([k, pr]) => `<button class="li" style="text-align:left;${S.tts.preset === k ? 'outline:3px solid var(--pink)' : ''}" data-a="ttspreset" data-v="${k}"><span class="grow">${pr.name}</span>${S.tts.preset === k ? '<span class="pill">사용 중</span>' : ''}</button>`).join('')}</div>
@@ -2135,7 +2142,7 @@ VIEWS.adult = () => {
         <p class="demo-note">지금은 이 폰 하나에 재윤이·엄마·오빠 화면이 함께 들어 있는 체험판이에요. 서버를 연결하면 세 폰이 같은 기록을 나눠 써요.</p>
       </div>`;
   }
-  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${tab !== 'set' ? pushNudge() : ''}${body}</section>`;
+  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${tab !== 'set' ? ntfyNudge() + (USE_FCM ? pushNudge() : '') : ''}${body}</section>`;
 };
 let RESET_ARMED = false;
 
@@ -2304,7 +2311,7 @@ const ACT = {
   repshare(el){ const r = el.dataset.v && S.reports[el.dataset.v] ? S.reports[el.dataset.v] : buildWeekReport(mondayOf(todayKey())); const text = reportText(r);
     if (navigator.share) navigator.share({ title:reportTitle(r), text }).catch(() => {}); else { try { navigator.clipboard.writeText(text).then(() => toast('복사했어요. 카톡에 붙여 넣어 주세요')); } catch (e) { toast('복사가 안 됐어요'); } } },
   mailsave(){ const mom = $('#mmom').value.trim(), oppa = $('#moppa').value.trim(); const ok = x => !x || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
-    if (!ok(mom) || !ok(oppa)) { toast('메일 주소를 확인해 주세요'); return; }
+    if (!ok(mom) || !ok(oppa) || (!USE_FCM && !mom && !oppa)) { toast('메일 주소를 확인해 주세요'); return; }
     S.mail = Object.assign({}, S.mail || {}, { mom, oppa }); if (!S.mail.key) S.mail.key = newFid().slice(0, 16); save(); toast(S.mail.url ? '저장했어요. 코드를 다시 붙여 넣고 새 버전으로 배포해 주세요' : '코드를 만들었어요. 아래 순서대로 설정해 주세요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   mailcopy(el){ const t = $(el.dataset.v || '#mailcode').value; try { navigator.clipboard.writeText(t).then(() => toast('코드를 복사했어요'), () => { $('#mailcode').select(); }); } catch (e) { $('#mailcode').select(); } },
   mailurl(){ const u = $('#murl').value.trim(); if (u && !/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(u)) { toast('https://script.google.com/macros/s/…/exec 모양의 주소를 넣어 주세요'); return; } S.mail = Object.assign({}, S.mail || {}, { url:u }); save(); toast(u ? 'URL을 저장했어요' : 'URL을 지웠어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
@@ -5266,7 +5273,7 @@ function ebsLinkPanel(){
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
 const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports','collect','friends'];
-const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey'];
+const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey','ntfyOff'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
 function linked(){ return !!(S.local && S.local.fid); }
@@ -5586,6 +5593,9 @@ function syncAlert(){
      (functions/index.js는 Firebase 유료 요금제용 같은 일을 하는 서버 — 오빠가 요금제 안 바꾸기로 해서 안 씀)
    - 웹 푸시 키(VAPID 공개키)는 오빠가 설정 탭에 붙여 넣는다 → S.fcmKey (공개돼도 되는 값, 가족 기기에 같이 저장)
    - 알림을 받으면 sw.js가 띄운다 (push 이벤트)                                                  */
+/* 2026-10-24: 오빠가 요금제 안 바꾸기로 하고 ntfy 앱(ntfy.js)으로 정함 → 아래 FCM·Apps Script 방식은 꺼 둠 (USE_FCM).
+   다시 쓰려면 true로 바꾸고 HANDOFF.md "폰 알림 (Apps Script 방식)" 참고 */
+const USE_FCM = false;
 const PUSH_LS = 'jaeyun-push';
 /* 알림 서버(오빠 구글 계정의 Apps Script, firebase/apps_script.gs)로 알림 보내기.
    알림이 생긴 기기가 바로 보낸다 → 서버가 엄마·오빠 폰으로 앱 알림. 인터넷이 끊겨 못 보낸 건 기기에 잠깐 쌓아 두었다가 다시 (3시간 지나면 버림) */
@@ -5695,6 +5705,88 @@ const PUSH_ACTIONS = {
 };
 
 Object.assign(ACT, PUSH_ACTIONS);
+
+/* ===================== 폰 알림: ntfy 앱 (무료 · 서버 없음, 2026-10-24) =====================
+   - 알림이 생긴 기기(대개 재윤이 태블릿)가 ntfy.sh로 바로 보낸다 → 엄마·오빠 폰의 ntfy 앱이 알림을 띄운다
+   - 받는 곳(토픽)은 가족 번호로 만든 비밀 주소: 엄마용 · 오빠용 두 개. 모든 기기가 같은 주소를 계산해서 따로 맞출 필요 없음
+   - 폰에서 할 일: ntfy 앱 설치 → 앱에 있는 "알림 연결" 링크(ntfy://ntfy.sh/토픽) 한 번 누르기
+   - 인터넷이 끊겨 못 보낸 알림은 기기에 쌓아 두었다가 다시 보냄 (3시간 지나면 버림)
+   - 공부 알림 시간이 지났는데 시작 안 했다는 알림은 서버가 없어서 못 보냄 (태블릿이 꺼져 있으면 보낼 기기가 없음)
+   - S.ntfyOff: true면 안 보냄 (ADULT_KEYS, 가족 기기에 같이 저장)                                                   */
+const NTFY_HOST = 'ntfy.sh', NTFY_URL = 'https://ntfy.sh/', NTFY_APP = 'https://play.google.com/store/apps/details?id=io.heckel.ntfy';
+const NTFY_LS = 'jaeyun-ntfyq', APP_LINK = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';
+const NTFY_WHO = { mom:'엄마', oppa:'오빠' };
+function ntfyTopic(who){ return linked() ? `jaeyun-${who}-${hashStr(S.local.fid + '|' + who + '|ntfy')}` : ''; }
+function ntfyLink(who){ return `ntfy://${NTFY_HOST}/${ntfyTopic(who)}?display=${encodeURIComponent('재윤이 공부방' + (who === 'oppa' ? ' (오빠)' : ''))}`; }
+const Ntfy = {
+  on(){ return linked() && !S.ntfyOff; },
+  q(){ try { return JSON.parse(localStorage.getItem(NTFY_LS) || '[]'); } catch (e) { return []; } },
+  setQ(q){ try { localStorage.setItem(NTFY_LS, JSON.stringify(q.slice(-30))); } catch (e) {} },
+  send(n){ if (!this.on() || !NTFY_WHO[n.to]) return; const q = this.q(); q.push({ to:n.to, text:n.text, at:n.at || Date.now() }); this.setQ(q); this.flush(); },
+  busy:false,
+  async flush(){
+    if (!this.on() || this.busy) return; this.busy = true;
+    try {
+      let q = this.q().filter(x => Date.now() - x.at < 3 * 3600000);
+      for (const x of q.slice()) {
+        const big = /모두 끝냈어요|받아쓰기|못하고|못 보내|⚠️/.test(x.text);
+        try {
+          const r = await fetch(NTFY_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+            body:JSON.stringify({ topic:ntfyTopic(x.to), title:'재윤이 공부방', message:String(x.text).slice(0, 400), priority:big ? 4 : 3, click:APP_LINK }) });
+          if (!r.ok && r.status !== 400) break;   // 너무 많이 보냄(429) · 서버 문제 → 다음에. 400(내용 문제)은 다시 보내도 안 되니 버림
+          q = q.filter(y => y !== x);
+        } catch (e) { break; }   // 인터넷이 안 되면 다음에
+      }
+      this.setQ(q);
+    } finally { this.busy = false; }
+  },
+  doneKey(who){ return `jaeyun-ntfy-${who}`; },
+  done(who){ try { return localStorage.getItem(this.doneKey(who)) === (S.local && S.local.fid); } catch (e) { return false; } },
+  setDone(who, v){ try { v ? localStorage.setItem(this.doneKey(who), S.local.fid) : localStorage.removeItem(this.doneKey(who)); } catch (e) {} },
+};
+window.addEventListener('online', () => Ntfy.flush());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) Ntfy.flush(); });
+
+/* 폰 하나에서 할 3단계 (who = 엄마 / 오빠 알림) */
+function ntfyStepsHTML(who, big){
+  const sz = big ? '' : 'small';
+  return `<ol class="ntfy-steps">
+    <li><span>Play 스토어에서 <b>ntfy</b> 앱 설치</span><a class="btn ${sz} ghost" href="${NTFY_APP}" target="_blank" rel="noopener">설치하러 가기</a></li>
+    <li><span>설치가 끝나면 이 버튼 → <b>ntfy로 열기</b> → <b>구독(Subscribe)</b></span><a class="btn ${sz}" href="${ntfyLink(who)}" data-a="ntfylink" data-v="${who}">알림 연결하기</a></li>
+    <li><span>시험 알림이 이 폰에 오면 끝!</span><button class="btn ${sz} mint" data-a="ntfytest" data-v="${who}">시험 알림 보내기</button></li>
+  </ol>`;
+}
+/* 엄마·오빠 메뉴 맨 위: 이 폰을 아직 연결 안 했으면 권하기 */
+function ntfyNudge(){
+  if (!linked() || role() === 'kid' || !NTFY_WHO[role()] || !Ntfy.on() || Ntfy.done(role())) return '';
+  try { if (localStorage.getItem('jaeyun-ntfy-later') === todayKey()) return ''; } catch (e) {}
+  return `<div class="push-nudge" style="display:grid;gap:8px"><div class="row" style="gap:8px"><span style="font-size:26px">🔔</span><span style="flex:1"><b>이 폰으로 재윤이 소식 알림 받기</b><br><span class="muted" style="font-size:14px">공부 시작 · 다 끝냄 · 받아쓰기 채점할 것 (2분이면 돼요)</span></span></div>
+    ${ntfyStepsHTML(role(), false)}
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn small" data-a="ntfyok" data-v="${role()}">알림 잘 와요 ✓</button><button class="btn ghost small" data-a="ntfylater">나중에</button></div></div>`;
+}
+function ntfyPanel(){
+  if (!linked()) return '';
+  const me = role();
+  return `<div class="panel"><h3>🔔 폰 알림 <span class="muted" style="font-size:14px">(ntfy 앱 · 무료)</span></h3>
+    <p class="muted" style="font-size:15px">재윤이가 공부를 시작하거나 끝냈을 때, 받아쓰기를 보냈을 때, 주간 리포트가 왔을 때 폰으로 알려 줘요. 폰마다 아래 3단계를 한 번만 하면 돼요.</p>
+    ${['mom','oppa'].map(w => `<details class="ntfy-who" ${w === me && !Ntfy.done(w) ? 'open' : ''}><summary><b>${NTFY_WHO[w]} 알림</b> 받기${w === me ? ' <span class="pill">이 폰</span>' : ''}${Ntfy.done(w) ? ' <span class="pill ok">연결됨 ✓</span>' : ''}</summary>
+      ${ntfyStepsHTML(w, false)}
+      <p class="muted" style="font-size:13px">${w === 'mom' ? '엄마 폰에서 하면 돼요. 오빠 폰에서도 하면 엄마 알림을 오빠도 같이 받아요.' : '오빠 폰에서 하면 돼요.'} 링크가 안 열리면 ntfy 앱에서 <b>+</b> → 아래 이름을 넣고 구독.</p>
+      <div class="row" style="gap:8px"><input type="text" readonly value="${esc(ntfyTopic(w))}" style="flex:1;min-width:0;font-size:13px;border:2px solid var(--line);border-radius:10px;padding:6px 8px" aria-label="${NTFY_WHO[w]} 알림 이름"><button class="btn ghost small" data-a="ntfycopy" data-v="${w}">복사</button></div>
+      ${Ntfy.done(w) ? `<button class="btn ghost small" data-a="ntfyok" data-v="${w}" data-off="1" style="justify-self:start">이 폰 "연결됨" 표시 지우기</button>` : `<button class="btn ghost small" data-a="ntfyok" data-v="${w}" style="justify-self:start">이 폰에 알림 잘 와요 ✓</button>`}
+    </details>`).join('')}
+    <div class="row" style="margin-top:6px"><span style="flex:1">알림 보내기 ${S.ntfyOff ? '<b>꺼짐</b>' : '켜짐'}<br><span class="muted" style="font-size:13px">끄면 가족 모든 폰에 알림이 안 가요</span></span><button class="switch ${S.ntfyOff ? '' : 'on'}" data-a="ntfytoggle" aria-label="폰 알림 보내기"></button></div>
+    <p class="muted" style="font-size:13px">알림이 늦게 오면: ntfy 앱 → 해당 알림 → 설정에서 <b>즉시 전달(Instant delivery)</b>을 켜 주세요. 알림 이름은 가족 링크처럼 비밀이니 다른 사람에게 알려 주지 마세요.</p>
+  </div>`;
+}
+Object.assign(ACT, {
+  ntfylink(el){ /* 링크는 그대로 열리고, 눌렀다는 것만 기억 */ try { sessionStorage.setItem('jaeyun-ntfy-tapped', el.dataset.v); } catch (e) {} },
+  ntfytest(el){ const w = el.dataset.v; if (!Ntfy.on()) return toast('알림 보내기가 꺼져 있어요'); notify(w, `🔔 ${NTFY_WHO[w]} 알림 시험: 이 알림이 보이면 연결 성공이에요!`); toast('시험 알림을 보냈어요. 몇 초 안에 와야 해요'); },
+  ntfyok(el){ const w = el.dataset.v; Ntfy.setDone(w, !el.dataset.off); if (!el.dataset.off) toast('좋아요! 이제 이 폰으로 알림이 와요'); go('adult'); },
+  ntfylater(){ try { localStorage.setItem('jaeyun-ntfy-later', todayKey()); } catch (e) {} go('adult'); },
+  ntfycopy(el){ const t = ntfyTopic(el.dataset.v); try { navigator.clipboard.writeText(t).then(() => toast('복사했어요'), () => toast(t)); } catch (e) { toast(t); } },
+  ntfytoggle(){ S.ntfyOff = !S.ntfyOff; save(); toast(S.ntfyOff ? '폰 알림을 껐어요' : '폰 알림을 켰어요'); go('adult'); },
+});
 
 /* ===================== 펜으로 받아쓰기 (태블릿) ===================== */
 function penMode(){ const m = S.dictMode || 'auto'; if (m === 'pen') return true; if (m === 'paper') return false; return Math.min(screen.width, screen.height) >= 600; }
@@ -5987,6 +6079,7 @@ function reportPanel(){
 /* 알림 · 메일 서버: 오빠 구글 계정의 Apps Script 하나로 폰 알림 + 주간 메일 (무료) */
 function relayCode(){ const m = S.mail || {}; return RELAY_GS.replace('{{KEY}}', m.key || '').replace('{{TO}}', [m.mom, m.oppa].filter(Boolean).join(',')).replace('{{FID}}', (S.local && S.local.fid) || ''); }
 function mailPanel(){
+  if (!USE_FCM) return mailPanelSimple();
   const m = S.mail || {}, ready = !!(m.key && linked());
   return `<div class="panel"><h3>🔔 알림 · 메일 서버 <span class="muted" style="font-size:14px">(오빠가 컴퓨터로 한 번만)</span></h3>
     <p class="muted" style="font-size:14px">오빠 구글 계정의 Apps Script(무료)가 재윤이 소식을 엄마·오빠 폰 알림으로 보내 줘요. 메일 주소를 넣으면 매주 월요일 주간 리포트 메일도 가요. ${Relay.url() ? '<b style="color:var(--mint-deep)">설정됨 ✓</b>' : ''}</p>
@@ -6009,6 +6102,29 @@ function mailPanel(){
       <div class="field"><label for="murl">웹 앱 URL</label><input type="text" id="murl" value="${esc(m.url || '')}" placeholder="https://script.google.com/macros/s/.../exec"></div>
       <div class="row" style="flex-wrap:wrap"><button class="btn small" data-a="mailurl">URL 저장</button>${m.url && (m.mom || m.oppa) ? `<button class="btn mint small" data-a="mailtest">테스트 메일 보내기</button>` : ''}</div>
       <p class="muted" style="font-size:13px">메일 주소를 바꾸면 코드를 다시 붙여 넣고 <b>배포 → 배포 관리 → ✏️ → 버전: 새 버전</b>으로 다시 배포해 주세요 (URL은 그대로).</p>` : ''}
+  </div>`;
+}
+/* FCM 안 쓸 때: 주간 메일만 보내는 간단한 Apps Script (매니페스트 필요 없음) */
+function mailPanelSimple(){
+  const m = S.mail || {};
+  const code = `const KEY = '${m.key || '(먼저 저장을 눌러 주세요)'}';\nconst TO = '${[m.mom, m.oppa].filter(Boolean).join(',')}';\nfunction doPost(e) {\n  const d = JSON.parse(e.postData.contents);\n  if (d.key !== KEY || !TO) return ContentService.createTextOutput('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html).slice(0, 20000) });\n  return ContentService.createTextOutput('ok');\n}`;
+  return `<div class="panel"><h3>📧 주간 리포트 메일로 받기</h3>
+    <p class="muted" style="font-size:14px">매주 월요일 재윤이 태블릿이 지난주 리포트를 엄마·오빠 메일로 보내요. 오빠 구글 계정으로 한 번만 설정하면 돼요 (무료).</p>
+    ${linked() ? '' : '<p class="demo-note">가족 기기 연결을 먼저 해 주세요.</p>'}
+    <div class="field"><label for="mmom">엄마 메일</label><input type="text" id="mmom" inputmode="email" value="${esc(m.mom || '')}" placeholder="mom@gmail.com"></div>
+    <div class="field"><label for="moppa">오빠 메일</label><input type="text" id="moppa" inputmode="email" value="${esc(m.oppa || '')}" placeholder="oppa@gmail.com"></div>
+    <button class="btn small" data-a="mailsave" style="justify-self:start">메일 주소 저장</button>
+    ${m.key ? `<ol style="font-size:14px;line-height:1.7;padding-left:20px;margin:0">
+      <li>컴퓨터로 <b>script.google.com</b> → <b>새 프로젝트</b></li>
+      <li>원래 있는 글을 지우고 아래 코드를 붙여 넣고 저장 (💾)</li>
+      <li><b>배포 → 새 배포</b> → 톱니바퀴에서 <b>웹 앱</b> → 실행: <b>나</b>, 액세스: <b>모든 사용자</b> → 배포</li>
+      <li>권한 허용 (확인되지 않은 앱 경고가 나오면 <b>고급 → 이동</b>)</li>
+      <li>나온 <b>웹 앱 URL</b>을 아래 칸에 붙여 넣고 저장 → <b>테스트 메일 보내기</b></li></ol>
+      <textarea id="mailcode" readonly rows="8" style="width:100%;font-family:monospace;font-size:12px;border:2px solid var(--line);border-radius:12px;padding:8px">${esc(code)}</textarea>
+      <button class="btn ghost small" data-a="mailcopy" style="justify-self:start">코드 복사</button>
+      <div class="field"><label for="murl">웹 앱 URL</label><input type="text" id="murl" value="${esc(m.url || '')}" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn small" data-a="mailurl">URL 저장</button>${m.url ? `<button class="btn mint small" data-a="mailtest">테스트 메일 보내기</button>` : ''}</div>
+      <p class="muted" style="font-size:13px">메일 주소나 URL을 바꾸면 코드를 다시 붙여 넣고 "배포 관리 → 새 버전"으로 다시 배포해 주세요.</p>` : ''}
   </div>`;
 }
 

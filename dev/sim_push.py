@@ -19,6 +19,8 @@ async def main():
         async with async_playwright() as pw:
             br = await pw.chromium.launch(executable_path=CHROME)
             oppa = await Device('오빠폰', br, 384, 832, base).open()
+            if not await oppa.ev('USE_FCM'):
+                print('USE_FCM = false (ntfy 사용 중) → 이 시뮬레이션은 건너뜀. sim_ntfy.py를 돌려요'); return
             await oppa.click('[data-a="start"]'); await oppa.adult('set')
             await oppa.click('[data-a="famcreate"][data-v="oppa"]'); await oppa.p.wait_for_timeout(1500)
             link = await oppa.ev('familyLink()'); fid = await oppa.ev('S.local.fid')

@@ -651,3 +651,10 @@ button.sd:active{transform:scale(.95)}
 /* 폰 알림 권하기 (엄마·오빠 메뉴 맨 위) */
 .push-nudge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--butter-pale);border:2.5px solid var(--butter-deep);border-radius:var(--r-md);padding:12px 14px;font-size:15px;line-height:1.45}
 .push-nudge > span:nth-child(2){min-width:180px}
+
+/* ntfy 알림 연결 3단계 */
+.ntfy-steps{display:grid;gap:8px;margin:6px 0;padding-left:22px;font-size:15px;line-height:1.45}
+.ntfy-steps li{display:list-item}
+.ntfy-steps li > span{display:block;margin-bottom:4px}
+.ntfy-who{border-top:2px dashed var(--line);padding:8px 0;display:grid;gap:6px}
+.ntfy-who summary{cursor:pointer;font-size:17px;padding:4px 0}

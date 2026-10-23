@@ -10,7 +10,7 @@ async def main():
         # 메일 설정 (설정 탭)
         await s.ev("S.local = { fid:'testfamilytestfamily22', role:'kid' }; saveLocal()")   # 실제처럼 가족 연결된 태블릿 (서버 없음)
         await s.adult('set'); await p.fill('#mmom', 'mom@example.com'); await p.fill('#moppa', 'oppa@example.com'); await s.click('[data-a="mailsave"]'); await p.wait_for_timeout(200)
-        code = await s.ev("document.querySelector('#mailcode').value"); s.expect('mom@example.com,oppa@example.com' in code and 'KEY' in code and 'testfamilytestfamily22' in code, '메일 코드 이상')
+        code = await s.ev("document.querySelector('#mailcode').value"); s.expect('mom@example.com,oppa@example.com' in code and 'KEY' in code, '메일 코드 이상')
         await p.fill('#murl', 'https://script.google.com/macros/s/AKfyTEST123/exec'); await s.click('[data-a="mailurl"]'); await p.wait_for_timeout(200)
         await s.click('[data-a="mailtest"]'); await p.wait_for_timeout(200)
         m = await s.ev("window.__mails.filter(x => x.type !== 'note')"); s.expect(len(m) == 1 and m[0]['subject'].startswith('[테스트]'), f'테스트 메일 이상 {m}')

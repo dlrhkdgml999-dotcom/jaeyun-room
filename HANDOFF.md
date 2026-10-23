@@ -39,7 +39,8 @@ git add -A && git commit && git push
 | `sim_family.py` | 태블릿 · 엄마 폰 · 오빠 폰 3기기 동기화 (가짜 Firestore `mockfb.js`) |
 | `sim_a~g`, `sim_write`, `sim_weekly`, `sim_capsule`, `clip_all` | 화면 흐름, 쓰기, 주간 리포트, 캡슐, 글자 잘림 |
 | `fs_check.py 3` | 태블릿이 서버로 보낼 모든 문서를 **진짜 Firestore 규칙**으로 검사 (배열 안 배열, undefined, 1MB) + 보냈다 받으면 똑같은지 ("이상: 0"이어야 함) |
-| `sim_push.py` | 폰 알림: 오빠가 웹 푸시 키 저장 → 엄마 폰 알림 켜기 → push 문서 → 받을 알림 고르기 → 태블릿 알림이 알림함에 → 끄기 (sim_family 다음에 따로 돌려요, 같은 8765 포트) |
+| `sim_ntfy.py` | 폰 알림(ntfy): 세 기기 토픽 일치, 엄마 폰 3단계·딥링크, 시험 알림, 태블릿 시작 알림, 끊김 재전송, 끄기 동기화 (8765 포트, sim_family와 따로) |
+| `sim_push.py` | (USE_FCM 켰을 때만) 폰 알림 FCM: 오빠가 웹 푸시 키 저장 → 엄마 폰 알림 켜기 → push 문서 → 받을 알림 고르기 → 태블릿 알림이 알림함에 → 끄기 (sim_family 다음에 따로 돌려요, 같은 8765 포트) |
 | `sim_ebslink.py` | EBS 강의 바로가기: 주소 붙여넣기, 다른 강좌 거절, 번호 짐작 규칙, 강의 안내 버튼 주소 |
 | `sim_sync.py` | 실제 동기화 사고 재현: 연결 안 된 태블릿 → 재윤이로 연결, 잘못된 역할(오빠)로 연결된 태블릿, 끊긴 채 공부 → 재연결, 끊긴 채 공부 → 앱 재시작 |
 | `sim_mom.py` | 엄마 입장: 10일 공부(펜 받아쓰기 포함) → 받아쓰기 채점(글씨 옆 O·X, 스크롤 안 움직임), 공부 기록(기간 달력 분 합계, 날짜 누르면 그날 푼 문제, 과목·틀린 것만), 폰·태블릿 가로 캡처 |
@@ -80,17 +81,21 @@ git add -A && git commit && git push
 - **오늘 한눈에** (`glancePanel`, study.js): 엄마·오빠 탭 맨 위. 오늘 상태(다 함 / 하는 중 n/4판 / 알림 시간 지났는데 시작 안 함), 판별 칩, 공부 시간(강의 포함)·한 번에 정답·틀린 문제 수, 본 강의, 틀린 문제 정답 4개. 누르면 공부 기록 화면 오늘 날짜로. 예전 `todayPanel`은 안 씀.
 - **하루 공부 시간** (`dayGoalPanel`, app.js): 엄마 탭·설정 탭. `S.dayGoal`(40~80분, 기본 60, ADULT_KEYS)로 `countFor` 목표 시간과 최소·최대 문제 수를 같이 늘리고 줄임(`goalFactor`). 최근 7일 다 끝낸 날 평균 실제 시간과 비교 문구. 문제 수 자동 조절은 원래 있던 `avgSec`(한 문제 8~120초로 잘라 지수평균) 그대로.
 - **EBS 강의 바로가기** (currcore.js `EBS_BUILTIN`·`ebsLinkOf`·`parseEbsUrl`·`ebsGuess`, curr_ui.js `ebsLinkPanel`): EBS 강의 재생 주소는 `primary.ebs.co.kr/pleasure/course/player/main/index?cid=강좌&sid=STEP…&lid=LS…&eno=1&encType=M…`. **lid는 강 번호마다 1씩 늘어요.** 오빠가 보내 준 첫 강·마지막 강 주소로 확인해서 앱에 넣어 둠: 수학 1-2(cid 100005137, sid STEP1000010212, 01강 LS00000000152376470 ~ 65강 …534, encType M05), 국어 1-2(cid 100006226, sid STEP1000011301, 01강 LS00000000152384353 ~ 48강 …400, encType M10). 다른 강좌(2-1 등)는 오빠 탭 "EBS 강의 바로가기"에 재생 주소를 붙여 넣으면 `S.ebsLinks[cid] = {sid, enc, 강번호:lid}`(넣어 둔 게 우선), 3개 이상 일정 간격이면 나머지 짐작. **2-1 강좌가 가까워지면 오빠에게 첫 강·마지막 강 재생 주소를 받아 `EBS_BUILTIN`에 넣기.** 앱에 다 들어 있는 강좌는 붙여넣기 칸을 안 보여 줌.
-- **폰 알림** (push.js, firebase/apps_script.gs, sw.js push 처리): 아래 "폰 알림".
+- **폰 알림** (ntfy.js): 아래 "폰 알림 = ntfy 앱".
 
-## 폰 알림 (Apps Script 방식, 무료 · 2026-10-24 결정)
-오빠는 Firebase 요금제(Blaze) 바꾸기 싫다고 함 → Cloud Functions(functions/) 대신 **오빠 구글 계정의 Apps Script**가 알림 서버.
-- 흐름: 알림이 생긴 기기의 `notify()` → `Relay.send()`(push.js)가 웹 앱 URL로 `{key, type:'note', to, text, at}` POST (no-cors, 끊기면 localStorage `jaeyun-relayq`에 쌓았다가 online 때 다시, 3시간 지나면 버림) → `firebase/apps_script.gs`의 `doPost`가 Firestore REST로 `families/{FID}/push` 읽고 → FCM HTTP v1으로 roles 맞는 폰에 data 메시지 → `sw.js` push 이벤트가 알림 표시. 없어진 토큰(404/UNREGISTERED)은 지움.
-- 오빠 계정 OAuth 토큰(`ScriptApp.getOAuthToken`)으로 Firestore·FCM 호출. 기본 Apps Script 프로젝트에서 부르니까 **`x-goog-user-project: jaeyun-room` 헤더**로 jaeyun-room 할당량을 씀. 필요한 범위는 `firebase/appsscript.json`(매니페스트)에.
-- `checkLate`: `setup()`이 10분마다 트리거를 만듦. 오늘 알림 시간 + 30분~3시간 사이인데 오늘 판이 없으면 엄마에게 하루 한 번(ScriptProperties `late`).
-- 주간 메일도 같은 스크립트(`type` 없이 `subject`·`html`). 메일 주소는 안 넣어도 됨.
-- 앱: 설정 탭 "🔔 알림 · 메일 서버"(`mailPanel`, weekly.js)에서 [코드 만들기] → 매니페스트·코드(`RELAY_GS`/`RELAY_MANIFEST`, 빌드 때 firebase/에서 넣음, KEY·TO·FID 채움) 복사 → URL 저장. 그다음 "폰 알림"(`pushPanel`)에서 웹 푸시 키(`S.fcmKey`, Firebase 콘솔 클라우드 메시징 → 웹 푸시 인증서, 무료 요금제에서도 됨) → 엄마·오빠 폰에서 알림 켜기. `Push.state()`: noserver → nokey → off/on.
-- 검증: 샌드박스에서 진짜 구글을 못 불러서 `apps_script.gs`는 가짜 구글 서비스로 Node에서 돌려 봄(키 확인, 역할별 전송, 죽은 토큰 지우기, 오래된 알림 건너뛰기, 늦음 알림 하루 한 번·시작했으면 안 보냄, 메일). **진짜에서 처음 안 되면 Apps Script 실행 로그의 오류(Firestore 403, FCM 403 등)를 받아서 고치기.**
-- 처음에 엄마·오빠 폰 둘 다 알림 켜고 테스트 버튼으로 확인.
+## 폰 알림 = ntfy 앱 (2026-10-24 최종 결정)
+오빠: Firebase 요금제(Blaze) 싫음, 메신저봇은 이제 안 씀 → **ntfy 앱**으로 정함. 엄마는 폰을 잘 못 다뤄서 오빠가 엄마 폰을 받아 대신 설치해 줄 예정(주말엔 못 봄).
+- `src/ntfy.js`: 알림이 생긴 기기의 `notify()` → `Ntfy.send()`가 `https://ntfy.sh/`로 JSON POST `{topic, title:'재윤이 공부방', message, priority(다 끝냄·받아쓰기 4, 나머지 3), click:앱 주소}`. 끊기면 localStorage `jaeyun-ntfyq`에 쌓았다가 online·앱 다시 볼 때 보냄(3시간 지나면 버림, 429·5xx면 다음에).
+- 토픽은 가족 번호로 계산: `jaeyun-mom-…`, `jaeyun-oppa-…`(`ntfyTopic`) → 모든 기기가 같은 값, 따로 저장 안 함. 가족 링크처럼 비밀.
+- 폰 연결: ntfy 앱(Play 스토어 io.heckel.ntfy) 설치 → 앱의 "알림 연결하기" = `ntfy://ntfy.sh/토픽?display=재윤이 공부방`(ntfy 공식 딥링크) → 구독 → "시험 알림 보내기". 엄마·오빠 메뉴 맨 위 `ntfyNudge`가 3단계를 보여 주고, "알림 잘 와요 ✓"를 누르면 그 폰에서는 안 보임(localStorage). 설정 탭 `ntfyPanel`: 엄마 알림 / 오빠 알림 각각 3단계·토픽 복사·알림 보내기 끄기(`S.ntfyOff`, ADULT_KEYS).
+- 오빠 폰에서 엄마 알림도 같이 구독하면 엄마 알림을 오빠도 받음.
+- 못 하는 것: "알림 시간 지났는데 시작 안 함" 알림(서버가 없어서 태블릿이 꺼져 있으면 보낼 기기가 없음). 엄마 메뉴 알림함에만 보임.
+- 늦게 오면 ntfy 앱에서 그 구독의 "즉시 전달(Instant delivery)"을 켜기(대신 상단에 상시 알림이 생김).
+- 검증: `sim_ntfy.py` (토픽 일치, 엄마 폰 3단계·딥링크·설치 링크, 시험 알림, 태블릿 시작 알림, 끊김 재전송, 끄기 동기화).
+
+## (안 씀) 폰 알림 Apps Script·FCM 방식
+`push.js`의 `USE_FCM = false`로 꺼 둠. 켜면 FCM 토큰 저장(`Push`)·Apps Script 알림 서버(`Relay`, `firebase/apps_script.gs`·`appsscript.json`)·Cloud Functions(`functions/`, Blaze 필요) 코드가 그대로 살아남. 꺼져 있을 때 설정 탭 메일 패널은 예전처럼 주간 메일만 보내는 간단한 Apps Script(`mailPanelSimple`). `sim_push.py`는 USE_FCM이 꺼져 있으면 건너뜀.
+- Apps Script 방식 메모: 오빠 계정 OAuth 토큰(`ScriptApp.getOAuthToken`)으로 Firestore REST·FCM v1 호출, `x-goog-user-project: jaeyun-room` 헤더 필요, 매니페스트 범위는 `firebase/appsscript.json`. 가짜 구글 서비스로만 시험해 봄(진짜에서는 아직 안 돌려 봄).
 
 ## EBS 강좌 (오빠가 보내 준 강의목록 그대로 입력함)
 | 코스 | 강좌 | courseId | 강의 |
@@ -130,7 +135,7 @@ git add -A && git commit && git push
 4. **교재와 비교:** 1-2 차시는 강의 제목과 키워드로 추정해 짰어요. 교재와 다르면 오빠 피드백대로 고쳐요. 예: 국어 5단원 "스크롤·메일·와이파이"는 "다른 나라에서 온 말"로 해석했어요.
 5. **2학년 2학기:** 12월 전에 EBS 2-2 강의목록 캡처를 받아서 같은 방식으로 만들어요.
 7. **EBS 바로가기:** 1-2 수학·국어는 다 넣음(10/24). 2-1 시작 전에 2-1 수학·국어 첫 강·마지막 강 재생 주소 받기.
-8. **폰 알림 설정:** Apps Script 방식으로 정함(10/24). 오빠가 컴퓨터로 설정 탭 "알림 · 메일 서버" 순서대로 하고, 웹 푸시 키 넣고, 엄마·오빠 폰 알림 켜기. 진짜에서 잘 오는지 확인.
+8. **폰 알림 연결:** 오빠 폰에 ntfy 설치 → 엄마 알림·오빠 알림 둘 다 연결(엄마 폰 하기 전까지 오빠가 대신 받음). 엄마를 만날 때 엄마 폰 앱 맨 위 3단계로 연결해 주기.
 6-1. **주간 메일:** 오빠가 Apps Script를 설정하면 주간 메일이 가요. 엄마 메뉴 → 설정에 안내가 있어요.
 7. 태블릿 동기화가 실제로 붙는지 확인 (오빠 폰 맨 위에 "재윤이 태블릿 마지막 연결 ✓"가 떠야 함).
 8. 2-1 국어(k-차시) 일부는 서로 다른 문제가 12~20개뿐이에요 (k7-2, k7-3, k8-2, k8-3 등). 2-1은 약 9주 뒤라 그 전에 늘리면 좋아요.

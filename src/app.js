@@ -473,7 +473,7 @@ function boardState(k, d = day()){
 function nextBoard(d = day()){ return orderedBoards(d).find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); Relay.send(n); } S.notes.unshift(n); trimNotes(); }
+function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); Ntfy.send(n); if (USE_FCM) Relay.send(n); } S.notes.unshift(n); trimNotes(); }
 function trimNotes(){ const cnt = {}; S.notes = S.notes.filter(x => (cnt[x.to] = (cnt[x.to] || 0) + 1) <= 60); }
 function alarmInfo(){
   const d = now(), dow = d.getDay();
@@ -1113,7 +1113,7 @@ function notesPanel(to, title){
   if (to === 'mom' && S.alarms.nudge && al && al.late && !al.started) extra.push({ text:`⏰ ${al.time} 공부 알림 뒤 30분이 지났는데 재윤이가 아직 시작하지 않았어요`, at:Date.now() });
   const list = [...extra, ...S.notes.filter(n => n.to === to)].slice(0, 12);
   return `<div class="panel"><h3>${title}</h3>${list.length ? `<div class="list">${list.map(n => `<div class="li"><span class="grow">${esc(n.text)}</span><span class="muted" style="font-size:13px;white-space:nowrap">${new Date(n.at).getHours()}:${String(new Date(n.at).getMinutes()).padStart(2,'0')}</span></div>`).join('')}</div>` : '<p class="muted">아직 알림이 없어요</p>'}
-  ${linked() ? (Push.state() === 'on' ? '' : `<p class="muted" style="font-size:13px">설정 탭 → 폰 알림을 켜면 이 내용이 폰으로도 와요.</p>`) : `<p class="demo-note">체험판에서는 알림이 여기에만 쌓여요.</p>`}</div>`;
+  ${linked() ? (Ntfy.done(role()) ? '' : `<p class="muted" style="font-size:13px">설정 탭 → 폰 알림을 연결하면 이 내용이 폰으로도 와요.</p>`) : `<p class="demo-note">체험판에서는 알림이 여기에만 쌓여요.</p>`}</div>`;
 }
 VIEWS.adult = () => {
   const tab = S.adultTab;
@@ -1131,7 +1131,7 @@ VIEWS.adult = () => {
         <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
       <div class="panel"><h3>공부 알림 시간</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 화면 맨 위에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 태블릿 앱이 닫혀 있으면 안 들리니, 그 시간에 태블릿 알람을 같이 맞춰 두면 좋아요.</p>
         ${[1,2,3,4,5,6,0].map(i => `<div class="alarm-row"><span class="dn">${DOW[i]}</span><input type="time" id="al${i}" value="${S.alarms.time[i]}" data-ch="altime" data-v="${i}" ${S.alarms.on[i] ? '' : 'disabled'}><button class="switch ${S.alarms.on[i] ? 'on' : ''}" data-a="alon" data-v="${i}" aria-label="${DOW[i]}요일 알림 켜기"></button></div>`).join('')}
-        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림<br><span class="muted" style="font-size:13px">폰 알림을 켜면 앱을 안 열어도 와요</span></span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
+        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림<br><span class="muted" style="font-size:13px">엄마·오빠 메뉴를 열었을 때 보여요 (태블릿이 꺼져 있으면 폰 알림은 못 보내요)</span></span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
       </div>` + notesPanel('mom', '엄마 알림함');
   } else if (tab === 'oppa') {
     const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), i - 6));
@@ -1177,7 +1177,7 @@ VIEWS.adult = () => {
       ${reviewPanel()}
       ${notesPanel('oppa', '오빠 알림함')}`;
   } else {
-    body = familyPanel() + (linked() ? pushPanel() : '') + mailPanel() + `
+    body = familyPanel() + ntfyPanel() + (linked() && USE_FCM ? pushPanel() : '') + mailPanel() + `
       <div class="panel"><h3>토리 목소리</h3>
         <p class="muted" style="font-size:15px">폰에 들어 있는 음성으로 읽어 줘요. 재윤이가 좋아하는 소리로 골라 주세요.</p>
         <div class="list">${Object.entries(TTS_PRESETS).map(([k, pr]) => `<button class="li" style="text-align:left;${S.tts.preset === k ? 'outline:3px solid var(--pink)' : ''}" data-a="ttspreset" data-v="${k}"><span class="grow">${pr.name}</span>${S.tts.preset === k ? '<span class="pill">사용 중</span>' : ''}</button>`).join('')}</div>
@@ -1196,7 +1196,7 @@ VIEWS.adult = () => {
         <p class="demo-note">지금은 이 폰 하나에 재윤이·엄마·오빠 화면이 함께 들어 있는 체험판이에요. 서버를 연결하면 세 폰이 같은 기록을 나눠 써요.</p>
       </div>`;
   }
-  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${tab !== 'set' ? pushNudge() : ''}${body}</section>`;
+  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${tab !== 'set' ? ntfyNudge() + (USE_FCM ? pushNudge() : '') : ''}${body}</section>`;
 };
 let RESET_ARMED = false;
 
@@ -1365,7 +1365,7 @@ const ACT = {
   repshare(el){ const r = el.dataset.v && S.reports[el.dataset.v] ? S.reports[el.dataset.v] : buildWeekReport(mondayOf(todayKey())); const text = reportText(r);
     if (navigator.share) navigator.share({ title:reportTitle(r), text }).catch(() => {}); else { try { navigator.clipboard.writeText(text).then(() => toast('복사했어요. 카톡에 붙여 넣어 주세요')); } catch (e) { toast('복사가 안 됐어요'); } } },
   mailsave(){ const mom = $('#mmom').value.trim(), oppa = $('#moppa').value.trim(); const ok = x => !x || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
-    if (!ok(mom) || !ok(oppa)) { toast('메일 주소를 확인해 주세요'); return; }
+    if (!ok(mom) || !ok(oppa) || (!USE_FCM && !mom && !oppa)) { toast('메일 주소를 확인해 주세요'); return; }
     S.mail = Object.assign({}, S.mail || {}, { mom, oppa }); if (!S.mail.key) S.mail.key = newFid().slice(0, 16); save(); toast(S.mail.url ? '저장했어요. 코드를 다시 붙여 넣고 새 버전으로 배포해 주세요' : '코드를 만들었어요. 아래 순서대로 설정해 주세요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   mailcopy(el){ const t = $(el.dataset.v || '#mailcode').value; try { navigator.clipboard.writeText(t).then(() => toast('코드를 복사했어요'), () => { $('#mailcode').select(); }); } catch (e) { $('#mailcode').select(); } },
   mailurl(){ const u = $('#murl').value.trim(); if (u && !/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(u)) { toast('https://script.google.com/macros/s/…/exec 모양의 주소를 넣어 주세요'); return; } S.mail = Object.assign({}, S.mail || {}, { url:u }); save(); toast(u ? 'URL을 저장했어요' : 'URL을 지웠어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
