@@ -12,6 +12,7 @@ async def main():
             await p.set_viewport_size({'width': w, 'height': h})
             for mode in ('바로가기', '목록'):
                 await s.ev("document.querySelectorAll('.overlay').forEach(o => o.remove()); LECW = null; go('home')")
+                await s.ev("S.ebsPlayer = true")
                 if mode == '목록': await s.ev("window.__bi = window.__bi || Object.assign({}, EBS_BUILTIN); for (const k in EBS_BUILTIN) delete EBS_BUILTIN[k]")
                 else: await s.ev("if (window.__bi) Object.assign(EBS_BUILTIN, window.__bi)")
                 await s.ev("openLecture('kor', CURRS.kor.now.lectOff + 1)"); await p.wait_for_timeout(250)

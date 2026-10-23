@@ -83,6 +83,7 @@ git add -A && git commit && git push
 ## 엄마·오빠 메뉴 편의 기능 (2026-10-24)
 - **오늘 한눈에** (`glancePanel`, study.js): 엄마·오빠 탭 맨 위. 오늘 상태(다 함 / 하는 중 n/4판 / 알림 시간 지났는데 시작 안 함), 판별 칩, 공부 시간(강의 포함)·한 번에 정답·틀린 문제 수, 본 강의, 틀린 문제 정답 4개. 누르면 공부 기록 화면 오늘 날짜로. 예전 `todayPanel`은 안 씀.
 - **하루 공부 시간** (`dayGoalPanel`, app.js): 엄마 탭·설정 탭. `S.dayGoal`(40~80분, 기본 60, ADULT_KEYS)로 `countFor` 목표 시간과 최소·최대 문제 수를 같이 늘리고 줄임(`goalFactor`). 최근 7일 다 끝낸 날 평균 실제 시간과 비교 문구. 문제 수 자동 조절은 원래 있던 `avgSec`(한 문제 8~120초로 잘라 지수평균) 그대로.
+- **EBS 재생 주소는 로그인해야 열림 (10/24 확인):** 로그인 안 된 폰에서 재생 주소를 열면 EBS 첫 화면으로 감. 그래서 기본은 `course/view?courseId=…&lectId=…`(강좌 화면, 로그인 없어도 열림) + 강의목록에서 찾기 안내. 오빠 탭 "EBS 강의 여는 방식" 스위치(`S.ebsPlayer`, ADULT_KEYS)를 켜면 재생 주소로 바로 재생 + 짧은 안내. 태블릿 EBS 로그인·학습신청 후 켜기.
 - **EBS 강의 바로가기** (currcore.js `EBS_BUILTIN`·`ebsLinkOf`·`parseEbsUrl`·`ebsGuess`, curr_ui.js `ebsLinkPanel`): EBS 강의 재생 주소는 `primary.ebs.co.kr/pleasure/course/player/main/index?cid=강좌&sid=STEP…&lid=LS…&eno=1&encType=M…`. **lid는 강 번호마다 1씩 늘어요.** 오빠가 보내 준 첫 강·마지막 강 주소로 확인해서 앱에 넣어 둠: 수학 1-2(cid 100005137, sid STEP1000010212, 01강 LS00000000152376470 ~ 65강 …534, encType M05), 국어 1-2(cid 100006226, sid STEP1000011301, 01강 LS00000000152384353 ~ 48강 …400, encType M10). 다른 강좌(2-1 등)는 오빠 탭 "EBS 강의 바로가기"에 재생 주소를 붙여 넣으면 `S.ebsLinks[cid] = {sid, enc, 강번호:lid}`(넣어 둔 게 우선), 3개 이상 일정 간격이면 나머지 짐작. **2-1 강좌가 가까워지면 오빠에게 첫 강·마지막 강 재생 주소를 받아 `EBS_BUILTIN`에 넣기.** 앱에 다 들어 있는 강좌는 붙여넣기 칸을 안 보여 줌.
 - **폰 알림** (ntfy.js): 아래 "폰 알림 = ntfy 앱".
 

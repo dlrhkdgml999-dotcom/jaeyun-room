@@ -60,7 +60,9 @@ const EBS_BUILTIN = {
 };
 const EBS_PLAYER = 'https://primary.ebs.co.kr/pleasure/course/player/main/index';
 function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now, lk = n ? ebsLinkOf(s, n) : null, cid = co.ebs.id;
-  if (lk && lk.sid) return `${EBS_PLAYER}?cid=${cid}&sid=${lk.sid}&lid=${lk.id}&eno=1&encType=${lk.enc || 'M05'}&captionYn=N&indexPosition=`;
+  // 2026-10-24: 재생 주소(player)는 EBS에 로그인한 기기에서만 열리고, 로그인 안 돼 있으면 EBS 첫 화면으로 가 버림 → 기본은 강좌 화면 + 강의 번호.
+  // 오빠가 "로그인된 태블릿에서 재생 주소가 바로 열림"을 확인하면 S.ebsPlayer = true로 재생 주소를 씀
+  if (lk && lk.sid && S.ebsPlayer) return `${EBS_PLAYER}?cid=${cid}&sid=${lk.sid}&lid=${lk.id}&eno=1&encType=${lk.enc || 'M05'}&captionYn=N&indexPosition=`;
   return `https://primary.ebs.co.kr/course/view?courseId=${cid}${lk ? `&lectId=${lk.id}` : ''}`; }
 /* 주소에서 강좌·강의 번호 읽기: 재생 주소(cid·sid·lid)와 강좌 주소(courseId·lectId) 둘 다 */
 function parseEbsUrl(str){

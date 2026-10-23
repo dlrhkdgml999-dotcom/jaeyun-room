@@ -10,7 +10,7 @@ REAL = {1:152376470, 3:152376472, 4:152376473, 65:152376534}   # 오빠가 보�
 async def main():
     async with Sim('ebslink') as s:
         p = s.p
-        await s.ev("go('home')")
+        await s.ev("go('home'); S.ebsPlayer = true")   # 재생 주소 확인 (스위치 켠 상태)
         mc = await s.ev("String(CURRS.math.now.ebs.id)"); kc = await s.ev("String(CURRS.kor.now.ebs.id)")
         # 1) 수학 1-2는 앱에 들어 있음: 보낸 주소와 똑같이
         for n, lid in REAL.items():
@@ -46,6 +46,13 @@ async def main():
         s.expect('lid=LS00000000152300101' in k2 and 'encType=M07' in k2 and 'sid=STEP9' in k2, '넣어 둔 주소가 우선 아님')
         s.expect('lid=LS00000000152384357' in k5, '넣지 않은 강은 짐작보다 앱에 든 확인된 주소가 우선')
         await s.ev("S.ebsLinks = {}")
+        # 3-1) 스위치 끄면(기본) 로그인 없어도 열리는 강좌 화면 주소 + 강의 번호, 안내는 목록에서 찾기
+        await s.ev("S.ebsPlayer = false")
+        u0 = await s.ev("ebsCourseUrl('math', CURRS.math.now.lectOff + 1)"); print('기본 주소:', u0)
+        s.expect(u0 == f'https://primary.ebs.co.kr/course/view?courseId={mc}&lectId=LS00000000152376470', f'기본 주소 이상 {u0}')
+        await s.ev("go('home'); openLecture('math', CURRS.math.now.lectOff + 1)"); await p.wait_for_timeout(300)
+        s.expect(await p.locator('.eye-card .ebs-list').count() == 1, '스위치 꺼졌는데 강의목록 안내가 없음')
+        await s.ev("document.querySelectorAll('.overlay').forEach(o => o.remove()); S.ebsPlayer = true")
         # 4) 재윤이 강의 안내
         await s.ev("go('home'); openLecture('math', CURRS.math.now.lectOff + 1)"); await p.wait_for_timeout(300)
         href = await p.locator('[data-lecgo]').get_attribute('href'); txt = await p.locator('.eye-list').last.text_content()

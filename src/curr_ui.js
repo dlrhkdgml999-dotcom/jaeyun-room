@@ -141,7 +141,7 @@ function lecFinderHTML(s, n){
   return `<div class="ebs-list" aria-label="EBS 강의목록에서 찾을 강의"><div class="ebs-head">EBS 강의목록에서 이렇게 찾아요</div>${lecNeighbors(s, n).map(x => lecRowHTML(x, x.n === n)).join('')}</div>`;
 }
 function lectureGuardHTML(s, n){
-  const li = lectInfo(s, n), direct = !!ebsLinkOf(s, n);
+  const li = lectInfo(s, n), direct = !!ebsLinkOf(s, n) && !!S.ebsPlayer;
   // 바로가기가 있으면 강의목록 찾는 그림은 필요 없어서 빼고 짧게 (버튼이 화면 안에 들어오게)
   return `${distanceArt()}<p class="disp" style="font-size:21px;line-height:1.4">강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 허리 펴고 바르게 앉아서 봐요.</p>
     <div class="lec-today"><span class="lec-big">${li.no}<small>강</small></span><span style="flex:1;text-align:left"><b class="disp" style="font-size:20px;font-weight:400">오늘은 ${li.no}강!</b><br><span style="font-size:15px">EBS ${esc(li.name)}</span><br><span style="font-size:15px">${esc(li.title)}</span></span></div>
@@ -156,7 +156,7 @@ function openLecture(s, n, opt){
     const a = o.querySelector('[data-lecgo]');
     a.addEventListener('click', () => { LECW = { s, n, at:Date.now(), opt:!!opt }; try { sessionStorage.setItem('lecw', JSON.stringify(LECW)); } catch (e) {} setTimeout(() => go('lecwait'), 50); });
   });
-  { const li = lectInfo(s, n); speak(ebsLinkOf(s, n) ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
+  { const li = lectInfo(s, n); speak(ebsLinkOf(s, n) && S.ebsPlayer ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
 }
 VIEWS.lecwait = () => {
   if (!LECW) { try { LECW = JSON.parse(sessionStorage.getItem('lecw') || 'null'); } catch (e) {} }
@@ -238,7 +238,10 @@ function ebsUpcoming(s, k = 4){
 function ebsLinkPanel(){
   // 앱에 다 들어 있는 강좌(수학 1-2 등)는 넣을 필요가 없어서 빼고 보여 준다
   const subs = ['math','kor'].filter(s => ebsUpcoming(s).some(li => { const lk = ebsLinkOf(s, li.n); return !lk || !lk.builtin; }));
-  if (!subs.length) return '';
+  const playerSw = `<div class="panel"><h3>EBS 강의 여는 방식</h3>
+    <div class="row"><span style="flex:1">버튼 한 번에 강의 바로 재생<br><span class="muted" style="font-size:13px">재윤이 태블릿에서 EBS에 <b>로그인</b>하고 이 강좌를 <b>학습신청</b>해 둔 뒤에 켜 주세요. 로그인이 안 돼 있으면 EBS 첫 화면으로 가 버려요. 꺼져 있으면 강좌 화면을 열고 강의목록에서 찾게 안내해요.</span></span><button class="switch ${S.ebsPlayer ? 'on' : ''}" data-a="ebsplayer" aria-label="강의 바로 재생"></button></div>
+    ${S.ebsPlayer ? `<a class="btn ghost small" href="${ebsCourseUrl('kor', CURRS.kor.now.lectOff + 1)}" target="_blank" rel="noopener" style="justify-self:start">시험: 국어 01강 열어 보기</a>` : ''}</div>`;
+  if (!subs.length) return playerSw;
   const SN = { math:'수학', kor:'국어' };
   const rows = subs.flatMap(s => ebsUpcoming(s).map(li => ({ s, li, lk:ebsLinkOf(s, li.n) })));
   const first = rows.find(r => !r.lk || !r.lk.sure) || rows[0];
@@ -251,5 +254,5 @@ function ebsLinkPanel(){
     <button class="btn sky small" data-a="ebslink" style="justify-self:start">저장</button>
     <div class="list">${rows.map(r => `<div class="li"><span class="grow" style="font-size:15px">${SN[r.s]} ${r.li.no}강 <span class="muted" style="font-size:13px">${esc(r.li.title)}</span></span>${r.lk ? `<span class="pill ${r.lk.sure ? 'ok' : 'wait'}">${r.lk.sure ? '바로가기 ✓' : '짐작'}</span>` : '<span class="pill no">목록에서 찾기</span>'}</div>`).join('')}</div>
     ${known ? `<button class="btn ghost small" data-a="ebsclear" style="justify-self:start">넣은 주소 모두 지우기</button>` : ''}
-  </div>`;
+  </div>` + playerSw;
 }

@@ -1348,6 +1348,7 @@ const ACT = {
     S.ebsLinks = Object.assign({}, S.ebsLinks, { [cid]:map }); save();
     toast(urls.length > 1 ? `${li.no}강부터 ${urls.length}개 저장했어요` : `${li.no}강 바로가기를 저장했어요`); go('adult');
   },
+  ebsplayer(){ S.ebsPlayer = !S.ebsPlayer; save(); toast(S.ebsPlayer ? '강의를 바로 재생해요. "시험" 버튼으로 열리는지 확인해 주세요' : '강좌 화면을 열고 강의목록에서 찾게 해요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsclear(el){ if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 지울까요? 한 번 더 누르면 지워져요'; return; } S.ebsLinks = {}; save(); go('adult'); },
   savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },
   giftgiven(){ const g = S.gift, ach = giftAch(); g.history.unshift({ round:g.round, name:g.name, achieved:ach }); S.gift = { name:'', goal:g.goal, round:g.round + 1, start:addDays(ach, 1), achieved:null, history:g.history }; if (S.gift.start > todayKey()) S.gift.start = addDays(todayKey(), day().done ? 1 : 0); save(); toast('다음 선물 약속을 시작했어요'); go('adult'); },
