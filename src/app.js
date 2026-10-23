@@ -1337,13 +1337,14 @@ const ACT = {
   giftgoal(el){ if (giftAch()) { toast('이번 약속은 이미 달성했어요'); return; } S.gift.goal = +el.dataset.v; S.gift.name = $('#gname').value.trim(); checkGift(); save(); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebslink(){
     const urls = ($('#ebsurl').value.match(/https?:\/\/\S+/g) || []).map(parseEbsUrl);
-    if (!urls.length || urls.some(x => !x)) return toast('강의 주소를 못 찾았어요. "lectId=LS…"가 들어 있는 주소를 붙여 주세요');
+    if (!urls.length || urls.some(x => !x)) return toast('강의 주소를 못 찾았어요. EBS에서 강의를 재생한 화면의 주소(lid=LS…가 들어 있는 것)를 붙여 주세요');
     const [s, n] = $('#ebsat').value.split('|'); const li = lectInfo(s, +n);
     const cid = String(li.course.ebs.id);
     if (urls.some(x => x.course !== cid)) return toast(`다른 강좌의 주소예요. ${li.course.ebs.name} 강의 주소를 넣어 주세요`);
+    if (new Set(urls.map(x => x.lect)).size !== urls.length) return toast('똑같은 주소가 두 번 들어 있어요. 강마다 다른 주소를 복사해 주세요');
     if (urls.length > 1 && li.local + urls.length - 1 > (li.course.lect || []).length) return toast('주소가 강의 수보다 많아요');
     S.ebsLinks = S.ebsLinks || {}; const map = Object.assign({}, S.ebsLinks[cid] || {});
-    urls.forEach((x, i) => map[li.local + i] = x.lect);
+    urls.forEach((x, i) => { map[li.local + i] = x.lect; if (x.sid) map.sid = x.sid; if (x.enc) map.enc = x.enc; });
     S.ebsLinks = Object.assign({}, S.ebsLinks, { [cid]:map }); save();
     toast(urls.length > 1 ? `${li.no}강부터 ${urls.length}개 저장했어요` : `${li.no}강 바로가기를 저장했어요`); go('adult');
   },

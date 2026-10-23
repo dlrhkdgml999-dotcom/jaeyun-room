@@ -691,7 +691,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261024004815";
+window.APP_VERSION = "20261024014654";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -2274,13 +2274,14 @@ const ACT = {
   giftgoal(el){ if (giftAch()) { toast('이번 약속은 이미 달성했어요'); return; } S.gift.goal = +el.dataset.v; S.gift.name = $('#gname').value.trim(); checkGift(); save(); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebslink(){
     const urls = ($('#ebsurl').value.match(/https?:\/\/\S+/g) || []).map(parseEbsUrl);
-    if (!urls.length || urls.some(x => !x)) return toast('강의 주소를 못 찾았어요. "lectId=LS…"가 들어 있는 주소를 붙여 주세요');
+    if (!urls.length || urls.some(x => !x)) return toast('강의 주소를 못 찾았어요. EBS에서 강의를 재생한 화면의 주소(lid=LS…가 들어 있는 것)를 붙여 주세요');
     const [s, n] = $('#ebsat').value.split('|'); const li = lectInfo(s, +n);
     const cid = String(li.course.ebs.id);
     if (urls.some(x => x.course !== cid)) return toast(`다른 강좌의 주소예요. ${li.course.ebs.name} 강의 주소를 넣어 주세요`);
+    if (new Set(urls.map(x => x.lect)).size !== urls.length) return toast('똑같은 주소가 두 번 들어 있어요. 강마다 다른 주소를 복사해 주세요');
     if (urls.length > 1 && li.local + urls.length - 1 > (li.course.lect || []).length) return toast('주소가 강의 수보다 많아요');
     S.ebsLinks = S.ebsLinks || {}; const map = Object.assign({}, S.ebsLinks[cid] || {});
-    urls.forEach((x, i) => map[li.local + i] = x.lect);
+    urls.forEach((x, i) => { map[li.local + i] = x.lect; if (x.sid) map.sid = x.sid; if (x.enc) map.enc = x.enc; });
     S.ebsLinks = Object.assign({}, S.ebsLinks, { [cid]:map }); save();
     toast(urls.length > 1 ? `${li.no}강부터 ${urls.length}개 저장했어요` : `${li.no}강 바로가기를 저장했어요`); go('adult');
   },
@@ -4820,14 +4821,29 @@ const ALL_L = Object.values(CURRS).flatMap(C => C.all);
 const ALL_LESSONS = CURRS.math.all;
 /* 코스 이름표: "1-2 3단원" */
 function unitTag(u){ return u.course && u.course.short2 && CURRS[u.course.subj].courses.length > 1 ? `${u.course.short2} ${u.n}단원` : `${u.n}단원`; }
-function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now, lk = n ? ebsLinkOf(s, n) : null;
-  return `https://primary.ebs.co.kr/course/view?courseId=${co.ebs.id}${lk ? `&lectId=${lk.id}` : ''}`; }
 /* ---------- EBS 강의 바로가기 ----------
-   오빠가 붙여 넣은 강의 주소: S.ebsLinks[courseId][코스 안 강 번호] = lectId ("LS000…")
-   붙여 넣은 강의가 3개 이상 한 줄로 늘어서면(번호가 일정하게 늘면) 나머지 강의 번호도 짐작해서 연다(sure:false).
-   2개뿐이면 바로 옆 강의끼리 번호가 1 차이일 때만 짐작한다. 잘못 열려도 "몇 강 봤어?"에서 걸러진다 */
-function parseEbsUrl(str){ const m = String(str || '').match(/courseId=(\d+)[^\s]*?lectId=(LS\d+)/) || String(str || '').match(/lectId=(LS\d+)[^\s]*?courseId=(\d+)/);
-  if (!m) return null; return /^LS/.test(m[1]) ? { course:m[2], lect:m[1] } : { course:m[1], lect:m[2] }; }
+   EBS 강의 재생 주소: primary.ebs.co.kr/pleasure/course/player/main/index?cid=강좌&sid=STEP…&lid=LS…
+   - EBS_BUILTIN: 오빠가 보내 준 주소로 확인한 강좌는 앱에 넣어 둠 (lid가 강 번호마다 1씩 늘어남)
+       수학 1-2, 국어 1-2 (2026-10-24 오빠가 보낸 첫 강·마지막 강 주소로 확인). encType은 강좌마다 달라서 같이 저장
+   - S.ebsLinks[cid] = { sid, 1:'LS…', 2:'LS…' }: 오빠가 앱에 붙여 넣은 것 (넣어 둔 게 우선)
+   - 붙여 넣은 강의가 3개 이상 일정한 간격이거나, 2개가 정확히 1 차이면 나머지 번호를 짐작(sure:false).
+     잘못 열려도 "몇 강 봤어?"에서 걸러진다 */
+const EBS_BUILTIN = {
+  '100005137': { sid:'STEP1000010212', first:'LS00000000152376470', n:65, enc:'M05' },   // 만점왕 수학 플러스 1-2 (01강 …470 ~ 65강 …534)
+  '100006226': { sid:'STEP1000011301', first:'LS00000000152384353', n:48, enc:'M10' },   // 만점왕 국어 1-2 (01강 …353 ~ 48강 …400)
+};
+const EBS_PLAYER = 'https://primary.ebs.co.kr/pleasure/course/player/main/index';
+function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now, lk = n ? ebsLinkOf(s, n) : null, cid = co.ebs.id;
+  if (lk && lk.sid) return `${EBS_PLAYER}?cid=${cid}&sid=${lk.sid}&lid=${lk.id}&eno=1&encType=${lk.enc || 'M05'}&captionYn=N&indexPosition=`;
+  return `https://primary.ebs.co.kr/course/view?courseId=${cid}${lk ? `&lectId=${lk.id}` : ''}`; }
+/* 주소에서 강좌·강의 번호 읽기: 재생 주소(cid·sid·lid)와 강좌 주소(courseId·lectId) 둘 다 */
+function parseEbsUrl(str){
+  let u; try { u = new URL(String(str || '').trim()); } catch (e) { return null; }
+  const q = u.searchParams, course = q.get('cid') || q.get('courseId'), lect = q.get('lid') || q.get('lectId'), sid = q.get('sid') || '';
+  if (!course || !/^\d+$/.test(course) || !lect || !/^LS\d+$/.test(lect)) return null;
+  const enc = q.get('encType') || '';
+  return { course, lect, sid:/^STEP\w+$/.test(sid) ? sid : '', enc:/^M\d+$/.test(enc) ? enc : '' };
+}
 function ebsGuess(map, local){
   const pts = Object.entries(map || {}).map(([k, v]) => [+k, v]).filter(([k, v]) => k > 0 && /^LS\d+$/.test(v)).sort((a, b) => a[0] - b[0]);
   if (pts.length < 2) return null;
@@ -4840,9 +4856,11 @@ function ebsGuess(map, local){
 }
 function ebsLinkOf(s, n){
   const li = lectInfo(s, n); if (!li || !li.course.ebs) return null;
-  const map = (S.ebsLinks || {})[li.course.ebs.id] || {};
-  if (map[li.local]) return { id:map[li.local], sure:true };
-  const g = ebsGuess(map, li.local); return g ? { id:g, sure:false } : null;
+  const cid = String(li.course.ebs.id), map = (S.ebsLinks || {})[cid] || {}, bi = EBS_BUILTIN[cid];
+  const sid = map.sid || (bi && bi.sid) || '', enc = map.enc || (bi && bi.enc) || '';
+  if (map[li.local]) return { id:map[li.local], sure:true, sid, enc };
+  if (bi && li.local >= 1 && li.local <= bi.n) { const W = bi.first.length, id = 'LS' + String(Number(bi.first.slice(2)) + li.local - 1).padStart(W - 2, '0'); return { id, sure:true, sid, enc, builtin:true }; }
+  const g = ebsGuess(map, li.local); return g ? { id:g, sure:false, sid, enc } : null;
 }
 function lectInfo(s, n){
   const L = EBS_LECT[s], x = L[n - 1]; if (!x) return null;
@@ -5219,7 +5237,8 @@ function ebsUpcoming(s, k = 4){
   return out.sort((a, b) => a - b).map(n => lectInfo(s, n)).filter(Boolean);
 }
 function ebsLinkPanel(){
-  const subs = ['math','kor'].filter(s => ebsUpcoming(s).length);
+  // 앱에 다 들어 있는 강좌(수학 1-2 등)는 넣을 필요가 없어서 빼고 보여 준다
+  const subs = ['math','kor'].filter(s => ebsUpcoming(s).some(li => { const lk = ebsLinkOf(s, li.n); return !lk || !lk.builtin; }));
   if (!subs.length) return '';
   const SN = { math:'수학', kor:'국어' };
   const rows = subs.flatMap(s => ebsUpcoming(s).map(li => ({ s, li, lk:ebsLinkOf(s, li.n) })));
@@ -5227,8 +5246,8 @@ function ebsLinkPanel(){
   const known = subs.reduce((a, s) => a + Object.keys((S.ebsLinks || {})[CURRS[s].now.ebs.id] || {}).length, 0);
   return `<div class="panel"><h3>EBS 강의 바로가기</h3>
     <p class="muted" style="font-size:15px">강의 주소를 넣어 두면 재윤이가 목록에서 찾지 않고 <b>버튼 한 번에 그 강의</b>로 가요. 같은 강좌에서 서너 개만 넣으면 나머지 강의도 번호를 짐작해서 열어 줘요.</p>
-    <ol class="eye-list" style="list-style:decimal;padding-left:22px;font-size:15px"><li>폰에서 EBS 초등 강좌를 열고 강의 하나를 재생해요</li><li>주소창의 주소(또는 공유 → 링크 복사)를 복사해요</li><li>아래에 붙여넣고 몇 강인지 고른 뒤 저장</li></ol>
-    <div class="field"><label for="ebsurl">강의 주소 (여러 개면 줄마다 하나씩, 강 순서대로)</label><textarea id="ebsurl" rows="2" style="width:100%;border:2px solid var(--line);border-radius:12px;padding:8px;font-size:14px" placeholder="https://primary.ebs.co.kr/course/view?courseId=…&lectId=LS…"></textarea></div>
+    <ol class="eye-list" style="list-style:decimal;padding-left:22px;font-size:15px"><li>폰에서 EBS 초등 강좌를 열고 강의 하나를 재생해요</li><li>강의가 재생되는 화면의 주소창 주소를 복사해요 (<b>lid=LS…</b>가 들어 있어야 해요)</li><li>아래에 붙여넣고 몇 강인지 고른 뒤 저장</li></ol>
+    <div class="field"><label for="ebsurl">강의 주소 (여러 개면 줄마다 하나씩, 강 순서대로)</label><textarea id="ebsurl" rows="2" style="width:100%;border:2px solid var(--line);border-radius:12px;padding:8px;font-size:14px" placeholder="https://primary.ebs.co.kr/pleasure/course/player/main/index?cid=…&sid=…&lid=LS…"></textarea></div>
     <div class="field"><label for="ebsat">이 주소는 (여러 개면 첫 번째가)</label><select id="ebsat">${rows.map(r => `<option value="${r.s}|${r.li.n}" ${r === first ? 'selected' : ''}>${SN[r.s]} ${r.li.no}강 · ${esc(r.li.title)}</option>`).join('')}</select></div>
     <button class="btn sky small" data-a="ebslink" style="justify-self:start">저장</button>
     <div class="list">${rows.map(r => `<div class="li"><span class="grow" style="font-size:15px">${SN[r.s]} ${r.li.no}강 <span class="muted" style="font-size:13px">${esc(r.li.title)}</span></span>${r.lk ? `<span class="pill ${r.lk.sure ? 'ok' : 'wait'}">${r.lk.sure ? '바로가기 ✓' : '짐작'}</span>` : '<span class="pill no">목록에서 찾기</span>'}</div>`).join('')}</div>

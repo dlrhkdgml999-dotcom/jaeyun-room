@@ -47,14 +47,29 @@ const ALL_L = Object.values(CURRS).flatMap(C => C.all);
 const ALL_LESSONS = CURRS.math.all;
 /* 코스 이름표: "1-2 3단원" */
 function unitTag(u){ return u.course && u.course.short2 && CURRS[u.course.subj].courses.length > 1 ? `${u.course.short2} ${u.n}단원` : `${u.n}단원`; }
-function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now, lk = n ? ebsLinkOf(s, n) : null;
-  return `https://primary.ebs.co.kr/course/view?courseId=${co.ebs.id}${lk ? `&lectId=${lk.id}` : ''}`; }
 /* ---------- EBS 강의 바로가기 ----------
-   오빠가 붙여 넣은 강의 주소: S.ebsLinks[courseId][코스 안 강 번호] = lectId ("LS000…")
-   붙여 넣은 강의가 3개 이상 한 줄로 늘어서면(번호가 일정하게 늘면) 나머지 강의 번호도 짐작해서 연다(sure:false).
-   2개뿐이면 바로 옆 강의끼리 번호가 1 차이일 때만 짐작한다. 잘못 열려도 "몇 강 봤어?"에서 걸러진다 */
-function parseEbsUrl(str){ const m = String(str || '').match(/courseId=(\d+)[^\s]*?lectId=(LS\d+)/) || String(str || '').match(/lectId=(LS\d+)[^\s]*?courseId=(\d+)/);
-  if (!m) return null; return /^LS/.test(m[1]) ? { course:m[2], lect:m[1] } : { course:m[1], lect:m[2] }; }
+   EBS 강의 재생 주소: primary.ebs.co.kr/pleasure/course/player/main/index?cid=강좌&sid=STEP…&lid=LS…
+   - EBS_BUILTIN: 오빠가 보내 준 주소로 확인한 강좌는 앱에 넣어 둠 (lid가 강 번호마다 1씩 늘어남)
+       수학 1-2, 국어 1-2 (2026-10-24 오빠가 보낸 첫 강·마지막 강 주소로 확인). encType은 강좌마다 달라서 같이 저장
+   - S.ebsLinks[cid] = { sid, 1:'LS…', 2:'LS…' }: 오빠가 앱에 붙여 넣은 것 (넣어 둔 게 우선)
+   - 붙여 넣은 강의가 3개 이상 일정한 간격이거나, 2개가 정확히 1 차이면 나머지 번호를 짐작(sure:false).
+     잘못 열려도 "몇 강 봤어?"에서 걸러진다 */
+const EBS_BUILTIN = {
+  '100005137': { sid:'STEP1000010212', first:'LS00000000152376470', n:65, enc:'M05' },   // 만점왕 수학 플러스 1-2 (01강 …470 ~ 65강 …534)
+  '100006226': { sid:'STEP1000011301', first:'LS00000000152384353', n:48, enc:'M10' },   // 만점왕 국어 1-2 (01강 …353 ~ 48강 …400)
+};
+const EBS_PLAYER = 'https://primary.ebs.co.kr/pleasure/course/player/main/index';
+function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now, lk = n ? ebsLinkOf(s, n) : null, cid = co.ebs.id;
+  if (lk && lk.sid) return `${EBS_PLAYER}?cid=${cid}&sid=${lk.sid}&lid=${lk.id}&eno=1&encType=${lk.enc || 'M05'}&captionYn=N&indexPosition=`;
+  return `https://primary.ebs.co.kr/course/view?courseId=${cid}${lk ? `&lectId=${lk.id}` : ''}`; }
+/* 주소에서 강좌·강의 번호 읽기: 재생 주소(cid·sid·lid)와 강좌 주소(courseId·lectId) 둘 다 */
+function parseEbsUrl(str){
+  let u; try { u = new URL(String(str || '').trim()); } catch (e) { return null; }
+  const q = u.searchParams, course = q.get('cid') || q.get('courseId'), lect = q.get('lid') || q.get('lectId'), sid = q.get('sid') || '';
+  if (!course || !/^\d+$/.test(course) || !lect || !/^LS\d+$/.test(lect)) return null;
+  const enc = q.get('encType') || '';
+  return { course, lect, sid:/^STEP\w+$/.test(sid) ? sid : '', enc:/^M\d+$/.test(enc) ? enc : '' };
+}
 function ebsGuess(map, local){
   const pts = Object.entries(map || {}).map(([k, v]) => [+k, v]).filter(([k, v]) => k > 0 && /^LS\d+$/.test(v)).sort((a, b) => a[0] - b[0]);
   if (pts.length < 2) return null;
@@ -67,9 +82,11 @@ function ebsGuess(map, local){
 }
 function ebsLinkOf(s, n){
   const li = lectInfo(s, n); if (!li || !li.course.ebs) return null;
-  const map = (S.ebsLinks || {})[li.course.ebs.id] || {};
-  if (map[li.local]) return { id:map[li.local], sure:true };
-  const g = ebsGuess(map, li.local); return g ? { id:g, sure:false } : null;
+  const cid = String(li.course.ebs.id), map = (S.ebsLinks || {})[cid] || {}, bi = EBS_BUILTIN[cid];
+  const sid = map.sid || (bi && bi.sid) || '', enc = map.enc || (bi && bi.enc) || '';
+  if (map[li.local]) return { id:map[li.local], sure:true, sid, enc };
+  if (bi && li.local >= 1 && li.local <= bi.n) { const W = bi.first.length, id = 'LS' + String(Number(bi.first.slice(2)) + li.local - 1).padStart(W - 2, '0'); return { id, sure:true, sid, enc, builtin:true }; }
+  const g = ebsGuess(map, li.local); return g ? { id:g, sure:false, sid, enc } : null;
 }
 function lectInfo(s, n){
   const L = EBS_LECT[s], x = L[n - 1]; if (!x) return null;
