@@ -138,7 +138,9 @@ p{margin:0}
 .pen-canvas{width:100%;height:190px;border:3px solid var(--mint);border-radius:var(--r-md);background:#fff;touch-action:none;cursor:crosshair}
 
 /* 눈 건강 */
-.eye-overlay{align-items:center}
+.eye-overlay{align-items:start}
+/* 강의 보러 가기 버튼은 창이 길어도 항상 화면 아래에 보이게 */
+.eye-card .lec-go{position:sticky;bottom:0;z-index:2;box-shadow:0 5px 0 var(--pink-deep),0 -14px 18px 6px var(--paper)}
 .eye-card{background:var(--paper);border-radius:var(--r-lg);padding:22px 20px;max-width:440px;width:100%;display:grid;gap:14px;justify-items:center;text-align:center}
 .eye-list{list-style:none;padding:0;margin:0;display:grid;gap:6px;text-align:left;font-size:17px}
 .eye-tip{background:var(--mint-pale);color:#1F7E62;border-radius:999px;padding:8px 16px;font-family:var(--f-display);font-size:17px}
@@ -328,7 +330,9 @@ canvas.confetti{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%
 @keyframes pulse{50%{box-shadow:0 5px 0 #B23A5C,0 0 0 12px rgba(229,87,126,.2)}}
 audio{width:100%}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:16px;font-size:15px;z-index:60;max-width:calc(100% - 32px);box-shadow:0 8px 20px rgba(0,0,0,.18)}
-.overlay{position:fixed;inset:0;background:rgba(91,58,74,.55);display:grid;place-items:center;z-index:40;padding:20px}
+.overlay{position:fixed;inset:0;background:rgba(91,58,74,.55);display:grid;place-items:center;z-index:40;padding:20px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* 화면보다 긴 창: 위에서부터 보이고 위아래로 밀 수 있게 (짧으면 가운데) */
+.overlay{align-items:start}.overlay > *{margin-block:auto}
 .overlay img{max-width:100%;max-height:90vh;border-radius:12px;background:#fff}
 
 /* ---------- 이름표 · 선물 ---------- */

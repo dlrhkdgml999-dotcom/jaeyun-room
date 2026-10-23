@@ -141,14 +141,15 @@ function lecFinderHTML(s, n){
   return `<div class="ebs-list" aria-label="EBS 강의목록에서 찾을 강의"><div class="ebs-head">EBS 강의목록에서 이렇게 찾아요</div>${lecNeighbors(s, n).map(x => lecRowHTML(x, x.n === n)).join('')}</div>`;
 }
 function lectureGuardHTML(s, n){
-  const li = lectInfo(s, n);
+  const li = lectInfo(s, n), direct = !!ebsLinkOf(s, n);
+  // 바로가기가 있으면 강의목록 찾는 그림은 필요 없어서 빼고 짧게 (버튼이 화면 안에 들어오게)
   return `${distanceArt()}<p class="disp" style="font-size:21px;line-height:1.4">강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 허리 펴고 바르게 앉아서 봐요.</p>
-    <div class="lec-today"><span class="lec-big">${li.no}<small>강</small></span><span style="flex:1;text-align:left"><b class="disp" style="font-size:20px;font-weight:400">오늘은 ${li.no}강!</b><br><span style="font-size:15px">EBS ${esc(li.name)}</span></span></div>
-    ${lecFinderHTML(s, n)}
-    ${ebsLinkOf(s, n) ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>바로 ${li.no}강</b>이 열려요</li><li>강의 제목이 <b>${esc(li.title)}</b>인지 확인해요 <span class="muted">(아니면 강의목록에서 ${li.no}강을 찾아요)</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>`
+    <div class="lec-today"><span class="lec-big">${li.no}<small>강</small></span><span style="flex:1;text-align:left"><b class="disp" style="font-size:20px;font-weight:400">오늘은 ${li.no}강!</b><br><span style="font-size:15px">EBS ${esc(li.name)}</span><br><span style="font-size:15px">${esc(li.title)}</span></span></div>
+    ${direct ? '' : lecFinderHTML(s, n)}
+    ${direct ? `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>아래 버튼을 누르면 <b>바로 ${li.no}강</b>이 나와요</li><li>다 보면 이 화면으로 돌아와서 <b>"다 봤어요!"</b></li></ol>`
     : `<ol class="eye-list" style="list-style:decimal;padding-left:22px"><li>EBS 화면이 열리면 아래로 내려서 <b>강의목록</b>을 찾아요</li><li><b>${li.no}강</b>을 찾아서 주황색 ▶ 를 눌러요 <span class="muted">(${lectInfo(s, n + 1) && lectInfo(s, n + 1).course === li.course ? `${lectInfo(s, n + 1).no}강 말고!` : ''})</span></li><li>다 보면 이 화면으로 돌아와서 "다 봤어요!"</li></ol>`}
     <p class="muted" style="font-size:14px">📘 교재가 있으면 Book${li.book} ${li.pages}쪽을 펴 놓아요</p>
-    <a class="btn big" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! ${li.no}강 보러 갈게</a>`;
+    <a class="btn big lec-go" href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener" data-close data-lecgo="1">알겠어! ${li.no}강 보러 갈게</a>`;
 }
 function openLecture(s, n, opt){
   eyeOverlay(lectureGuardHTML(s, n), o => {
