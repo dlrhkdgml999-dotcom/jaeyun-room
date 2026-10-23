@@ -1349,6 +1349,7 @@ const ACT = {
     toast(urls.length > 1 ? `${li.no}강부터 ${urls.length}개 저장했어요` : `${li.no}강 바로가기를 저장했어요`); go('adult');
   },
   ebsmode(el){ S.ebsMode = el.dataset.v; save(); toast(S.ebsMode === 'app' ? '강의를 EBS 초등 앱으로 열어요' : '강의를 인터넷 EBS 사이트로 열어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
+  ebsintent(){ S.ebsIntent = S.ebsIntent === 'launcher' ? '' : 'launcher'; save(); toast(S.ebsIntent ? '앱 첫 화면으로 열어요' : '강좌 주소로 앱을 열어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsplayer(){ S.ebsPlayer = !S.ebsPlayer; save(); toast(S.ebsPlayer ? '강의를 바로 재생해요. "시험" 버튼으로 열리는지 확인해 주세요' : '강좌 화면을 열고 강의목록에서 찾게 해요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsclear(el){ if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 지울까요? 한 번 더 누르면 지워져요'; return; } S.ebsLinks = {}; save(); go('adult'); },
   savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },

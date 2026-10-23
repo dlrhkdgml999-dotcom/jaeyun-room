@@ -70,9 +70,20 @@ function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.
 const EBS_APP_PKG = 'kr.ebs.primary.player', EBS_APP_STORE = 'https://play.google.com/store/apps/details?id=kr.ebs.primary.player';
 function isAndroid(){ return window.__forceAndroid || /Android/i.test(navigator.userAgent || ''); }
 function ebsUseApp(){ return (S.ebsMode || 'app') === 'app' && isAndroid(); }
-function ebsAppUrl(){ return `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${EBS_APP_PKG};S.browser_fallback_url=${encodeURIComponent(EBS_APP_STORE)};end`; }
-function ebsOpenUrl(s, n){ return ebsUseApp() ? ebsAppUrl() : ebsCourseUrl(s, n); }
-function ebsOpenAttrs(s, n){ return ebsUseApp() ? `href="${ebsAppUrl()}"` : `href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener"`; }
+/* 10/24 실험 결과: 앱 첫 화면(LAUNCHER) intent는 크롬이 막아서 Play 스토어 → "열기"로 감 (그래도 앱은 열림).
+   그래서 EBS 강좌 주소를 EBS 초등 앱으로 열어 달라는 intent(https + package)를 씀: 앱이 받아 주면 바로 그 강좌,
+   안 받아 주면 똑같이 Play 스토어 → 열기. S.ebsIntent = 'launcher'로 예전 방식 */
+function ebsAppUrl(s, n){
+  const fb = `S.browser_fallback_url=${encodeURIComponent(EBS_APP_STORE)}`;
+  if (S.ebsIntent === 'launcher' || !s) return `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${EBS_APP_PKG};${fb};end`;
+  // 앱 안에서는 로그인이 유지되니, 강의 번호를 알면 재생 주소로 (앱이 받아 주면 그 강의가 바로 재생)
+  const lk = ebsLinkOf(s, n), li = lectInfo(s, n);
+  const web = lk && lk.sid ? `${EBS_PLAYER}?cid=${li.course.ebs.id}&sid=${lk.sid}&lid=${lk.id}&eno=1&encType=${lk.enc || 'M05'}&captionYn=N&indexPosition=` : ebsCourseUrl(s, n);
+  const u = web.replace(/^https:\/\//, '');
+  return `intent://${u}#Intent;scheme=https;package=${EBS_APP_PKG};${fb};end`;
+}
+function ebsOpenUrl(s, n){ return ebsUseApp() ? ebsAppUrl(s, n) : ebsCourseUrl(s, n); }
+function ebsOpenAttrs(s, n){ return ebsUseApp() ? `href="${ebsAppUrl(s, n)}"` : `href="${ebsCourseUrl(s, n)}" target="_blank" rel="noopener"`; }
 /* 주소에서 강좌·강의 번호 읽기: 재생 주소(cid·sid·lid)와 강좌 주소(courseId·lectId) 둘 다 */
 function parseEbsUrl(str){
   let u; try { u = new URL(String(str || '').trim()); } catch (e) { return null; }
