@@ -34,7 +34,10 @@ const Sync = {
   resetSynced(){ this.sy = { fid:S.local && S.local.fid, s:{}, d:{}, b:{}, fresh:true }; try { localStorage.removeItem(SYNCED_KEY); } catch (e) {} },
   async fs(){
     if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-    await firebase.auth().signInAnonymously();
+    // 전에 로그인한 기기는 인터넷이 없어도 그 로그인을 그대로 쓴다 (처음 한 번만 인터넷으로 로그인)
+    const auth = firebase.auth();
+    if (!auth.currentUser && auth.onAuthStateChanged) await new Promise(res => { const off = auth.onAuthStateChanged(() => { try { off(); } catch (e) {} res(); }); setTimeout(res, 3000); });
+    if (!auth.currentUser) await auth.signInAnonymously();
     if (!this.db) {
       this.db = firebase.firestore();
       // 인터넷이 끊겨도 보낼 기록을 기기에 쌓아 두었다가, 다시 연결되면 보낸다 (앱을 껐다 켜도 유지)
@@ -61,7 +64,7 @@ const Sync = {
       this.ready = true; this.status = 'on';
       // 태블릿: 아직 서버에 없는 사진(예전에 올리다 실패한 것)도 다시 올린다
       if (kid) Object.entries(this.blobCache).forEach(([h, d]) => this.putBlob(h, d));
-      this.schedule(); this.beat();
+      this.schedule(); this.beat(); this.flushNotes();
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.start(), 30000); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
@@ -148,7 +151,21 @@ const Sync = {
     this.db.doc(`${this.base()}/meta/kid`).set({ at:t, stickers:S.stickers.length, days:Object.keys(S.days).length, err, okAt:this.okAt || 0 }).catch(() => { this.beatAt = 0; });
   },
   kidSeenAt(){ return Math.max((this.kid && this.kid.at) || 0, this.kidDayAt || 0); },
-  addNote(n){ if (!this.ready) return; n.id = n.id || ('n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); this.db.doc(`${this.base()}/notes/${n.id}`).set({ to:n.to, text:n.text, at:n.at, d:n.d }).catch(() => {}); },
+  /* 알림함: 인터넷이 없거나 아직 연결 전에 생긴 알림은 기기에 모아 두었다가(jaeyun-noteq, 7일까지) 연결되면 올린다 */
+  noteQ(){ try { return JSON.parse(localStorage.getItem('jaeyun-noteq') || '[]'); } catch (e) { return []; } },
+  setNoteQ(q){ try { q.length ? localStorage.setItem('jaeyun-noteq', JSON.stringify(q.slice(-80))) : localStorage.removeItem('jaeyun-noteq'); } catch (e) {} },
+  addNote(n){
+    if (!linked()) return;
+    n.id = n.id || ('n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+    const q = this.noteQ(); q.push({ id:n.id, to:n.to, text:n.text, at:n.at, d:n.d }); this.setNoteQ(q);
+    this.flushNotes();
+  },
+  flushNotes(){
+    if (!this.ready) return;
+    const q = this.noteQ().filter(x => Date.now() - x.at < 7 * 86400000); this.setNoteQ(q);
+    q.forEach(x => Promise.resolve().then(() => this.db.doc(`${this.base()}/notes/${x.id}`).set({ to:x.to, text:x.text, at:x.at, d:x.d }))
+      .then(() => this.setNoteQ(this.noteQ().filter(y => y.id !== x.id)), () => {}));
+  },
   /* 큰 데이터(사진·녹음)를 blobs로 빼고 짧은 표시로 바꾼다 */
   pack(v){
     if (typeof v === 'string') { if (v.startsWith('data:') && v.length > BLOB_MIN) { const h = hashStr(v); this.putBlob(h, v); return 'blobref:' + h; } return v; }
@@ -239,8 +256,8 @@ const Sync = {
   leave(){ this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false; S.local = null; this.status = 'off'; saveLocal(); },
 };
 /* 인터넷이 다시 되거나, 앱을 다시 볼 때 · 끌 때 바로 보낸다 */
-window.addEventListener('online', () => { if (!Sync.ready) Sync.start(); else Sync.push(); });
-document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) Sync.beat(); });
+window.addEventListener('online', () => { if (!Sync.ready) Sync.start(); else { Sync.push(); Sync.flushNotes(); } });
+document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) { Sync.beat(); Sync.flushNotes(); } });
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
   if (['home','adult','map','gift','cal','room','alldone','book','study'].includes(SCREEN)) {
@@ -276,10 +293,13 @@ function familyPanel(){
     ${window.firebase && window.FIREBASE_CONFIG ? `<div class="field" style="margin-top:6px"><label for="joinpaste">이미 가족방이 있으면: 가족 링크를 붙여넣고 연결</label><input type="text" id="joinpaste" placeholder="https://…#join=…" autocomplete="off"></div><button class="btn small" data-a="joinpaste" style="justify-self:start">이 링크로 연결하기</button>` : ''}
     <p class="muted" id="fammsg"></p></div>`;
   const who = { kid:'재윤이 태블릿', mom:'엄마 폰', oppa:'오빠 폰', all:'공용' }[role()];
-  const st = { on:'연결됨 ✓', connecting:'연결 중…', error:'연결 오류', nosdk:'서버를 못 불러왔어요', off:'꺼짐' }[Sync.status] || Sync.status;
+  const offline = navigator.onLine === false, waiting = Sync.noteQ().length;
+  const st = offline ? '인터넷 없음' : ({ on:'연결됨 ✓', connecting:'연결 중…', error:'연결 오류', nosdk:'서버를 못 불러왔어요', off:'꺼짐' }[Sync.status] || Sync.status);
   return `<div class="panel"><h3>가족 기기 연결</h3>
-    <div class="row"><span class="grow" style="flex:1">이 기기: <b>${who}</b></span><span class="pill ${Sync.status === 'on' ? 'ok' : 'wait'}">${st}</span></div>
-    ${Sync.status === 'error' ? `<p class="demo-note">${esc(Sync.error || '')}<br>인터넷이 되면 저절로 다시 보내요. 계속 이러면 Firebase 보안 규칙을 확인해 주세요.</p>` : ''}
+    <div class="row"><span class="grow" style="flex:1">이 기기: <b>${who}</b></span><span class="pill ${Sync.status === 'on' && !offline ? 'ok' : 'wait'}">${st}</span></div>
+    ${offline ? `<p class="demo-note">지금 인터넷이 없어요. 공부한 기록은 이 기기에 그대로 있고, 인터넷이 연결되면 저절로 엄마·오빠 폰으로 보내요.</p>`
+      : Sync.status === 'error' ? `<p class="demo-note">${esc(Sync.error || '')}<br>인터넷이 되면 저절로 다시 보내요. 계속 이러면 Firebase 보안 규칙을 확인해 주세요.</p>` : ''}
+    ${waiting && role() === 'kid' ? `<p class="muted" style="font-size:14px">아직 못 보낸 알림 ${waiting}개 (연결되면 보내요)</p>` : ''}
     ${role() === 'kid' ? `<p class="muted" style="font-size:14px">${Sync.okAt ? `마지막으로 보낸 때: ${agoText(Sync.okAt)}` : '이 기기 기록을 가족에게 보내는 중이에요'}</p>` : `<p class="muted" style="font-size:14px">${Sync.kidSeenAt() ? `재윤이 태블릿 마지막 연결: ${agoText(Sync.kidSeenAt())}` : '재윤이 태블릿에서 아직 기록이 오지 않았어요'}</p>`}
     <div class="field"><label for="famlink">가족 링크 (카톡으로 보내서 다른 기기에서 열기)</label><input type="text" id="famlink" readonly value="${esc(familyLink())}"></div>
     <div class="row" style="flex-wrap:wrap"><button class="btn small" data-a="famcopy">링크 복사</button><button class="btn ghost small" data-a="famrole">이 기기 역할 바꾸기</button></div>

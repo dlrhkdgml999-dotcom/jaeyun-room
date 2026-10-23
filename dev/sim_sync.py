@@ -121,6 +121,35 @@ async def main():
         oppa.expect(await oppa.ev("S.stickers.length") == await tab.ev("S.stickers.length"), '다시 켠 뒤 스티커 수가 다름')
         print('D 껐다 켜기:', today2 in days_on_server(fid))
 
+        # ---------- F) 인터넷 없이 앱을 켜서 이틀 공부 (중간에 앱 껐다 켬) → 나중에 연결 ----------
+        await tab.ev("localStorage.setItem('__mockOffline', '1')")
+        await tab.p.reload(); await tab.p.wait_for_timeout(2000)
+        f0 = await tab.ev("({status:Sync.status, ready:Sync.ready})"); print('F 끊긴 채 켬:', f0)
+        # (기억된 로그인으로 앱은 켜질 수 있음. 대신 보내기가 안 된다는 게 보여야 함 → 공부한 뒤 확인)
+        fdays = []
+        for off in (3, 4):
+            await tab.study_day(off); fdays.append(await tab.ev("todayKey()"))
+            await tab.p.reload(); await tab.p.wait_for_timeout(1500)   # 하루 끝나고 앱 껐다 켬 (여전히 끊김)
+        await tab.study_day(5); fdays.append(await tab.ev("todayKey()"))   # 마지막 날은 앱을 안 끄고 바로 확인
+        fst = await tab.ev("Sync.status"); tab.expect(fst == 'error', f'끊긴 채 공부했는데 못 보냈다는 표시가 없음 ({fst})')
+        fq = await tab.ev("Sync.noteQ().length"); print('F 쌓인 알림:', fq, '| 서버에 있나:', [d in days_on_server(fid) for d in fdays])
+        tab.expect(fq >= 2, '끊긴 동안 생긴 알림이 기기에 안 쌓임')
+        tab.expect(not any(d in days_on_server(fid) for d in fdays), '끊겼는데 서버에 올라감 (시험이 이상)')
+        # 인터넷 연결
+        await tab.ev("localStorage.removeItem('__mockOffline'); window.dispatchEvent(new Event('online'))"); await asyncio.sleep(3)
+        print('F 연결 뒤:', await tab.ev("({status:Sync.status, ready:Sync.ready, q:Sync.noteQ().length})"), '| 서버 days:', [d in days_on_server(fid) for d in fdays])
+        oppa.expect(all(d in days_on_server(fid) for d in fdays), '끊긴 채 공부한 날이 연결 뒤에 안 올라감')
+        tab.expect(await tab.ev("Sync.noteQ().length") == 0, '쌓인 알림을 연결 뒤에 안 보냄')
+        await asyncio.sleep(1)
+        od = await oppa.ev(f"{json.dumps(fdays)}.map(k => !!(S.days[k] && Object.values(S.days[k].boards || {{}}).some(b => b.done)))"); print('F 오빠 폰 그날 기록:', od)
+        oppa.expect(all(od), '오빠 폰에 끊긴 채 공부한 날 기록이 안 보임')
+        notes_srv = [v for k, v in STORE.items() if k.startswith(f'families/{fid}/notes/') and v.get('d') in fdays]
+        print('F 서버 알림함(그날):', len(notes_srv), [n['text'][:14] for n in notes_srv[:3]])
+        oppa.expect(any('끝냈어요' in n['text'] for n in notes_srv), '끊긴 채 끝낸 날의 "다 끝냈어요" 알림이 알림함에 안 옴')
+        on = await oppa.ev(f"S.notes.filter(n => {json.dumps(fdays)}.includes(n.d)).length"); oppa.expect(on >= 1, '오빠 폰 알림함에 끊긴 날 알림이 안 보임')
+        same = await oppa.ev("S.stickers.length") == await tab.ev("S.stickers.length"); oppa.expect(same, 'F 스티커 수가 다름')
+        print('F 결과: 오빠 폰 알림', on, '스티커 같음', same)
+
         # ---------- B) 실수로 오빠 기기로 연결된 태블릿 ----------
         oppa2 = await Device('B_오빠폰', br, base).open()
         await oppa2.click('[data-a="start"]'); await oppa2.adult('set')
