@@ -1,7 +1,7 @@
 """시뮬레이션: 오빠 폰 · 엄마 폰 · 재윤이 태블릿 세 기기가 가족방으로 함께 쓰기"""
 import asyncio, sys, json, subprocess, os, base64
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from harness import Sim, FAKE_TTS, SHOTS
+from harness import CHROME, Sim, FAKE_TTS, SHOTS
 from playwright.async_api import async_playwright
 DEV = os.path.dirname(os.path.abspath(__file__)); SP = os.path.join(DEV, 'out')
 MOCK = open(os.path.join(DEV, 'mockfb.js')).read()
@@ -37,6 +37,8 @@ class Device(Sim):
         await self.p.goto(self.url); await self.p.wait_for_timeout(600)
         return self
     async def report(self):
+        bad = await self.ev('window.__fsBad || []')
+        if bad: self.issues.append(('Firestore가 거부한 값', len(bad), bad[:2]))
         print(f'[{self.name}] 오류:', self.errors or '없음', '| 문제:', self.issues or '없음')
 
 async def main():
@@ -44,7 +46,7 @@ async def main():
     await asyncio.sleep(1)
     base = 'http://localhost:8765/'
     async with async_playwright() as pw:
-        br = await pw.chromium.launch(executable_path='/opt/pw-browsers/chromium-1194/chrome-linux/chrome')
+        br = await pw.chromium.launch(executable_path=CHROME)
         oppa = await Device('오빠폰', br, 384, 832, base).open()
         # 1) 오빠가 가족방 만들기
         await oppa.click('[data-a="start"]')

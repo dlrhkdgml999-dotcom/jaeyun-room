@@ -6,7 +6,7 @@ D) 끊긴 채 공부하고 앱을 껐다 켜도 올라가는지
 E) 연결 안 된 태블릿에서 실수로 "오빠"를 고르면 한 번 더 묻는지"""
 import asyncio, sys, json, subprocess, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from harness import Sim, FAKE_TTS
+from harness import CHROME, Sim, FAKE_TTS
 from playwright.async_api import async_playwright
 from sim_month import FAST, DAY
 DEV = os.path.dirname(os.path.abspath(__file__))
@@ -51,6 +51,8 @@ class Device(Sim):
         await self.ev("go('adult')"); await self.p.wait_for_timeout(200)
         return await self.ev("(document.querySelector('.sync-alert')||{}).textContent || ''")
     async def report(self):
+        bad = await self.ev('window.__fsBad || []')
+        if bad: self.issues.append(('Firestore가 거부한 값', len(bad), bad[:2]))
         print(f'[{self.name}] 오류:', self.errors or '없음', '| 문제:', self.issues or '없음')
     async def adult_tab(self, t):
         await self.ev(f"S.adultTab = '{t}'; go('adult')"); await self.p.wait_for_timeout(200)
@@ -61,7 +63,7 @@ async def main():
     srv = subprocess.Popen(['python3', '-m', 'http.server', '8766', '-d', os.path.join(os.path.dirname(DEV), 'dist', 'site')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     await asyncio.sleep(1); base = 'http://localhost:8766/'
     async with async_playwright() as pw:
-        br = await pw.chromium.launch(executable_path='/opt/pw-browsers/chromium-1194/chrome-linux/chrome')
+        br = await pw.chromium.launch(executable_path=CHROME)
         # ---------- A ----------
         oppa = await Device('A_오빠폰', br, base).open()
         await oppa.click('[data-a="start"]'); await oppa.adult('set')

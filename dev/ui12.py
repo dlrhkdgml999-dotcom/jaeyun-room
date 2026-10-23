@@ -1,6 +1,6 @@
 import asyncio, sys
 sys.path.insert(0,'.')
-from harness import Sim, FAKE_TTS, build_page, SHOTS
+from harness import CHROME, Sim, FAKE_TTS, build_page, SHOTS
 from playwright.async_api import async_playwright
 SCRIPT = [
  ('home', "go('home')"),
@@ -30,7 +30,7 @@ SCRIPT = [
  ('adult_mom', "S.adultTab='mom'; go('adult')"),
 ]
 async def run(w, h, tag):
-    pw = await async_playwright().start(); b = await pw.chromium.launch(executable_path='/opt/pw-browsers/chromium-1194/chrome-linux/chrome')
+    pw = await async_playwright().start(); b = await pw.chromium.launch(executable_path=CHROME)
     ctx = await b.new_context(viewport={'width': w, 'height': h}, device_scale_factor=1, is_mobile=True, has_touch=True)
     await ctx.add_init_script(FAKE_TTS); p = await ctx.new_page(); errs = []
     p.on('pageerror', lambda e: errs.append(str(e)))

@@ -1,6 +1,8 @@
-import asyncio, os, json, base64
+import asyncio, os, json, base64, glob
 from playwright.async_api import async_playwright
 
+# 세션마다 설치된 크롬 버전이 달라서 찾아서 씀
+CHROME = (sorted(glob.glob('/opt/pw-browsers/chromium-*/chrome-linux*/chrome')) or [None])[-1]
 DEV = os.path.dirname(os.path.abspath(__file__)); SP = os.path.join(DEV, 'out')
 SHOTS = SP + '/shots3'
 os.makedirs(SHOTS, exist_ok=True)
@@ -36,7 +38,7 @@ class Sim:
         self.name = name; self.errors = []; self.issues = []; self.log = []
     async def __aenter__(self):
         self.pw = await async_playwright().start()
-        self.b = await self.pw.chromium.launch(executable_path='/opt/pw-browsers/chromium-1194/chrome-linux/chrome')
+        self.b = await self.pw.chromium.launch(executable_path=CHROME)
         self.ctx = await self.b.new_context(viewport={'width': 384, 'height': 832}, device_scale_factor=2, is_mobile=True, has_touch=True)
         await self.ctx.add_init_script(FAKE_TTS)
         self.p = await self.ctx.new_page()

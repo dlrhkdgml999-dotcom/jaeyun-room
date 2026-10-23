@@ -668,7 +668,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261022145141";
+window.APP_VERSION = "20261023233838";
 </script>
 <script>
 /* ===== 재윤이 공부방 · 문제 내용 (초1 2학기 기준) ===== */
@@ -5251,8 +5251,9 @@ const Sync = {
     if (!this.ready) return;
     clearTimeout(this.timer);
     const b = this.base(), jobs = [], sy = this.synced();
+    // Firestore는 잘못된 값이면 set()에서 바로 던진다 → 한 문서가 던져도 나머지는 보내고, 못 보낸 건 "보낸 것"으로 치지 않는다
     const job = (ref, data, raw, getLast, setLast, mark) => { const prev = getLast(); setLast(raw);
-      jobs.push(ref.set(data).then(() => { mark(); this.saveSynced(); }, e => { if (getLast() === raw) setLast(prev); throw e; })); };
+      jobs.push(Promise.resolve().then(() => ref.set(data)).then(() => { mark(); this.saveSynced(); }, e => { if (getLast() === raw) setLast(prev); console.warn('sync', ref.path, e); throw e; })); };
     for (const k of [...KID_KEYS, ...ADULT_KEYS]) {
       if (!this.writable(k)) continue;
       const v = this.pack(S[k]), raw = JSON.stringify(v);
@@ -5266,27 +5267,32 @@ const Sync = {
       job(this.db.doc(`${b}/days/${k}`), { v, at:Date.now() }, raw, () => this.last.days[k], x => this.last.days[k] = x, () => sy.d[k] = hashStr(raw));
     }
     if (jobs.length) this.beat();
-    try { await Promise.all(jobs); if (jobs.length) { this.status = 'on'; this.error = ''; this.okAt = Date.now(); } }
-    catch (e) { this.status = 'error'; this.error = String(e && e.message || e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.push(), 20000); }
+    const res = await Promise.allSettled(jobs), bad = res.find(r => r.status === 'rejected');
+    if (!bad) { if (jobs.length) { this.status = 'on'; this.error = ''; this.okAt = Date.now(); if (this.beatErr) this.beat(true); } }
+    else { this.status = 'error'; this.error = String(bad.reason && bad.reason.message || bad.reason); if (res.some(r => r.status === 'fulfilled')) this.okAt = Date.now(); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.push(), 20000); if (this.beatErr !== this.error.slice(0, 160)) this.beat(true); }
   },
   /* 재윤이 태블릿: "나 연결됐어요" 표시 (1분에 한 번까지) */
   beat(force){
     if (!this.ready || role() !== 'kid') return;
     const t = Date.now(); if (!force && t - this.beatAt < 60000) return; this.beatAt = t;
-    this.db.doc(`${this.base()}/meta/kid`).set({ at:t, stickers:S.stickers.length, days:Object.keys(S.days).length }).catch(() => { this.beatAt = 0; });
+    // 보내기 실패 중이면 그 이유도 같이 (엄마·오빠 폰 맨 위에 보여 줌)
+    const err = this.status === 'error' ? String(this.error || '').slice(0, 160) : ''; this.beatErr = err;
+    this.db.doc(`${this.base()}/meta/kid`).set({ at:t, stickers:S.stickers.length, days:Object.keys(S.days).length, err, okAt:this.okAt || 0 }).catch(() => { this.beatAt = 0; });
   },
   kidSeenAt(){ return Math.max((this.kid && this.kid.at) || 0, this.kidDayAt || 0); },
   addNote(n){ if (!this.ready) return; n.id = n.id || ('n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); this.db.doc(`${this.base()}/notes/${n.id}`).set({ to:n.to, text:n.text, at:n.at, d:n.d }).catch(() => {}); },
   /* 큰 데이터(사진·녹음)를 blobs로 빼고 짧은 표시로 바꾼다 */
   pack(v){
     if (typeof v === 'string') { if (v.startsWith('data:') && v.length > BLOB_MIN) { const h = hashStr(v); this.putBlob(h, v); return 'blobref:' + h; } return v; }
-    if (Array.isArray(v)) return v.map(x => this.pack(x));
-    if (v && typeof v === 'object') { const o = {}; for (const k in v) { const p = this.pack(v[k]); if (p !== undefined) o[k] = p; } return o; }
+    // Firestore는 배열 안의 배열과 undefined를 못 받는다 → 안쪽 배열은 {_arr:[…]}로 싸고, 빈 칸은 null로
+    if (Array.isArray(v)) return Array.from(v, x => { const p = this.pack(x); return p === undefined ? null : Array.isArray(p) ? { _arr:p } : p; });
+    if (v && typeof v === 'object') { const o = {}; for (const k in v) { const p = this.pack(v[k]); if (p !== undefined && typeof p !== 'function') o[k] = p; } return o; }
+    if (typeof v === 'function') return undefined;
     return v;
   },
   unpack(v){
     if (typeof v === 'string' && v.startsWith('blobref:')) { const h = v.slice(8); if (this.blobCache[h]) return this.blobCache[h]; this.fetchBlob(h); return null; }
-    if (Array.isArray(v)) return v.map(x => this.unpack(x));
+    if (Array.isArray(v)) return v.map(x => x && typeof x === 'object' && !Array.isArray(x) && Array.isArray(x._arr) && Object.keys(x).length === 1 ? this.unpack(x._arr) : this.unpack(x));
     if (v && typeof v === 'object') { const o = {}; for (const k in v) o[k] = this.unpack(v[k]); return o; }
     return v;
   },
@@ -5437,7 +5443,10 @@ function syncAlert(){
   let remoteSt = 0; try { remoteSt = (JSON.parse(Sync.last.s.stickers || '[]') || []).length; } catch (e) {}
   if (Sync.ready && S.stickers.length >= remoteSt + 3) return box(`<b>⚠️ 이 기기는 "${role() === 'mom' ? '엄마' : '오빠'} 폰"으로 연결돼 있어요</b><br>그런데 여기서 공부한 기록(스티커 ${S.stickers.length}개)이 있어요. 엄마·오빠 폰에서 푼 건 미리보기라 재윤이 기록에 안 들어가요.<br>재윤이 태블릿이라면 <b>설정 → 이 기기 역할 바꾸기 → 재윤이</b>를 눌러 주세요. 이 기기 기록이 그대로 올라가요.`);
   if (!Sync.ready) return '';
-  const seen = Sync.kidSeenAt();
+  const seen = Sync.kidSeenAt(), kid = Sync.kid || {};
+  if (kid.err && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.`);
+  const have = Object.keys(S.days).length;
+  if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.`, 'soft');
   if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);
   if (Date.now() - seen > 2 * 86400000) return box(`재윤이 태블릿 마지막 연결: <b>${agoText(seen)}</b><br>태블릿이 인터넷에 연결돼 있는지 확인해 주세요.`, 'soft');
   return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓`, 'ok');
@@ -5907,7 +5916,7 @@ function dayDetailHTML(k){
         ${res ? `<span class="pill ${res.pass ? 'ok' : 'wait'}">${res.test ? '평가 ' : ''}${res.pass ? '통과' : '다시'} ${Math.round(res.rate * 100)}%</span>` : ''}</div>
       ${what ? `<p class="muted" style="font-size:14px;margin:4px 0 0">${esc(what)}</p>` : ''}
       ${bo.log ? (logs.length ? `<div class="lqs">${logs.map(x => logRowHTML(x)).join('')}</div>` : `<p class="muted" style="font-size:14px">틀린 문제가 없어요! (${firstN}문제 모두 한 번에 정답)</p>`)
-        : `<p class="muted" style="font-size:14px">문제별 기록은 10월 22일부터 남아요. 이날은 점수만 있어요.</p>`}</div>`;
+        : !(bo.idx || bo.done) ? `<p class="muted" style="font-size:14px">아직 푼 문제가 없어요.</p>` : k < '2026-10-22' ? `<p class="muted" style="font-size:14px">문제별 기록은 10월 22일부터 남아요. 이날은 점수만 있어요.</p>` : ''}</div>`;
   }).join('');
   const lecs = lecturesOn(k).filter(x => f === 'all' || f === x.s);
   const g = gradeOf(k), dd = dy.dict, showDict = dd && (f === 'all' || f === 'eng');

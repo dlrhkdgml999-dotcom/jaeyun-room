@@ -152,7 +152,7 @@ function dayDetailHTML(k){
         ${res ? `<span class="pill ${res.pass ? 'ok' : 'wait'}">${res.test ? '평가 ' : ''}${res.pass ? '통과' : '다시'} ${Math.round(res.rate * 100)}%</span>` : ''}</div>
       ${what ? `<p class="muted" style="font-size:14px;margin:4px 0 0">${esc(what)}</p>` : ''}
       ${bo.log ? (logs.length ? `<div class="lqs">${logs.map(x => logRowHTML(x)).join('')}</div>` : `<p class="muted" style="font-size:14px">틀린 문제가 없어요! (${firstN}문제 모두 한 번에 정답)</p>`)
-        : `<p class="muted" style="font-size:14px">문제별 기록은 10월 22일부터 남아요. 이날은 점수만 있어요.</p>`}</div>`;
+        : !(bo.idx || bo.done) ? `<p class="muted" style="font-size:14px">아직 푼 문제가 없어요.</p>` : k < '2026-10-22' ? `<p class="muted" style="font-size:14px">문제별 기록은 10월 22일부터 남아요. 이날은 점수만 있어요.</p>` : ''}</div>`;
   }).join('');
   const lecs = lecturesOn(k).filter(x => f === 'all' || f === x.s);
   const g = gradeOf(k), dd = dy.dict, showDict = dd && (f === 'all' || f === 'eng');
