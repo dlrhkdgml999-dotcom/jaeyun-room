@@ -24,7 +24,9 @@ async def main():
         st = await state(s); print('귀:', st)
         s.expect('t-flap' in st['cls'], '귀를 눌렀는데 귀가 안 움직임')
         s.expect('talking' in st['cls'], '말할 때 입이 안 움직임')
-        s.expect(st['bubble'] and st['bubble'] in ' '.join(st['said']), '말풍선과 목소리가 다름')
+        # 목소리는 물결(~)을 빼고 읽어요 (말풍선에만 보임) → 물결·띄어쓰기를 빼고 비교
+        nz = lambda x: ''.join(ch for ch in x if ch not in '~ ')
+        s.expect(st['bubble'] and nz(st['bubble']) in nz(' '.join(st['said'])), '말풍선과 목소리가 다름')
         s.expect(st['fx'] > 0, '반짝이 효과 없음')
         await p.wait_for_timeout(1500)
         s.expect('talking' not in (await state(s))['cls'], '말이 끝났는데 입이 계속 움직임')

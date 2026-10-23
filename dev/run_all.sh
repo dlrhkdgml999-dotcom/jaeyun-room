@@ -17,7 +17,7 @@ done
 echo "===== 요약 ====="
 for f in out/runs/*.txt; do
   ex=$(grep -o "EXIT [0-9]*" $f | tail -1)
-  iss=$(grep -E "^issues:|문제:|^이상:|^page errors:" $f | grep -v "없음" | grep -v "^이상: 0$" | head -3 | tr '\n' ' ')
+  iss=$(grep -E "^issues:|\] 오류:.*\| 문제:|^이상:|^page errors:" $f | grep -v -e "^issues: 없음$" -e "^page errors: 없음$" -e "오류: 없음 | 문제: 없음$" -e "^이상: 0$" | head -3 | tr '\n' ' ')
   st=OK; [ "$ex" != "EXIT 0" ] && st="실패($ex)"; [ -n "$iss" ] && st="문제"
   echo "$(basename $f .txt): $st $iss"
 done
