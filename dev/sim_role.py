@@ -88,7 +88,7 @@ async def main():
         print('N1 혼자 맞힘 / 같이 맞힘 / 아직 보임:', fx); tab.expect(fx and not fx['solo'] and fx['together'] and not fx['shown'], f'N1: 오답노트 없어지는 규칙이 다름 {fx}')
         await tab.overflow('오답노트 태블릿')
         # 엄마 메뉴(오빠 폰)에서도
-        await oppa.adult_tab('mom'); await oppa.click('.nb-tile'); await oppa.p.wait_for_timeout(300)
+        await oppa.adult_tab('mom'); await oppa.click('.mom-quick [data-a="notebook"]'); await oppa.p.wait_for_timeout(300)
         on = await oppa.ev("({screen:SCREEN, cards:document.querySelectorAll('.nb-card').length})"); print('N1 폰 오답노트:', on)
         oppa.expect(on['screen'] == 'notebook' and on['cards'] > 0, 'N1: 폰 엄마 메뉴에서 오답노트가 안 열리거나 비어 있음')
         await oppa.overflow('오답노트 폰'); await oppa.shot('N1_phone')
