@@ -17,7 +17,24 @@ function hashStr(str){ str = str == null ? "" : String(str); let h1 = 0xdeadbeef
 
 /* 공부 기록이 얼마나 있는지 (스티커 수 + 한 판이라도 끝낸 날 수) — 가족 연결할 때 어느 쪽 기록을 남길지 정한다 */
 function studyScore(st){ const days = Object.values((st && st.days) || {}).filter(d => d && d.boards && Object.values(d.boards).some(b => b && b.done)).length; return ((st && st.stickers) || []).length + days; }
-const SYNCED_KEY = 'jaeyun-synced';
+/* 2026-10-29: 'jaeyun-synced2'로 바꿈. 예전 지문은 서버가 받기 전(기기 안 대기 중)에도 "받았음"으로 찍혀서,
+   보내기가 멈춘 동안의 기록이 앱을 다시 켜도 안 갔다 → 새 버전은 태블릿이 전부 한 번 다시 보낸다 */
+const SYNCED_KEY = 'jaeyun-synced2';
+try { localStorage.removeItem('jaeyun-synced'); } catch (e) {}
+/* ---------- 서버에 직접 보내기 (Firestore REST) ----------
+   2026-10-24~29 사고: 태블릿은 와이파이가 되는데 서버에 5일 동안 아무것도 안 갔다(연결 표시조차).
+   Firebase SDK의 보내기 줄은 막혀도 오류 없이 기다리기만 해서, 앱도 우리도 몰랐다.
+   → 쓰기는 HTTPS로 직접 보낸다(되거나 오류가 나거나 둘 중 하나). 안 되면 SDK로 한 번 더. 받기(엄마·오빠 폰 화면)는 그대로 SDK */
+function fsVal(v){
+  if (v === null || v === undefined) return { nullValue:null };
+  if (typeof v === 'boolean') return { booleanValue:v };
+  if (typeof v === 'number') return Number.isSafeInteger(v) ? { integerValue:String(v) } : { doubleValue: Number.isFinite(v) ? v : String(v) };
+  if (typeof v === 'string') return { stringValue:v };
+  if (Array.isArray(v)) return { arrayValue: v.length ? { values:v.map(fsVal) } : {} };
+  return { mapValue:{ fields:fsFields(v) } };
+}
+function fsFields(o){ const f = {}; for (const k in o) if (o[k] !== undefined && typeof o[k] !== 'function') f[k] = fsVal(o[k]); return f; }
+const SEND_WAIT = 40000;
 const Sync = {
   db:null, ready:false, status:'off', last:{ s:{}, days:{} }, timer:null, blobCache:{}, blobWait:{}, unsub:[], applying:false,
   kid:null, kidDayAt:0, okAt:0, beatAt:0, sy:null, syT:null, retryT:null,
@@ -38,12 +55,46 @@ const Sync = {
     const auth = firebase.auth();
     if (!auth.currentUser && auth.onAuthStateChanged) await new Promise(res => { const off = auth.onAuthStateChanged(() => { try { off(); } catch (e) {} res(); }); setTimeout(res, 3000); });
     if (!auth.currentUser) await auth.signInAnonymously();
-    if (!this.db) {
-      this.db = firebase.firestore();
-      // 인터넷이 끊겨도 보낼 기록을 기기에 쌓아 두었다가, 다시 연결되면 보낸다 (앱을 껐다 켜도 유지)
-      if (this.db.enablePersistence) { try { await this.db.enablePersistence({ synchronizeTabs:true }); } catch (e) {} }
-    }
+    // 2026-10-29: 기기 안 저장(enablePersistence)은 끔. 못 보낸 기록은 우리 지문(jaeyun-synced2)이 기억했다가 다시 보낸다.
+    // 켜 두면 SDK가 보낼 것을 IndexedDB에 쌓아 두고 조용히 멈출 수 있어서, 확인할 수 없는 단계를 하나 줄였다
+    if (!this.db) this.db = firebase.firestore();
     return this.db;
+  },
+  /* 문서 하나 쓰기: ① HTTPS(REST)로 직접 → ② 안 되면 SDK (40초 기다림). 둘 다 안 되면 오류(다음에 다시 보냄) */
+  via:'', sendErr:'', failSince:0, sdkWait:{},
+  async rest(path, data){
+    const u = firebase.auth().currentUser; if (!u || !u.getIdToken) throw new Error('로그인 전');
+    // Firebase 웹 SDK(Lite)가 쓰는 것과 같은 방식: documents:commit 에 update(updateMask 없음 = 문서 통째로 바꾸기 = set)
+    const db = `projects/${FIREBASE_CONFIG.projectId}/databases/(default)`, url = `https://firestore.googleapis.com/v1/${db}/documents:commit`;
+    const body = JSON.stringify({ writes:[{ update:{ name:`${db}/documents/${path}`, fields:fsFields(data) } }] });
+    const go = async fresh => { const tok = await u.getIdToken(fresh);
+      return fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + tok }, body }); };
+    let r = await go(false); if (r.status === 401 || r.status === 403) r = await go(true);
+    if (!r.ok) { let t = ''; try { t = (await r.text()).replace(/\s+/g, ' ').slice(0, 140); } catch (e) {} throw new Error(`서버 ${r.status} ${t}`); }
+  },
+  sdkSet(path, data){
+    if (this.sdkWait[path]) return Promise.reject(new Error('SDK 기다리는 중'));   // 멈춘 SDK에 같은 문서를 계속 쌓지 않는다
+    this.sdkWait[path] = true; let to;
+    const p = Promise.resolve().then(() => this.db.doc(path).set(data)), wait = window.__sendWait || SEND_WAIT;
+    p.then(() => { this.sdkWait[path] = false; }, () => { this.sdkWait[path] = false; });
+    return Promise.race([p, new Promise((_, rej) => { to = setTimeout(() => rej(new Error('SDK 답 없음')), wait); })]).finally(() => clearTimeout(to));
+  },
+  async write(path, data){
+    try { await this.rest(path, data); this.via = 'rest'; }
+    catch (e1) {
+      try { await this.sdkSet(path, data); this.via = 'sdk'; }
+      catch (e2) { throw new Error(`${String(e1 && e1.message || e1).slice(0, 150)} | ${String(e2 && e2.message || e2).slice(0, 60)}`); }
+    }
+  },
+  sentOk(){ this.okAt = Date.now(); this.failSince = 0; this.sendErr = ''; },
+  sentBad(e){ this.sendErr = String(e && e.message || e).slice(0, 200); if (!this.failSince) this.failSince = Date.now(); this.warnOppa(); },
+  /* 30분 넘게 못 보내면 오빠 폰(ntfy, 다른 길)으로 한 번 알린다 (6시간에 한 번까지) */
+  warnOppa(){
+    if (role() !== 'kid' || !this.failSince || Date.now() - this.failSince < 30 * 60000 || navigator.onLine === false || typeof Ntfy === 'undefined') return;
+    let last = 0; try { last = +localStorage.getItem('jaeyun-syncwarn') || 0; } catch (e) {}
+    if (Date.now() - last < 6 * 3600000) return;
+    try { localStorage.setItem('jaeyun-syncwarn', String(Date.now())); } catch (e) {}
+    try { Ntfy.send({ to:'oppa', text:`⚠️ 재윤이 태블릿이 공부 기록을 엄마·오빠 폰으로 못 보내고 있어요 (${agoText(this.failSince)}부터). 이유: ${this.sendErr}`, at:Date.now() }); } catch (e) {}
   },
   async start(){
     if (!linked() || this.ready) return;
@@ -76,8 +127,8 @@ const Sync = {
   listen(){
     const b = this.base();
     this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = [];
-    this.unsub.push(this.db.collection(`${b}/s`).onSnapshot(snap => this.onState(snap)));
-    this.unsub.push(this.db.collection(`${b}/days`).onSnapshot(snap => this.onDays(snap)));
+    this.unsub.push(this.db.collection(`${b}/s`).onSnapshot({ includeMetadataChanges:true }, snap => this.onState(snap)));
+    this.unsub.push(this.db.collection(`${b}/days`).onSnapshot({ includeMetadataChanges:true }, snap => this.onDays(snap)));
     this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(120).onSnapshot(snap => this.onNotes(snap)));
     // 재윤이 태블릿이 마지막으로 연결된 때 (엄마·오빠 폰에서 보여 줌)
     try { this.unsub.push(this.db.doc(`${b}/meta/kid`).onSnapshot(d => { const k = d && d.exists ? d.data() : null; if (JSON.stringify(k) !== JSON.stringify(this.kid)) { this.kid = k; if (SCREEN === 'adult') refreshIfIdle(); } })); } catch (e) {}
@@ -87,7 +138,8 @@ const Sync = {
     snap.docs.forEach(d => { const k = d.id, raw = JSON.stringify(d.data().v);
       if (LOCAL_KEYS.includes(k)) return;
       const dirty = JSON.stringify(this.pack(S[k])) !== this.last.s[k];
-      if (raw === this.last.s[k]) { sy.s[k] = hashStr(raw); return; }   // 내가 쓴 것이 돌아온 것
+      // 내가 쓴 것이 돌아온 것: 서버가 받은 것일 때만 "보냄"으로 친다 (기기 안에서 기다리는 것은 hasPendingWrites)
+      if (raw === this.last.s[k]) { if (!(d.metadata && d.metadata.hasPendingWrites)) sy.s[k] = hashStr(raw); return; }
       if (dirty && this.writable(k) && (!KID_KEYS.includes(k) || canWriteKid())) return;   // 아직 못 보낸 내 변경이 우선 (곧 덮어씀)
       this.last.s[k] = raw; sy.s[k] = hashStr(raw); S[k] = this.unpack(d.data().v); changed = true; });
     this.saveSynced();
@@ -96,8 +148,8 @@ const Sync = {
   onDays(snap){
     let changed = false; const sy = this.synced();
     snap.docs.forEach(d => { const k = d.id, data = d.data(), raw = JSON.stringify(data.v);
-      if (data.at > this.kidDayAt) this.kidDayAt = data.at;
-      if (raw === this.last.days[k]) { sy.d[k] = hashStr(raw); return; }
+      if (data.at > this.kidDayAt && !(d.metadata && d.metadata.hasPendingWrites)) this.kidDayAt = data.at;
+      if (raw === this.last.days[k]) { if (!(d.metadata && d.metadata.hasPendingWrites)) sy.d[k] = hashStr(raw); return; }
       const dirty = S.days[k] && JSON.stringify(this.pack(S.days[k])) !== this.last.days[k];
       if (dirty && canWriteKid()) return;
       this.last.days[k] = raw; sy.d[k] = hashStr(raw); S.days[k] = this.unpack(data.v); changed = true; });
@@ -123,24 +175,28 @@ const Sync = {
     clearTimeout(this.timer);
     const b = this.base(), jobs = [], sy = this.synced();
     // Firestore는 잘못된 값이면 set()에서 바로 던진다 → 한 문서가 던져도 나머지는 보내고, 못 보낸 건 "보낸 것"으로 치지 않는다
-    const job = (ref, data, raw, getLast, setLast, mark) => { const prev = getLast(); setLast(raw);
-      jobs.push(Promise.resolve().then(() => ref.set(data)).then(() => { mark(); this.saveSynced(); }, e => { if (getLast() === raw) setLast(prev); console.warn('sync', ref.path, e); throw e; })); };
+    if (navigator.onLine === false) { this.status = 'offline'; return; }   // 인터넷이 돌아오면('online') 다시
+    const job = (path, data, raw, getLast, setLast, mark) => { const prev = getLast(); setLast(raw);
+      jobs.push(this.write(path, data).then(() => { mark(); this.saveSynced(); }, e => { if (getLast() === raw) setLast(prev); console.warn('sync', path, e); throw e; })); };
     for (const k of [...KID_KEYS, ...ADULT_KEYS]) {
       if (!this.writable(k)) continue;
       const v = this.pack(S[k]), raw = JSON.stringify(v);
       if (raw === this.last.s[k] || v === undefined) continue;
       this.touched.delete(k);
-      job(this.db.doc(`${b}/s/${k}`), { v, at:Date.now(), by:role() }, raw, () => this.last.s[k], x => this.last.s[k] = x, () => sy.s[k] = hashStr(raw));
+      job(`${b}/s/${k}`, { v, at:Date.now(), by:role() }, raw, () => this.last.s[k], x => this.last.s[k] = x, () => sy.s[k] = hashStr(raw));
     }
     if (canWriteKid()) for (const k of Object.keys(S.days)) {
       const v = this.pack(S.days[k]), raw = JSON.stringify(v);
       if (raw === this.last.days[k]) continue;
-      job(this.db.doc(`${b}/days/${k}`), { v, at:Date.now() }, raw, () => this.last.days[k], x => this.last.days[k] = x, () => sy.d[k] = hashStr(raw));
+      job(`${b}/days/${k}`, { v, at:Date.now() }, raw, () => this.last.days[k], x => this.last.days[k] = x, () => sy.d[k] = hashStr(raw));
     }
     if (jobs.length) this.beat();
     const res = await Promise.allSettled(jobs), bad = res.find(r => r.status === 'rejected');
-    if (!bad) { if (jobs.length) { this.status = 'on'; this.error = ''; this.okAt = Date.now(); if (this.beatErr) this.beat(true); } }
-    else { this.status = 'error'; this.error = String(bad.reason && bad.reason.message || bad.reason); if (res.some(r => r.status === 'fulfilled')) this.okAt = Date.now(); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.push(), 20000); if (this.beatErr !== this.error.slice(0, 160)) this.beat(true); }
+    if (!bad) { this.tries = 0; if (jobs.length) { this.status = 'on'; this.error = ''; this.sentOk(); if (this.beatErr || this.beatUnsent) this.beat(true); } }
+    else { this.status = 'error'; this.error = String(bad.reason && bad.reason.message || bad.reason); this.sentBad(this.error); if (res.some(r => r.status === 'fulfilled')) this.okAt = Date.now();
+      // 다시 보내기: 20초, 40초, 80초 … 최대 5분 간격
+      this.tries = (this.tries || 0) + 1; clearTimeout(this.retryT); this.retryT = setTimeout(() => this.push(), Math.min(300000, 20000 * 2 ** (this.tries - 1)));
+      if (this.beatErr !== this.error.slice(0, 160)) this.beat(true); }
   },
   /* 재윤이 태블릿: "나 연결됐어요" 표시 (1분에 한 번까지) */
   beat(force){
@@ -148,7 +204,11 @@ const Sync = {
     const t = Date.now(); if (!force && t - this.beatAt < 60000) return; this.beatAt = t;
     // 보내기 실패 중이면 그 이유도 같이 (엄마·오빠 폰 맨 위에 보여 줌)
     const err = this.status === 'error' ? String(this.error || '').slice(0, 160) : ''; this.beatErr = err;
-    this.db.doc(`${this.base()}/meta/kid`).set({ at:t, stickers:S.stickers.length, days:Object.keys(S.days).length, err, okAt:this.okAt || 0 }).catch(() => { this.beatAt = 0; });
+    // 오빠 폰에서 원인을 볼 수 있게: 앱 버전, 보낸 길, 못 보낸 기록 수, 기기 저장 공간, 마지막으로 공부한 날
+    let ls = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {}
+    const days = Object.keys(S.days), sy = this.synced(), unsent = days.filter(k => !sy.d[k]).length; this.beatUnsent = unsent;
+    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, online:navigator.onLine !== false, failSince:this.failSince || 0 };
+    this.write(`${this.base()}/meta/kid`, info).then(() => { if (!this.okAt) this.okAt = Date.now(); }, e => { this.beatAt = 0; this.sentBad(e); });
   },
   kidSeenAt(){ return Math.max((this.kid && this.kid.at) || 0, this.kidDayAt || 0); },
   /* 알림함: 인터넷이 없거나 아직 연결 전에 생긴 알림은 기기에 모아 두었다가(jaeyun-noteq, 7일까지) 연결되면 올린다 */
@@ -163,7 +223,7 @@ const Sync = {
   flushNotes(){
     if (!this.ready) return;
     const q = this.noteQ().filter(x => Date.now() - x.at < 7 * 86400000); this.setNoteQ(q);
-    q.forEach(x => Promise.resolve().then(() => this.db.doc(`${this.base()}/notes/${x.id}`).set({ to:x.to, text:x.text, at:x.at, d:x.d }))
+    q.forEach(x => this.write(`${this.base()}/notes/${x.id}`, { to:x.to, text:x.text, at:x.at, d:x.d })
       .then(() => this.setNoteQ(this.noteQ().filter(y => y.id !== x.id)), () => {}));
   },
   /* 큰 데이터(사진·녹음)를 blobs로 빼고 짧은 표시로 바꾼다 */
@@ -188,8 +248,8 @@ const Sync = {
     const sy = this.synced(); if (sy.b[h] || (this.upping || (this.upping = {}))[h]) return;
     this.upping[h] = true;
     const parts = Math.ceil(data.length / CHUNK), b = this.base(), w = [];
-    for (let i = 0; i < parts; i++) w.push(this.db.doc(`${b}/blobs/${h}_${i}`).set({ d:data.slice(i * CHUNK, (i + 1) * CHUNK) }));
-    Promise.all(w).then(() => this.db.doc(`${b}/blobs/${h}`).set({ parts })).then(() => { sy.b[h] = 1; this.saveSynced(); }, () => {}).finally(() => { this.upping[h] = false; });
+    for (let i = 0; i < parts; i++) w.push(this.write(`${b}/blobs/${h}_${i}`, { d:data.slice(i * CHUNK, (i + 1) * CHUNK) }));
+    Promise.all(w).then(() => this.write(`${b}/blobs/${h}`, { parts })).then(() => { sy.b[h] = 1; this.saveSynced(); }, () => {}).finally(() => { this.upping[h] = false; });
   },
   async fetchBlob(h){
     if (this.blobWait[h]) return; this.blobWait[h] = true;
@@ -238,18 +298,23 @@ const Sync = {
     Object.keys(S.days).forEach(k => S.days[k] = this.unpack(S.days[k]));
     this.resetSynced();
     this.kept = 0;
-    if (roleName === 'kid' && mine.score > studyScore(S)) {
-      // 이 기기(태블릿)의 재윤이 기록이 더 많다 → 그대로 남기고 가족 기록으로 올린다
+    // 서버에서 받은 그대로인 것만 "보냄"으로 친다. 나머지(이 태블릿에만 있는 것)는 start()가 올린다
+    const srvDays = {}; Object.keys(S.days).forEach(k => srvDays[k] = JSON.stringify(this.pack(S.days[k])));
+    const takeMine = roleName === 'kid' && mine.score > studyScore(S);
+    if (takeMine) {
+      // 이 기기(태블릿)의 재윤이 기록(진도·스티커)이 더 많다 → 그대로 남기고 가족 기록으로 올린다
       KID_KEYS.forEach(k => { if (mine.kid[k] !== undefined) S[k] = mine.kid[k]; });
-      Object.entries(mine.days).forEach(([k, d]) => { const f = S.days[k]; const doneN = x => x && x.boards ? Object.values(x.boards).filter(b => b && b.done).length : 0; if (!f || doneN(d) >= doneN(f)) S.days[k] = d; });
       this.kept = mine.score;
-    } else {
-      // 받은 값이 곧 서버 값
-      const sy = this.synced();
-      [...KID_KEYS, ...ADULT_KEYS].forEach(k => sy.s[k] = hashStr(JSON.stringify(this.pack(S[k]))));
-      Object.keys(S.days).forEach(k => sy.d[k] = hashStr(JSON.stringify(this.pack(S.days[k]))));
-      delete sy.fresh; this.saveSynced();
     }
+    if (roleName === 'kid') {
+      // 날짜별 공부 기록은 어느 쪽이든 합친다: 그날 더 많이 한 쪽을 남긴다 (태블릿에서 공부한 날이 지워지지 않게)
+      const doneN = x => x && x.boards ? Object.values(x.boards).filter(b => b && b.done).length : 0;
+      Object.entries(mine.days || {}).forEach(([k, d]) => { const f = S.days[k]; if (!f || doneN(d) >= doneN(f)) S.days[k] = d; });
+    }
+    const sy = this.synced();
+    [...KID_KEYS, ...ADULT_KEYS].forEach(k => { if (!(takeMine && KID_KEYS.includes(k))) sy.s[k] = hashStr(JSON.stringify(this.pack(S[k]))); });
+    Object.keys(S.days).forEach(k => { const raw = JSON.stringify(this.pack(S.days[k])); if (srvDays[k] === raw) sy.d[k] = hashStr(raw); });
+    delete sy.fresh; this.saveSynced();
     saveLocal(); await this.start(); if (roleName === 'kid') this.beat(true);
     return true;
   },
@@ -294,7 +359,7 @@ function familyPanel(){
     <p class="muted" id="fammsg"></p></div>`;
   const who = { kid:'재윤이 태블릿', mom:'엄마 폰', oppa:'오빠 폰', all:'공용' }[role()];
   const offline = navigator.onLine === false, waiting = Sync.noteQ().length;
-  const st = offline ? '인터넷 없음' : ({ on:'연결됨 ✓', connecting:'연결 중…', error:'연결 오류', nosdk:'서버를 못 불러왔어요', off:'꺼짐' }[Sync.status] || Sync.status);
+  const st = offline ? '인터넷 없음' : ({ on:'연결됨 ✓', connecting:'연결 중…', error:'보내기 실패', offline:'인터넷 없음', nosdk:'서버를 못 불러왔어요', off:'꺼짐' }[Sync.status] || Sync.status);
   return `<div class="panel"><h3>가족 기기 연결</h3>
     <div class="row"><span class="grow" style="flex:1">이 기기: <b>${who}</b></span><span class="pill ${Sync.status === 'on' && !offline ? 'ok' : 'wait'}">${st}</span></div>
     ${offline ? `<p class="demo-note">지금 인터넷이 없어요. 공부한 기록은 이 기기에 그대로 있고, 인터넷이 연결되면 저절로 엄마·오빠 폰으로 보내요.</p>`
@@ -332,10 +397,24 @@ function syncAlert(){
   if (Sync.ready && S.stickers.length >= remoteSt + 3) return box(`<b>⚠️ 이 기기는 "${role() === 'mom' ? '엄마' : '오빠'} 폰"으로 연결돼 있어요</b><br>그런데 여기서 공부한 기록(스티커 ${S.stickers.length}개)이 있어요. 엄마·오빠 폰에서 푼 건 미리보기라 재윤이 기록에 안 들어가요.<br>재윤이 태블릿이라면 <b>설정 → 이 기기 역할 바꾸기 → 재윤이</b>를 눌러 주세요. 이 기기 기록이 그대로 올라가요.`);
   if (!Sync.ready) return '';
   const seen = Sync.kidSeenAt(), kid = Sync.kid || {};
-  if (kid.err && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.`);
   const have = Object.keys(S.days).length;
-  if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.`, 'soft');
+  // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
+  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}</span>` : '';
+  if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
+  if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.${diag}`, 'soft');
   if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);
-  if (Date.now() - seen > 2 * 86400000) return box(`재윤이 태블릿 마지막 연결: <b>${agoText(seen)}</b><br>태블릿이 인터넷에 연결돼 있는지 확인해 주세요.`, 'soft');
-  return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓`, 'ok');
+  // 하루 넘게 소식이 없으면: 인터넷 탓이라고만 하지 않고, 태블릿에서 무엇을 보면 되는지 알려 준다
+  if (Date.now() - seen > 26 * 3600000) return box(`<b>재윤이 태블릿 마지막 연결: ${agoText(seen)}</b><br>재윤이가 그 뒤에도 공부했다면, 태블릿에서 공부방 앱을 열고 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 봐 주세요.<br>· "이 기기: 재윤이 태블릿"이 아니거나 가족방 만들기 화면이 보이면 → 가족 링크를 태블릿에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 지워지지 않아요)<br>· 빨간 글씨(보내기 실패)가 있으면 → 그 화면을 오빠에게 캡처${diag}`, 'warn');
+  return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓${kid.unsent ? ` · 보내는 중 ${kid.unsent}일` : ''}`, 'ok');
+}
+function kidVer(v){ if (!v) return '예전 버전(10/28 이전)'; const m = String(v).match(/^\d{4}(\d\d)(\d\d)(\d\d)(\d\d)/); return m ? `${+m[1]}/${+m[2]} ${m[3]}:${m[4]} 버전` : v; }
+/* 재윤이 태블릿 첫 화면 아래: 기록이 가족에게 안 가고 있으면 엄마가 알아볼 수 있게 작게 표시 (재윤이는 신경 안 써도 되는 말투) */
+function kidSyncNote(){
+  if (!(window.firebase && window.FIREBASE_CONFIG) || !S.started) return '';
+  const note = t => `<button class="kid-sync-note" data-a="go" data-v="pin">⚠️ ${t} <span>엄마 · 오빠가 볼게요</span></button>`;
+  if (!linked()) return studyScore(S) > 0 ? note('이 태블릿은 아직 엄마·오빠 폰과 연결되지 않았어요') : '';
+  if (role() !== 'kid') return '';
+  if (navigator.onLine === false) return '';
+  if (Sync.failSince && Date.now() - Sync.failSince > 10 * 60000) return note('공부 기록이 엄마·오빠 폰으로 안 가고 있어요');
+  return '';
 }

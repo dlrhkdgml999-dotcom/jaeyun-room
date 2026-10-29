@@ -167,14 +167,36 @@ function genCurriculum(s, n){
   g = 0; while (out.length < n && g++ < 200) add(lessonQ(l));
   return out.slice(0, 2).concat(shuffle(out.slice(2)));
 }
-/* 강의를 내일로 미룬 날: 지난 차시 + 기초로 복습만 (진도는 그대로) */
+/* 강의가 다른 과목 차례인 날: "지난 시간 다지기" (진도는 그대로, 새 강의는 내일)
+   2026-10-29 오빠 피드백 "국어 문제가 더 없어서 복습 문제만 줘": 예전엔 지난 차시 아무거나 60% + 1학기 기초 40%라서,
+   진도 초반(지난 차시가 거의 없을 때)엔 거의 기초 문제만 나왔다. → 바로 앞 두 차시(이번 주에 배운 것) 위주로, 새로 만든 문제로 */
 function genCurrReview(s, n){
   const C = CURRS[s], c = curr(s);
   const prev = C.all.filter(x => (x.ui < c.unit || (x.ui === c.unit && x.li < c.lesson)) && LESSON_GEN[x.id]);
-  const out = [], used = new Set(); const add = q => { if (q && !used.has(q.key)) { used.add(q.key); out.push(q); } };
-  if (prev.length) { let g = 0; while (out.length < Math.round(n * .6) && g++ < 300) add(lessonQ(pick(prev))); }
+  const recent = prev.slice(-2), older = prev.slice(0, -2);
+  const out = [], used = new Set(); const add = q => { if (q && !used.has(q.key)) { used.add(q.key); out.push(q); return true; } return false; };
+  // 전에 틀린 이 과목 문제를 조금 (한 번 더 맞히면 끝)
+  takeDue(dueWrong(s), Math.min(2, Math.floor(n / 6))).forEach(add);
+  let g = 0;
+  if (recent.length) while (out.length < Math.round(n * .75) && g++ < 400) add(lessonQ(pick(recent)));
+  g = 0; if (older.length) while (out.length < Math.round(n * .9) && g++ < 200) add(lessonQ(pick(older)));
+  // 지난 차시가 아직 없거나 모자라면: 그때만 기초 문제로 채운다
   baseGen(s, n - out.length + 4).forEach(q => { if (out.length < n) add(Object.assign(q, { review11:true })); });
   return shuffle(out);
+}
+/* 오늘 이미 본 강의 수 (진도 강의 + 골라 보기 + 미리 본 강의, 수학·국어 합쳐서) */
+function lecturesWatchedOn(k = todayKey()){
+  const set = new Set(((S.days[k] || {}).lw) || []);
+  ['math','kor'].forEach(s => Object.entries(curr(s).seen || {}).forEach(([n, v]) => { if (v && v.d === k) set.add(s + n); }));
+  return set.size;
+}
+/* 그날 본 강의를 날짜 기록에 남긴다 (다시 보기는 처음 본 날짜가 그대로라 따로 남겨야 하루 한 편을 지킬 수 있음) */
+function noteLecWatched(s, n){ const d = day(); d.lw = [...new Set([...(d.lw || []), s + n])]; }
+/* 강의는 하루 한 편 (2026-10-29 "국어·수학 강의가 둘 다 나와서 1시간 30분"):
+   오늘 강의가 정해졌거나 이미 한 편 봤으면 "골라 보기·다시 보기" 강의 버튼을 숨긴다 */
+function lectureDayUsed(d = day()){
+  if (lecturesWatchedOn() > 0) return true;
+  return !!(d.lec && d.lec.s);
 }
 /* 판이 끝났을 때 진도 판정 */
 function judgeCurriculum(b){
@@ -212,6 +234,8 @@ function dueLecture(s){
 /* 수학과 국어 둘 다 새 강의가 필요하면 번갈아 가며 하나만 */
 function planLecture(d = day()){
   if (d.lec !== undefined) return d.lec;
+  // 오늘 이미 강의를 한 편 봤으면(골라 보기 등) 진도 강의는 내일로
+  if (lecturesWatchedOn() > 0) { d.lec = null; return d.lec; }
   const cand = ['math','kor'].filter(s => dueLecture(s) && !(d.boards[s]));
   let s = null;
   if (cand.length === 2) s = S.lastLec === 'math' ? 'kor' : 'math';
@@ -240,7 +264,7 @@ function makeCurrBoard(k, n){
   return Object.assign(base, { qs, cur:{ subj:k, test:c.test, unit:c.unit, lesson: c.test || !cl ? null : cl.id, items:[], lec: isLec ? lec.n : null } });
 }
 function markLectureSeen(s, n, mins){
-  const c = curr(s); c.seen[n] = { d:todayKey(), mins };
+  const c = curr(s); c.seen[n] = { d:todayKey(), mins }; noteLecWatched(s, n);
   S.lastLec = s; const d = day(); if (d.lec && d.lec.s === s) d.lec.done = true;
   const li = lectInfo(s, n);
   notify('mom', `📺 재윤이가 EBS ${li.name} ${li.no}강을 봤어요${mins ? ` (${mins}분)` : ''}`);

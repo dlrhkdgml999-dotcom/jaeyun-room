@@ -12,13 +12,13 @@ function lessonIntroHTML(b){
   const s = b.cur.subj || 'math', C = CURRS[s], c = curr(s);
   if (b.cur.test) {
     const u = C.units[b.cur.unit];
-    const rv = u.rev && ebsOn(s) && !c.seen[u.rev] ? lectInfo(s, u.rev) : null;
+    const rv = u.rev && ebsOn(s) && !c.seen[u.rev] && !lectureDayUsed() ? lectInfo(s, u.rev) : null;
     return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[s]} ${unitTag(u)} ${esc(u.name)}</span><span class="disp" style="font-size:24px">단원 평가 도전!</span><span class="muted">12문제 중 10문제를 한 번에 맞히면 메달을 받아요 🏅</span>
       ${rv ? `<button class="btn ghost small" data-a="lecopt" data-v="${s}|${u.rev}">📺 (골라 보기) EBS ${rv.no}강 ${esc(rv.desc)}</button>` : ''}</div>`;
   }
   const l = lessonById(b.cur.lesson);
   const lec = b.cur.lec ? lectInfo(s, b.cur.lec) : null, seenLec = lec && c.seen[b.cur.lec];
-  const again = (l.ebs || []).find(n => c.seen[n]);
+  const again = lectureDayUsed() ? null : (l.ebs || []).find(n => c.seen[n]);
   return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[s]} ${unitTag(l.unit)} ${esc(l.unit.name)} · ${l.li + 1}차시</span><span class="disp" style="font-size:24px">${esc(l.title)}</span>
     ${lec && !seenLec ? `<div class="lec-box"><span class="lec-no">${lec.no}강</span><span style="flex:1;text-align:left"><b class="disp" style="font-size:19px;font-weight:400">오늘의 강의 · EBS ${esc(lec.name)}</b><br><span class="muted" style="font-size:15px">${esc(lec.desc)} · ${lec.mins}분</span></span></div>
       <span class="muted" style="font-size:15px">강의를 보고 → 개념 정리 → 문제를 풀어요</span>`
@@ -27,7 +27,9 @@ function lessonIntroHTML(b){
   </div>`;
 }
 function waitLecHTML(k){
-  return `<div class="lesson-card"><span class="disp" style="font-size:21px">오늘 ${SUBJ_NAME[k]}는 복습하는 날!</span><span class="muted" style="font-size:15px">새 강의는 하루에 하나만 봐요. ${SUBJ_NAME[k]} 새 강의는 다음 날에 봐요 📺</span></div>`;
+  const C = CURRS[k], c = curr(k), last = C.all.filter(x => x.ui < c.unit || (x.ui === c.unit && x.li < c.lesson)).pop();
+  const nx = currentLesson(k);
+  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 지난 시간 다지기</span><span class="disp" style="font-size:21px">${last ? `"${esc(last.title)}" 한 번 더!` : `${SUBJ_NAME[k]} 몸풀기!`}</span><span class="muted" style="font-size:15px">강의는 하루에 한 편만 봐요. ${nx ? `내일은 ${SUBJ_NAME[k]} 새 강의 "${esc(nx.title)}" 📺` : `${SUBJ_NAME[k]} 새 강의는 내일 📺`}</span></div>`;
 }
 function lessonResultHTML(r0){
   const s = r0.subj || 'math', C = CURRS[s];

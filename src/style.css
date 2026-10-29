@@ -97,6 +97,8 @@ p{margin:0}
 .nav-tile:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
 .grown-up{align-self:center;font-size:15px;color:var(--ink-soft);padding:10px 16px;display:flex;align-items:center;gap:6px}
 .grown-up svg{width:18px;height:18px}
+.kid-sync-note{align-self:center;max-width:100%;font-size:14px;color:#8a5a1c;background:#FFF3D6;border:2px solid #F0C870;border-radius:14px;padding:8px 12px;line-height:1.4;text-align:center}
+.kid-sync-note span{display:block;font-size:12px;color:var(--ink-soft)}
 .next-item{background:var(--paper);border:2.5px solid var(--line);border-radius:var(--r-md);padding:12px 16px;display:grid;gap:8px}
 .meter{height:14px;border-radius:999px;background:var(--pink-pale);overflow:hidden}
 .meter>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--pink),var(--pink-deep))}

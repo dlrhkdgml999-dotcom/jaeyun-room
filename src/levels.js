@@ -225,8 +225,9 @@ function levelLabel(subj){ return subj === 'eng' ? ENG_LEVELS[lv('eng')].split('
 function boardSub(k){
   if (k === 'rev') return '전에 틀린 문제 다시 풀기';
   if (currOn(k)) { const d = day(), b = d.boards[k];
-    if (b && b.waitLec) return '오늘은 복습하는 날 · 새 강의는 다음 날';
     const lec = !b || !b.done ? planLecture(d) : null;
+    // 오늘 강의가 다른 과목이고 이 과목도 새 강의가 필요하면: 판을 열기 전에도 같은 말로
+    if ((b && b.waitLec) || (!b && lec && lec.s !== k && dueLecture(k))) return '지난 시간 다지기 · 새 강의는 내일 📺';
     const tag = lec && lec.s === k && !lec.done ? `📺 ${lectInfo(k, lec.n).no}강 보는 날 · ` : '';
     return `${tag}${currLabel(k)}${k === 'eng' ? ' + 받아쓰기' : ''}`; }
   if (k === 'eng') return `${levelLabel('eng')} · ${BOARD_SUB.eng[lv('eng')]} + 받아쓰기`;
