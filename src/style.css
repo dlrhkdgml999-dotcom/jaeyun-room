@@ -686,3 +686,4 @@ button.sd:active{transform:scale(.95)}
 .nb-w{font-size:15px;color:var(--ink-soft)}
 .nb-w s{color:#C2504F;margin-left:4px}
 .nb-show{justify-self:start}
+.fam-code{font-family:var(--f-display);letter-spacing:.08em;color:var(--pink-deep)}

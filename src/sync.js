@@ -36,6 +36,7 @@ function fsVal(v){
 function fsFields(o){ const f = {}; for (const k in o) if (o[k] !== undefined && typeof o[k] !== 'function') f[k] = fsVal(o[k]); return f; }
 const SEND_WAIT = 40000;
 /* ---------- 역할이 잘못된 기기 찾기 (2026-10-29 사고: 재윤이 태블릿이 "오빠 폰"으로 연결돼 5일 동안 공부가 미리보기로만 남음) ---------- */
+const BOARD_SCREENS = ['intro','q','cards','write','dict','photo','reward','lecwait','leccheck','eyebreak'];
 function devId(){ try { let d = localStorage.getItem('jaeyun-dev'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); localStorage.setItem('jaeyun-dev', d); } return d; } catch (e) { return 'dx'; } }
 function isTabletDev(){ return window.__forceTablet || Math.min(screen.width, screen.height) >= 600; }
 /* 최근 3일 동안 이 기기에서 판을 끝낸 날 수 */
@@ -164,6 +165,9 @@ const Sync = {
       if (raw === this.last.days[k]) { if (!(d.metadata && d.metadata.hasPendingWrites)) sy.d[k] = hashStr(raw); return; }
       const dirty = S.days[k] && JSON.stringify(this.pack(S.days[k])) !== this.last.days[k];
       if (dirty && canWriteKid()) return;
+      // 엄마·오빠 역할 기기에서 판을 푸는 중이면 그날 기록을 서버 것으로 바꾸지 않는다.
+      // (10/29: 오빠로 잘못 연결된 태블릿에서 푸는 도중 서버의 예전 기록이 덮어써서 판이 사라지고 오류가 났음)
+      if (S.days[k] && (wrongRoleTablet() || (k === todayKey() && BOARD_SCREENS.includes(SCREEN)))) return;
       this.last.days[k] = raw; sy.d[k] = hashStr(raw); S.days[k] = this.unpack(data.v); changed = true; });
     this.saveSynced();
     if (changed) this.afterRemote();
@@ -354,6 +358,8 @@ const Sync = {
 /* 인터넷이 다시 되거나, 앱을 다시 볼 때 · 끌 때 바로 보낸다 */
 window.addEventListener('online', () => { if (!Sync.ready) Sync.start(); else { Sync.push(); Sync.flushNotes(); } });
 document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) { Sync.beat(); Sync.devBeat(); Sync.flushNotes(); } });
+/* 가족방 번호 4자리: 태블릿·엄마 폰·오빠 폰이 같은 방인지 눈으로 비교 (10/29: 태블릿만 다른 방에 들어가 있던 사고) */
+function famCode(){ return linked() ? S.local.fid.slice(-4).toUpperCase() : ''; }
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
   if (['home','adult','map','gift','cal','room','alldone','book','study','notebook'].includes(SCREEN)) {
@@ -392,7 +398,7 @@ function familyPanel(){
   const offline = navigator.onLine === false, waiting = Sync.noteQ().length;
   const st = offline ? '인터넷 없음' : ({ on:'연결됨 ✓', connecting:'연결 중…', error:'보내기 실패', offline:'인터넷 없음', nosdk:'서버를 못 불러왔어요', off:'꺼짐' }[Sync.status] || Sync.status);
   return `<div class="panel"><h3>가족 기기 연결</h3>
-    <div class="row"><span class="grow" style="flex:1">이 기기: <b>${who}</b></span><span class="pill ${Sync.status === 'on' && !offline ? 'ok' : 'wait'}">${st}</span></div>
+    <div class="row"><span class="grow" style="flex:1">이 기기: <b>${who}</b> · 가족방 <b class="fam-code">${famCode()}</b></span><span class="pill ${Sync.status === 'on' && !offline ? 'ok' : 'wait'}">${st}</span></div>
     ${offline ? `<p class="demo-note">지금 인터넷이 없어요. 공부한 기록은 이 기기에 그대로 있고, 인터넷이 연결되면 저절로 엄마·오빠 폰으로 보내요.</p>`
       : Sync.status === 'error' ? `<p class="demo-note">${esc(Sync.error || '')}<br>인터넷이 되면 저절로 다시 보내요. 계속 이러면 Firebase 보안 규칙을 확인해 주세요.</p>` : ''}
     ${waiting && role() === 'kid' ? `<p class="muted" style="font-size:14px">아직 못 보낸 알림 ${waiting}개 (연결되면 보내요)</p>` : ''}
@@ -433,12 +439,12 @@ function syncAlert(){
   if (bad) { const d = bad[1], who = d.role === 'mom' ? '엄마 폰' : '오빠 폰';
     return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 스티커 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
   // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
-  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}</span>` : '';
+  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}</span>` : '';
   if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
   if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.${diag}`, 'soft');
   if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);
   // 하루 넘게 소식이 없으면: 인터넷 탓이라고만 하지 않고, 태블릿에서 무엇을 보면 되는지 알려 준다
-  if (Date.now() - seen > 26 * 3600000) return box(`<b>재윤이 태블릿 마지막 연결: ${agoText(seen)}</b><br>재윤이가 그 뒤에도 공부했다면, 태블릿에서 공부방 앱을 열고 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 봐 주세요.<br>· "이 기기: 재윤이 태블릿"이 아니거나 가족방 만들기 화면이 보이면 → 가족 링크를 태블릿에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 지워지지 않아요)<br>· 빨간 글씨(보내기 실패)가 있으면 → 그 화면을 오빠에게 캡처${diag}`, 'warn');
+  if (Date.now() - seen > 26 * 3600000) return box(`<b>재윤이 태블릿 마지막 연결: ${agoText(seen)}</b><br>재윤이가 그 뒤에도 공부했다면, 태블릿에서 공부방 앱을 열고 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 봐 주세요.<br>· 거기 <b>가족방 번호</b>가 이 폰(<b>${famCode()}</b>)과 다르면 → 이 폰 설정의 <b>가족 링크</b>를 태블릿 크롬에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 그대로 이 방으로 와요)<br>· "이 기기: 재윤이 태블릿"이 아니거나 가족방 만들기 화면이 보이면 → 가족 링크를 태블릿에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 지워지지 않아요)<br>· 빨간 글씨(보내기 실패)가 있으면 → 그 화면을 오빠에게 캡처${diag}`, 'warn');
   return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓${kid.unsent ? ` · 보내는 중 ${kid.unsent}일` : ''}`, 'ok');
 }
 function kidVer(v){ if (!v) return '예전 버전(10/28 이전)'; const m = String(v).match(/^\d{4}(\d\d)(\d\d)(\d\d)(\d\d)/); return m ? `${+m[1]}/${+m[2]} ${m[3]}:${m[4]} 버전` : v; }

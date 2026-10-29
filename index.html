@@ -461,7 +461,7 @@ audio{width:100%}
 @media (min-width:700px){ .passage{font-size:24px} }
 
 /* 캡슐 · 도감 · 순서 고르기 */
-.home-nav{grid-template-columns:repeat(3,1fr)}
+.home-nav{grid-template-columns:repeat(4,1fr)}
 .home-nav .nav-tile{flex-direction:column;justify-content:center;gap:4px;padding:10px 6px;font-size:18px}
 .capsule{background:none;border:0;padding:0;filter:drop-shadow(0 8px 0 rgba(238,95,141,.18))}
 .capsule.shake{animation:capshake .45s}
@@ -684,6 +684,29 @@ button.sd:active{transform:scale(.95)}
 .ntfy-who{border-top:2px dashed var(--line);padding:8px 0;display:grid;gap:6px}
 .ntfy-who summary{cursor:pointer;font-size:17px;padding:4px 0}
 
+/* 역할이 잘못된 태블릿 경고 (10/29) */
+.role-warn{display:grid;gap:8px;background:#FFE9E4;border:2.5px solid #E8836C;border-radius:16px;padding:12px 14px;color:#7a2e1c;font-size:15px;line-height:1.45}
+.role-warn b{font-size:17px}
+.role-warn .btn{justify-self:start}
+
+/* 오답노트 (10/29) */
+.nb-tile{border-color:#9CC9EA;background:#EEF6FC}
+.notebook{gap:12px}
+.nb-list{display:grid;gap:10px}
+.nb-card{background:#fff;border:2.5px solid #EFE6EA;border-radius:16px;padding:12px 14px;display:grid;gap:8px;box-shadow:var(--shadow)}
+.nb-card.fixed{opacity:.8;border-style:dashed}
+.nb-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
+.nb-subj{font-family:var(--f-display);font-size:15px;padding:2px 10px;border-radius:999px;color:#fff;background:#B9A2AE}
+.nb-subj.s-kor{background:#EE7FA2}.nb-subj.s-math{background:#4B8FD9}.nb-subj.s-eng{background:#3FA57A}.nb-subj.s-dict{background:#E0A43A}
+.nb-q{display:flex;align-items:flex-start;gap:8px;font-size:19px;line-height:1.45;overflow-wrap:anywhere}
+.nb-q span{flex:1;min-width:0}
+.nb-a{font-size:18px;background:#F1FAF5;border-radius:12px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}
+.nb-a b{color:#2E8B5E;font-size:20px}
+.nb-w{font-size:15px;color:var(--ink-soft)}
+.nb-w s{color:#C2504F;margin-left:4px}
+.nb-show{justify-self:start}
+.fam-code{font-family:var(--f-display);letter-spacing:.08em;color:var(--pink-deep)}
+
 </style>
 </head>
 <body>
@@ -704,7 +727,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261029112108";
+window.APP_VERSION = "20261029133514";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -1534,7 +1557,8 @@ VIEWS.home = () => {
   const prevNeed = ITEMS.filter(i => i.need <= total).reduce((m, i) => Math.max(m, i.need), 0);
   const kn = S.kidNotes[0];
   app().innerHTML = `<section class="screen">
-    ${linked() && role() !== 'kid' ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 (여기서 풀어 본 건 재윤이 기록에 안 들어가요) · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
+    ${wrongRoleHTML()}
+    ${linked() && role() !== 'kid' && !wrongRoleTablet() ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 (여기서 풀어 본 건 재윤이 기록에 안 들어가요) · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
     <div class="home-top">
       <span class="nameplate">재윤이 공부방</span><span class="spacer"></span>
       <span class="sticker-chip" aria-label="모은 스티커">⭐ ${total}</span>
@@ -1564,6 +1588,7 @@ VIEWS.home = () => {
       <button class="nav-tile" data-a="go" data-v="room"><span class="ic" style="background:var(--pink-pale)">🎀</span>꾸미기</button>
       <button class="nav-tile" data-a="go" data-v="cal"><span class="ic" style="background:var(--mint-pale)">📅</span>달력</button>
       <button class="nav-tile" data-a="go" data-v="book"><span class="ic" style="background:var(--butter-pale)">🦄</span>도감</button>
+      <button class="nav-tile" data-a="notebook"><span class="ic" style="background:var(--sky-pale, #E4F1FB)">📒</span>오답노트</button>
     </div>
     ${isInstalled() ? '' : `<button class="install-tile" data-a="installkid"><span style="font-size:30px">📲</span><span style="flex:1">바탕화면에 공부방 놓기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">엄마랑 같이 해요</span></span></button>`}
     ${d.done && (S.praise && (S.praise.audio || S.praise.text)) ? `<button class="btn lav big" data-a="go" data-v="alldone">오빠 칭찬 다시 듣기</button>` : ''}
@@ -2074,7 +2099,7 @@ VIEWS.adult = () => {
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
     const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
-    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + (gradeTodo ? dictGradePanel(pend) : '') + reportPanel() + dayGoalPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
+    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + (gradeTodo ? dictGradePanel(pend) : '') + reportPanel() + dayGoalPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
       ${gradeTodo ? '' : dictGradePanel(pend)}
       ${isInstalled() ? '' : `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>`}
       <div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
@@ -2097,7 +2122,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + reportPanel() + weekReportPanel() + `
+    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -5372,9 +5397,17 @@ function fsVal(v){
 }
 function fsFields(o){ const f = {}; for (const k in o) if (o[k] !== undefined && typeof o[k] !== 'function') f[k] = fsVal(o[k]); return f; }
 const SEND_WAIT = 40000;
+/* ---------- 역할이 잘못된 기기 찾기 (2026-10-29 사고: 재윤이 태블릿이 "오빠 폰"으로 연결돼 5일 동안 공부가 미리보기로만 남음) ---------- */
+const BOARD_SCREENS = ['intro','q','cards','write','dict','photo','reward','lecwait','leccheck','eyebreak'];
+function devId(){ try { let d = localStorage.getItem('jaeyun-dev'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); localStorage.setItem('jaeyun-dev', d); } return d; } catch (e) { return 'dx'; } }
+function isTabletDev(){ return window.__forceTablet || Math.min(screen.width, screen.height) >= 600; }
+/* 최근 3일 동안 이 기기에서 판을 끝낸 날 수 */
+function localStudyDays(n = 3){ let c = 0; for (let i = 0; i < n; i++) { const d = S.days[addDays(todayKey(), -i)]; if (d && d.boards && Object.values(d.boards).some(b => b && b.done)) c++; } return c; }
+/* 엄마·오빠 역할인데 태블릿에서 재윤이가 실제로 공부하고 있는 것 같은 기기 */
+function wrongRoleTablet(){ return linked() && role() !== 'kid' && isTabletDev() && S.started && localStudyDays() > 0; }
 const Sync = {
   db:null, ready:false, status:'off', last:{ s:{}, days:{} }, timer:null, blobCache:{}, blobWait:{}, unsub:[], applying:false,
-  kid:null, kidDayAt:0, okAt:0, beatAt:0, sy:null, syT:null, retryT:null,
+  kid:null, devs:{}, devAt:0, kidDayAt:0, okAt:0, beatAt:0, sy:null, syT:null, retryT:null,
   base(){ return `families/${S.local.fid}`; },
   /* 서버가 받았다고 확인해 준 값의 지문: 앱을 껐다 켜도 남아서, 못 보낸 것만 다시 보낸다 */
   synced(){
@@ -5452,7 +5485,7 @@ const Sync = {
       this.ready = true; this.status = 'on';
       // 태블릿: 아직 서버에 없는 사진(예전에 올리다 실패한 것)도 다시 올린다
       if (kid) Object.entries(this.blobCache).forEach(([h, d]) => this.putBlob(h, d));
-      this.schedule(); this.beat(); this.flushNotes();
+      this.schedule(); this.beat(); this.devBeat(true); this.flushNotes();
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.start(), 30000); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
@@ -5468,7 +5501,10 @@ const Sync = {
     this.unsub.push(this.db.collection(`${b}/days`).onSnapshot({ includeMetadataChanges:true }, snap => this.onDays(snap)));
     this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(120).onSnapshot(snap => this.onNotes(snap)));
     // 재윤이 태블릿이 마지막으로 연결된 때 (엄마·오빠 폰에서 보여 줌)
-    try { this.unsub.push(this.db.doc(`${b}/meta/kid`).onSnapshot(d => { const k = d && d.exists ? d.data() : null; if (JSON.stringify(k) !== JSON.stringify(this.kid)) { this.kid = k; if (SCREEN === 'adult') refreshIfIdle(); } })); } catch (e) {}
+    // 기기들 상태(meta/dev-…): 엄마·오빠 역할로 연결된 태블릿에서 재윤이가 공부하고 있으면 폰에서 알려 준다
+    try { this.unsub.push(this.db.collection(`${b}/meta`).onSnapshot(snap => { const devs = {}; let k = null;
+      snap.docs.forEach(d => { if (d.id === 'kid') k = d.data(); else if (d.id.startsWith('dev-')) devs[d.id.slice(4)] = d.data(); });
+      if (JSON.stringify([k, devs]) !== JSON.stringify([this.kid, this.devs])) { this.kid = k; this.devs = devs; if (SCREEN === 'adult') refreshIfIdle(); } })); } catch (e) {}
   },
   onState(snap){
     let changed = false; const sy = this.synced();
@@ -5478,6 +5514,8 @@ const Sync = {
       // 내가 쓴 것이 돌아온 것: 서버가 받은 것일 때만 "보냄"으로 친다 (기기 안에서 기다리는 것은 hasPendingWrites)
       if (raw === this.last.s[k]) { if (!(d.metadata && d.metadata.hasPendingWrites)) sy.s[k] = hashStr(raw); return; }
       if (dirty && this.writable(k) && (!KID_KEYS.includes(k) || canWriteKid())) return;   // 아직 못 보낸 내 변경이 우선 (곧 덮어씀)
+      // 엄마·오빠 역할로 잘못 연결된 태블릿: 재윤이 진도·스티커를 서버의 예전 값으로 되돌리지 않는다 ("재윤이 태블릿으로 바꾸기"를 누르면 그대로 올라감)
+      if (KID_KEYS.includes(k) && wrongRoleTablet()) return;
       this.last.s[k] = raw; sy.s[k] = hashStr(raw); S[k] = this.unpack(d.data().v); changed = true; });
     this.saveSynced();
     if (changed) this.afterRemote();
@@ -5489,6 +5527,9 @@ const Sync = {
       if (raw === this.last.days[k]) { if (!(d.metadata && d.metadata.hasPendingWrites)) sy.d[k] = hashStr(raw); return; }
       const dirty = S.days[k] && JSON.stringify(this.pack(S.days[k])) !== this.last.days[k];
       if (dirty && canWriteKid()) return;
+      // 엄마·오빠 역할 기기에서 판을 푸는 중이면 그날 기록을 서버 것으로 바꾸지 않는다.
+      // (10/29: 오빠로 잘못 연결된 태블릿에서 푸는 도중 서버의 예전 기록이 덮어써서 판이 사라지고 오류가 났음)
+      if (S.days[k] && (wrongRoleTablet() || (k === todayKey() && BOARD_SCREENS.includes(SCREEN)))) return;
       this.last.days[k] = raw; sy.d[k] = hashStr(raw); S.days[k] = this.unpack(data.v); changed = true; });
     this.saveSynced();
     if (changed) this.afterRemote();
@@ -5546,6 +5587,12 @@ const Sync = {
     const days = Object.keys(S.days), sy = this.synced(), unsent = days.filter(k => !sy.d[k]).length; this.beatUnsent = unsent;
     const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, online:navigator.onLine !== false, failSince:this.failSince || 0 };
     this.write(`${this.base()}/meta/kid`, info).then(() => { if (!this.okAt) this.okAt = Date.now(); }, e => { this.beatAt = 0; this.sentBad(e); });
+  },
+  /* 엄마·오빠 기기: 30분에 한 번 "이 기기는 무슨 역할 · 태블릿인지 · 여기서 공부한 날"을 올린다 */
+  devBeat(force){
+    if (!this.ready || role() === 'kid') return;
+    const t = Date.now(); if (!force && t - this.devAt < 30 * 60000) return; this.devAt = t;
+    this.write(`${this.base()}/meta/dev-${devId()}`, { role:role(), at:t, tab:isTabletDev(), study3:localStudyDays(), stickers:S.stickers.length, ver:String(window.APP_VERSION || '') }).catch(() => { this.devAt = 0; });
   },
   kidSeenAt(){ return Math.max((this.kid && this.kid.at) || 0, this.kidDayAt || 0); },
   /* 알림함: 인터넷이 없거나 아직 연결 전에 생긴 알림은 기기에 모아 두었다가(jaeyun-noteq, 7일까지) 연결되면 올린다 */
@@ -5620,6 +5667,17 @@ const Sync = {
     if (!window.firebase || !window.FIREBASE_CONFIG) { this.status = 'nosdk'; return false; }
     if (S.started) { try { const bk = Object.assign({}, S, { days:{} }); Object.keys(S.days).forEach(k => { const d = Object.assign({}, S.days[k]); if (d.dict) d.dict = Object.assign({}, d.dict, { photo:null }); bk.days[k] = d; }); localStorage.setItem('jaeyun-backup', JSON.stringify({ at:Date.now(), S:bk })); } catch (e) {} }
     const mine = { kid:Object.fromEntries(KID_KEYS.map(k => [k, S[k]])), days:S.days, score:S.started ? studyScore(S) : 0 };
+    // 같은 가족방에서 이 기기만 "재윤이"로 바꾸는 경우(엄마·오빠로 잘못 연결된 태블릿 고치기): 서버에서 받을 것 없이 바로.
+    // 이 기기가 가진 재윤이 기록이 원본이라 전부 올린다. (서버 읽기가 막혀도 멈추지 않게 — 10/29)
+    if (roleName === 'kid' && S.local && S.local.fid === fid && S.local.role !== 'kid') {
+      this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false;
+      S.local = { fid, role:'kid' }; this.resetSynced(); this.kept = mine.score;
+      const sy = this.synced(); ADULT_KEYS.forEach(k => sy.s[k] = hashStr(JSON.stringify(this.pack(S[k]))));   // 어른 설정은 서버에서 받은 그대로
+      delete sy.fresh; this.saveSynced(); saveLocal();
+      await this.start(); this.beat(true); this.devAt = 0;
+      this.write(`${this.base()}/meta/dev-${devId()}`, { role:'kid', at:Date.now() }).catch(() => {});
+      return true;
+    }
     this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false;
     S.local = { fid, role:roleName }; saveLocal();
     await this.fs();
@@ -5653,16 +5711,20 @@ const Sync = {
     Object.keys(S.days).forEach(k => { const raw = JSON.stringify(this.pack(S.days[k])); if (srvDays[k] === raw) sy.d[k] = hashStr(raw); });
     delete sy.fresh; this.saveSynced();
     saveLocal(); await this.start(); if (roleName === 'kid') this.beat(true);
+    // 이 기기의 예전 역할 표시(meta/dev-…)를 바로 고친다 (오빠 폰에 남은 "역할이 잘못된 태블릿" 경고가 사라지게)
+    this.devAt = 0; if (roleName === 'kid') this.write(`${this.base()}/meta/dev-${devId()}`, { role:'kid', at:Date.now() }).catch(() => {}); else this.devBeat(true);
     return true;
   },
   leave(){ this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false; S.local = null; this.status = 'off'; saveLocal(); },
 };
 /* 인터넷이 다시 되거나, 앱을 다시 볼 때 · 끌 때 바로 보낸다 */
 window.addEventListener('online', () => { if (!Sync.ready) Sync.start(); else { Sync.push(); Sync.flushNotes(); } });
-document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) { Sync.beat(); Sync.flushNotes(); } });
+document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) { Sync.beat(); Sync.devBeat(); Sync.flushNotes(); } });
+/* 가족방 번호 4자리: 태블릿·엄마 폰·오빠 폰이 같은 방인지 눈으로 비교 (10/29: 태블릿만 다른 방에 들어가 있던 사고) */
+function famCode(){ return linked() ? S.local.fid.slice(-4).toUpperCase() : ''; }
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
-  if (['home','adult','map','gift','cal','room','alldone','book','study'].includes(SCREEN)) {
+  if (['home','adult','map','gift','cal','room','alldone','book','study','notebook'].includes(SCREEN)) {
     const y = scrollY; const active = document.activeElement;
     if (active && /INPUT|TEXTAREA|SELECT/.test(active.tagName)) return;
     VIEWS[SCREEN](); scrollTo(0, y);
@@ -5698,7 +5760,7 @@ function familyPanel(){
   const offline = navigator.onLine === false, waiting = Sync.noteQ().length;
   const st = offline ? '인터넷 없음' : ({ on:'연결됨 ✓', connecting:'연결 중…', error:'보내기 실패', offline:'인터넷 없음', nosdk:'서버를 못 불러왔어요', off:'꺼짐' }[Sync.status] || Sync.status);
   return `<div class="panel"><h3>가족 기기 연결</h3>
-    <div class="row"><span class="grow" style="flex:1">이 기기: <b>${who}</b></span><span class="pill ${Sync.status === 'on' && !offline ? 'ok' : 'wait'}">${st}</span></div>
+    <div class="row"><span class="grow" style="flex:1">이 기기: <b>${who}</b> · 가족방 <b class="fam-code">${famCode()}</b></span><span class="pill ${Sync.status === 'on' && !offline ? 'ok' : 'wait'}">${st}</span></div>
     ${offline ? `<p class="demo-note">지금 인터넷이 없어요. 공부한 기록은 이 기기에 그대로 있고, 인터넷이 연결되면 저절로 엄마·오빠 폰으로 보내요.</p>`
       : Sync.status === 'error' ? `<p class="demo-note">${esc(Sync.error || '')}<br>인터넷이 되면 저절로 다시 보내요. 계속 이러면 Firebase 보안 규칙을 확인해 주세요.</p>` : ''}
     ${waiting && role() === 'kid' ? `<p class="muted" style="font-size:14px">아직 못 보낸 알림 ${waiting}개 (연결되면 보내요)</p>` : ''}
@@ -5735,13 +5797,16 @@ function syncAlert(){
   if (!Sync.ready) return '';
   const seen = Sync.kidSeenAt(), kid = Sync.kid || {};
   const have = Object.keys(S.days).length;
+  const bad = Object.entries(Sync.devs || {}).find(([id, d]) => id !== devId() && d && d.role !== 'kid' && d.tab && d.study3 > 0 && Date.now() - (d.at || 0) < 3 * 86400000);
+  if (bad) { const d = bad[1], who = d.role === 'mom' ? '엄마 폰' : '오빠 폰';
+    return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 스티커 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
   // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
-  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}</span>` : '';
+  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}</span>` : '';
   if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
   if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.${diag}`, 'soft');
   if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);
   // 하루 넘게 소식이 없으면: 인터넷 탓이라고만 하지 않고, 태블릿에서 무엇을 보면 되는지 알려 준다
-  if (Date.now() - seen > 26 * 3600000) return box(`<b>재윤이 태블릿 마지막 연결: ${agoText(seen)}</b><br>재윤이가 그 뒤에도 공부했다면, 태블릿에서 공부방 앱을 열고 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 봐 주세요.<br>· "이 기기: 재윤이 태블릿"이 아니거나 가족방 만들기 화면이 보이면 → 가족 링크를 태블릿에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 지워지지 않아요)<br>· 빨간 글씨(보내기 실패)가 있으면 → 그 화면을 오빠에게 캡처${diag}`, 'warn');
+  if (Date.now() - seen > 26 * 3600000) return box(`<b>재윤이 태블릿 마지막 연결: ${agoText(seen)}</b><br>재윤이가 그 뒤에도 공부했다면, 태블릿에서 공부방 앱을 열고 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 봐 주세요.<br>· 거기 <b>가족방 번호</b>가 이 폰(<b>${famCode()}</b>)과 다르면 → 이 폰 설정의 <b>가족 링크</b>를 태블릿 크롬에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 그대로 이 방으로 와요)<br>· "이 기기: 재윤이 태블릿"이 아니거나 가족방 만들기 화면이 보이면 → 가족 링크를 태블릿에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 지워지지 않아요)<br>· 빨간 글씨(보내기 실패)가 있으면 → 그 화면을 오빠에게 캡처${diag}`, 'warn');
   return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓${kid.unsent ? ` · 보내는 중 ${kid.unsent}일` : ''}`, 'ok');
 }
 function kidVer(v){ if (!v) return '예전 버전(10/28 이전)'; const m = String(v).match(/^\d{4}(\d\d)(\d\d)(\d\d)(\d\d)/); return m ? `${+m[1]}/${+m[2]} ${m[3]}:${m[4]} 버전` : v; }
@@ -5750,11 +5815,27 @@ function kidSyncNote(){
   if (!(window.firebase && window.FIREBASE_CONFIG) || !S.started) return '';
   const note = t => `<button class="kid-sync-note" data-a="go" data-v="pin">⚠️ ${t} <span>엄마 · 오빠가 볼게요</span></button>`;
   if (!linked()) return studyScore(S) > 0 ? note('이 태블릿은 아직 엄마·오빠 폰과 연결되지 않았어요') : '';
-  if (role() !== 'kid') return '';
+  if (role() !== 'kid') return '';   // 엄마·오빠 역할 태블릿은 첫 화면 맨 위(wrongRoleHTML)에서 크게 알려 줌
   if (navigator.onLine === false) return '';
   if (Sync.failSince && Date.now() - Sync.failSince > 10 * 60000) return note('공부 기록이 엄마·오빠 폰으로 안 가고 있어요');
   return '';
 }
+
+/* 재윤이 첫 화면 맨 위: 이 태블릿이 엄마·오빠 역할이면 크게 알리고 한 번에 고치기 */
+function wrongRoleHTML(){
+  if (!wrongRoleTablet()) return '';
+  const who = role() === 'mom' ? '엄마 폰' : '오빠 폰';
+  return `<div class="role-warn"><b>⚠️ 이 태블릿은 "${who}"으로 연결돼 있어요</b><span>그래서 재윤이가 공부한 게 엄마·오빠 폰에 안 가요. 재윤이 태블릿이면 아래 버튼을 눌러 주세요. 공부한 기록은 지워지지 않고 그대로 올라가요.</span>
+    <button class="btn small" data-a="tokid">재윤이 태블릿으로 바꾸기</button></div>`;
+}
+ACT.tokid = async () => {
+  if (!linked()) return;
+  if (!confirm('이 태블릿을 "재윤이" 기기로 바꿀까요?\n이 태블릿에서 공부한 기록은 지워지지 않고 엄마·오빠 폰으로 올라가요.')) return;
+  toast('바꾸는 중이에요…');
+  const ok = await Sync.join(S.local.fid, 'kid').catch(e => { console.warn(e); return false; });
+  if (!ok) return toast('바꾸지 못했어요. 인터넷이 되는지 확인하고 다시 눌러 주세요');
+  toast(`재윤이 태블릿이 됐어요! 공부 기록(스티커 ${S.stickers.length}개)을 엄마·오빠 폰으로 보내요`); go('home');
+};
 
 /* ===================== 폰 알림 (Firebase 클라우드 메시징) =====================
    - 엄마·오빠 폰에서 "이 폰으로 알림 받기"를 누르면 이 폰의 알림 주소(토큰)를 families/{fid}/push/{id}에 저장
@@ -6571,6 +6652,75 @@ function glancePanel(){
   </button>`;
 }
 
+/* ===================== 재윤이 오답노트 (2026-10-29) =====================
+   재윤이와 엄마가 나중에 같이 보는 틀린 문제 모음. 따로 저장하지 않고, 판마다 남긴 문제 기록(b.log)과 받아쓰기 채점에서 모은다
+   (그래서 엄마 폰·오빠 폰·태블릿 어디서 열어도 같은 내용. 문제별 기록은 10/22부터).
+   - 같은 문제는 한 장으로 묶고 몇 번 틀렸는지 센다. 그 뒤에 한 번에 맞혔으면 "다시 맞혔어요 ✓"
+   - 정답은 가려 두고 눌러서 보기 → 엄마가 읽어 주고 재윤이가 먼저 말해 보기 좋게 (🔊 토리가 문제 읽어 주기)
+   - 재윤이 첫 화면 "오답노트" 칸, 엄마·오빠 메뉴 "재윤이 오답노트"에서 연다 */
+let NOTE = { subj:'all', st:'todo', more:0, open:{}, showAll:false, from:'home' };
+const NOTE_SUBJ = [['all','전체'],['kor','국어'],['math','수학'],['eng','영어'],['dict','받아쓰기']];
+function notebookItems(){
+  const ks = Object.keys(S.days).sort(), map = new Map();
+  ks.forEach(k => [...dayLogs(k), ...dictLogs(k)].forEach(x => {
+    const subj = ['kor','math','eng','dict'].includes(x.subj) ? x.subj : 'etc';
+    const id = subj + '|' + x.t + '|' + x.a; let it = map.get(id);
+    if (x.r !== 1) {
+      if (!it) { it = { id, subj, t:x.t, a:x.a, wrongs:[], miss:0, hint:0, first:x.k }; map.set(id, it); }
+      if (x.r === 2) it.hint++; else it.miss++;
+      String(x.w || '').split(' / ').forEach(w => { if (w && !it.wrongs.includes(w)) it.wrongs.push(w); });
+      it.last = x.k; it.fixed = null;
+    } else if (it) it.fixed = x.k;   // 틀린 뒤에 한 번에 맞힘
+  }));
+  return [...map.values()].sort((a, b) => b.last.localeCompare(a.last) || (b.miss - a.miss));
+}
+/* 듣기 문제·받아쓰기는 문제 글에 정답이 들어 있어서, 화면에는 "🔊 듣기"로 가리고 버튼을 누르면 읽어 준다 */
+function noteListen(x){ if (x.subj === 'dict') return x.a; const m = String(x.t).match(/🔊 ([^·\[]+)/); return m ? m[1].trim() : ''; }
+function noteShow(x){ return x.subj === 'dict' ? '받아쓰기 · 🔊 들어 보고 써 보기' : String(x.t).replace(/🔊 [^·\[]+/, '🔊 듣기 '); }
+function noteSay(x){ if (x.subj === 'dict') return `받아쓰기. ${x.a}`;
+  const ls = noteListen(x), base = String(x.t).replace(/🔊 [^·\[]+/, '').replace(/\[보기[^\]]*\]/g, '').replace(/·/g, ',').replace(/,\s*,/g, ',').trim().replace(/,$/, '');
+  return (ls ? `${base}. ${ls}` : base).replace(/\s+,/g, ','); }
+VIEWS.notebook = (o) => {
+  if (o && o.from) Object.assign(NOTE, { from:o.from, more:0, open:{} });
+  const all = notebookItems(), kid = NOTE.from === 'home';
+  const bySubj = s => s === 'all' ? all : all.filter(x => x.subj === s);
+  const cur = bySubj(NOTE.subj), todo = cur.filter(x => !x.fixed), fixed = cur.filter(x => x.fixed);
+  const list = NOTE.st === 'todo' ? todo : NOTE.st === 'fixed' ? fixed : cur;
+  const shown = list.slice(0, 30 * (NOTE.more + 1));
+  let html = '', last = '';
+  shown.forEach((x, i) => {
+    if (x.last !== last) { last = x.last; const [y, m, d] = x.last.split('-').map(Number); html += `<div class="pdate">${m}월 ${d}일 ${DOW[new Date(y, m - 1, d).getDay()]}요일</div>`; }
+    const open = NOTE.showAll || NOTE.open[x.id], sn = { kor:'국어', math:'수학', eng:'영어', dict:'받아쓰기' }[x.subj] || '';
+    const times = x.miss ? `${x.miss}번 틀림` : '힌트 보고 맞힘';
+    html += `<div class="nb-card ${x.fixed ? 'fixed' : ''}">
+      <div class="nb-top"><span class="nb-subj s-${x.subj}">${sn}</span><span class="muted">${times}${x.miss && x.hint ? ` · 힌트 ${x.hint}번` : ''}</span><span class="spacer"></span>${x.fixed ? '<span class="pill ok">다시 맞혔어요 ✓</span>' : '<span class="pill wait">다시 풀어 보기</span>'}</div>
+      <div class="nb-q"><span>${esc(noteShow(x))}</span><button class="speak-btn" data-a="nbsay" data-i="${i}" aria-label="문제 읽어 주기">${ICON.speak}</button></div>
+      ${open ? `<div class="nb-a">정답 <b>${esc(x.a)}</b>${x.wrongs.length ? `<span class="nb-w">재윤이 답 ${x.wrongs.slice(0, 3).map(w => `<s>${esc(w)}</s>`).join(' ')}</span>` : ''}</div>`
+        : `<button class="btn ghost small nb-show" data-a="nbopen" data-i="${i}">정답 보기</button>`}
+    </div>`;
+  });
+  const chip = (k, v, l) => `<button class="chip ${NOTE[k] === v ? 'on' : ''}" data-a="nbset" data-k="${k}" data-v="${v}">${l}</button>`;
+  app().innerHTML = `<section class="screen notebook">
+    <div class="row"><button class="icon-btn" data-a="nbback" aria-label="나가기">${ICON.back}</button><h2 style="flex:1;margin:0">📒 재윤이 오답노트</h2></div>
+    ${kid ? `<div class="row" style="gap:10px;align-items:center">${stageHTML(90, { expr:'think', size:70 })}<p class="bubble" style="flex:1;font-size:18px;margin:0">틀린 문제는 보물이야! 엄마랑 같이 하나씩 다시 풀어 보자. 정답은 먼저 말해 보고 눌러 봐!</p></div>`
+      : `<p class="muted" style="font-size:14px;margin:0">재윤이가 틀린 문제(힌트 보고 두 번째에 맞힌 것 포함)를 모았어요. 같은 문제는 한 장으로 묶고, 나중에 한 번에 맞히면 "다시 맞혔어요 ✓"가 붙어요. 정답을 가려 두었으니 재윤이가 먼저 말해 보게 해 주세요. 문제별 기록은 10월 22일부터 있어요.</p>`}
+    <div class="row" style="gap:8px;flex-wrap:wrap">${NOTE_SUBJ.map(([v, l]) => { const c = bySubj(v).filter(x => !x.fixed).length; return `<button class="chip ${NOTE.subj === v ? 'on' : ''}" data-a="nbset" data-k="subj" data-v="${v}">${l}${c ? ` <b>${c}</b>` : ''}</button>`; }).join('')}</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap">${chip('st', 'todo', `다시 풀 문제 ${todo.length}`)}${chip('st', 'fixed', `다시 맞힌 문제 ${fixed.length}`)}${chip('st', 'all', `전부 ${cur.length}`)}<span class="spacer"></span><button class="chip ${NOTE.showAll ? 'on' : ''}" data-a="nbset" data-k="showAll" data-v="1">${NOTE.showAll ? '정답 가리기' : '정답 다 보기'}</button></div>
+    ${shown.length ? `<div class="nb-list">${html}</div>${list.length > shown.length ? `<button class="btn ghost" data-a="nbset" data-k="more" data-v="1">${list.length - shown.length}개 더 보기</button>` : ''}`
+      : `<div class="panel" style="text-align:center"><p style="font-size:18px">${NOTE.st === 'todo' ? (all.length ? '다시 풀 문제가 없어요! 다 맞혔어요 🎉' : '아직 틀린 문제가 없어요!') : '아직 없어요'}</p></div>`}
+  </section>`;
+  VIEWS.notebook.list = shown;
+};
+Object.assign(ACT, {
+  notebook(){ go('notebook', { from: SCREEN === 'adult' ? 'adult' : 'home' }); },
+  nbback(){ go(NOTE.from === 'adult' ? 'adult' : 'home'); },
+  nbset(el){ const k = el.dataset.k, v = el.dataset.v;
+    if (k === 'more') NOTE.more++; else if (k === 'showAll') NOTE.showAll = !NOTE.showAll; else { NOTE[k] = v; NOTE.more = 0; }
+    const y = k === 'more' ? scrollY : 0; VIEWS.notebook(); scrollTo(0, y); },
+  nbopen(el){ const x = (VIEWS.notebook.list || [])[+el.dataset.i]; if (!x) return; NOTE.open[x.id] = true; SFX.tap(); const y = scrollY; VIEWS.notebook(); scrollTo(0, y); },
+  nbsay(el){ const x = (VIEWS.notebook.list || [])[+el.dataset.i]; if (x) speak(noteSay(x)); },
+});
+
 /* ===================== 매일 뽑기 캡슐 · 도감 · 오늘 순서 고르기 ===================== */
 /* 하루 공부를 다 끝내면 캡슐 하나. 안에는 토리 친구가 랜덤으로 (보통 · 반짝 · 무지개) */
 const COLLECT = [
@@ -6905,9 +7055,14 @@ const Tori = (() => {
   }
   const m = location.hash.match(/#join=([a-z0-9]{20,})/);
   if (m && !(S.local && S.local.fid === m[1])) { JOIN_FID = m[1]; return go('join'); }
-  if (linked()) { Sync.start().then(() => { if (SCREEN === 'adult' || SCREEN === 'home') refreshIfIdle(); if (role() !== 'kid') Push.refresh(); }); if (role() !== 'kid') { S.adultTab = S.adultTab === 'set' ? 'set' : role(); return go('adult'); } }
+  if (linked()) { Sync.start().then(() => { if (SCREEN === 'adult' || SCREEN === 'home') refreshIfIdle(); if (role() !== 'kid') Push.refresh(); }); if (role() !== 'kid' && !wrongRoleTablet()) { S.adultTab = S.adultTab === 'set' ? 'set' : role(); return go('adult'); } }
   go('home');
 })();
+/* 이미 열려 있는 앱에서 가족 링크(#join=…)를 열면 주소의 # 뒤만 바뀌어 다시 시작하지 않는다 → 그때도 역할 고르기 화면으로 (10/29) */
+window.addEventListener('hashchange', () => {
+  const m = location.hash.match(/#join=([a-z0-9]{20,})/);
+  if (m && !(S.local && S.local.fid === m[1])) { JOIN_FID = m[1]; go('join'); }
+});
 
 </script>
 <script>
