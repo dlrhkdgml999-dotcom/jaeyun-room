@@ -442,7 +442,7 @@ audio{width:100%}
 @media (min-width:700px){ .passage{font-size:24px} }
 
 /* 캡슐 · 도감 · 순서 고르기 */
-.home-nav{grid-template-columns:repeat(3,1fr)}
+.home-nav{grid-template-columns:repeat(4,1fr)}
 .home-nav .nav-tile{flex-direction:column;justify-content:center;gap:4px;padding:10px 6px;font-size:18px}
 .capsule{background:none;border:0;padding:0;filter:drop-shadow(0 8px 0 rgba(238,95,141,.18))}
 .capsule.shake{animation:capshake .45s}
@@ -664,3 +664,25 @@ button.sd:active{transform:scale(.95)}
 .ntfy-steps li > span{display:block;margin-bottom:4px}
 .ntfy-who{border-top:2px dashed var(--line);padding:8px 0;display:grid;gap:6px}
 .ntfy-who summary{cursor:pointer;font-size:17px;padding:4px 0}
+
+/* 역할이 잘못된 태블릿 경고 (10/29) */
+.role-warn{display:grid;gap:8px;background:#FFE9E4;border:2.5px solid #E8836C;border-radius:16px;padding:12px 14px;color:#7a2e1c;font-size:15px;line-height:1.45}
+.role-warn b{font-size:17px}
+.role-warn .btn{justify-self:start}
+
+/* 오답노트 (10/29) */
+.nb-tile{border-color:#9CC9EA;background:#EEF6FC}
+.notebook{gap:12px}
+.nb-list{display:grid;gap:10px}
+.nb-card{background:#fff;border:2.5px solid #EFE6EA;border-radius:16px;padding:12px 14px;display:grid;gap:8px;box-shadow:var(--shadow)}
+.nb-card.fixed{opacity:.8;border-style:dashed}
+.nb-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
+.nb-subj{font-family:var(--f-display);font-size:15px;padding:2px 10px;border-radius:999px;color:#fff;background:#B9A2AE}
+.nb-subj.s-kor{background:#EE7FA2}.nb-subj.s-math{background:#4B8FD9}.nb-subj.s-eng{background:#3FA57A}.nb-subj.s-dict{background:#E0A43A}
+.nb-q{display:flex;align-items:flex-start;gap:8px;font-size:19px;line-height:1.45;overflow-wrap:anywhere}
+.nb-q span{flex:1;min-width:0}
+.nb-a{font-size:18px;background:#F1FAF5;border-radius:12px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}
+.nb-a b{color:#2E8B5E;font-size:20px}
+.nb-w{font-size:15px;color:var(--ink-soft)}
+.nb-w s{color:#C2504F;margin-left:4px}
+.nb-show{justify-self:start}

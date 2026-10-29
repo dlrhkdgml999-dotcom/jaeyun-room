@@ -34,7 +34,7 @@ class Device(Sim):
         await self.ctx.route('**/firebasejs/**', lambda r: r.fulfill(body=MOCK if r.request.url.endswith('firebase-app-compat.js') else '', content_type='text/javascript'))
         await self.ctx.route('**/fonts.googleapis.com/**', lambda r: r.fulfill(body='', content_type='text/css'))
         self.p = await self.ctx.new_page(); PAGES.append(self.p)
-        self.p.on('pageerror', lambda e: self.errors.append(str(e)))
+        self.p.on('pageerror', lambda e: self.errors.append(str(e) + ' @ ' + (getattr(e, 'stack', '') or '')[:300]))
         self.p.on('dialog', self.on_dialog)
         await self.p.goto(self.url); await self.p.wait_for_timeout(700)
         return self

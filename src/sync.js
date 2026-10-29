@@ -35,9 +35,16 @@ function fsVal(v){
 }
 function fsFields(o){ const f = {}; for (const k in o) if (o[k] !== undefined && typeof o[k] !== 'function') f[k] = fsVal(o[k]); return f; }
 const SEND_WAIT = 40000;
+/* ---------- 역할이 잘못된 기기 찾기 (2026-10-29 사고: 재윤이 태블릿이 "오빠 폰"으로 연결돼 5일 동안 공부가 미리보기로만 남음) ---------- */
+function devId(){ try { let d = localStorage.getItem('jaeyun-dev'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); localStorage.setItem('jaeyun-dev', d); } return d; } catch (e) { return 'dx'; } }
+function isTabletDev(){ return window.__forceTablet || Math.min(screen.width, screen.height) >= 600; }
+/* 최근 3일 동안 이 기기에서 판을 끝낸 날 수 */
+function localStudyDays(n = 3){ let c = 0; for (let i = 0; i < n; i++) { const d = S.days[addDays(todayKey(), -i)]; if (d && d.boards && Object.values(d.boards).some(b => b && b.done)) c++; } return c; }
+/* 엄마·오빠 역할인데 태블릿에서 재윤이가 실제로 공부하고 있는 것 같은 기기 */
+function wrongRoleTablet(){ return linked() && role() !== 'kid' && isTabletDev() && S.started && localStudyDays() > 0; }
 const Sync = {
   db:null, ready:false, status:'off', last:{ s:{}, days:{} }, timer:null, blobCache:{}, blobWait:{}, unsub:[], applying:false,
-  kid:null, kidDayAt:0, okAt:0, beatAt:0, sy:null, syT:null, retryT:null,
+  kid:null, devs:{}, devAt:0, kidDayAt:0, okAt:0, beatAt:0, sy:null, syT:null, retryT:null,
   base(){ return `families/${S.local.fid}`; },
   /* 서버가 받았다고 확인해 준 값의 지문: 앱을 껐다 켜도 남아서, 못 보낸 것만 다시 보낸다 */
   synced(){
@@ -115,7 +122,7 @@ const Sync = {
       this.ready = true; this.status = 'on';
       // 태블릿: 아직 서버에 없는 사진(예전에 올리다 실패한 것)도 다시 올린다
       if (kid) Object.entries(this.blobCache).forEach(([h, d]) => this.putBlob(h, d));
-      this.schedule(); this.beat(); this.flushNotes();
+      this.schedule(); this.beat(); this.devBeat(true); this.flushNotes();
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.start(), 30000); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
@@ -131,7 +138,10 @@ const Sync = {
     this.unsub.push(this.db.collection(`${b}/days`).onSnapshot({ includeMetadataChanges:true }, snap => this.onDays(snap)));
     this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(120).onSnapshot(snap => this.onNotes(snap)));
     // 재윤이 태블릿이 마지막으로 연결된 때 (엄마·오빠 폰에서 보여 줌)
-    try { this.unsub.push(this.db.doc(`${b}/meta/kid`).onSnapshot(d => { const k = d && d.exists ? d.data() : null; if (JSON.stringify(k) !== JSON.stringify(this.kid)) { this.kid = k; if (SCREEN === 'adult') refreshIfIdle(); } })); } catch (e) {}
+    // 기기들 상태(meta/dev-…): 엄마·오빠 역할로 연결된 태블릿에서 재윤이가 공부하고 있으면 폰에서 알려 준다
+    try { this.unsub.push(this.db.collection(`${b}/meta`).onSnapshot(snap => { const devs = {}; let k = null;
+      snap.docs.forEach(d => { if (d.id === 'kid') k = d.data(); else if (d.id.startsWith('dev-')) devs[d.id.slice(4)] = d.data(); });
+      if (JSON.stringify([k, devs]) !== JSON.stringify([this.kid, this.devs])) { this.kid = k; this.devs = devs; if (SCREEN === 'adult') refreshIfIdle(); } })); } catch (e) {}
   },
   onState(snap){
     let changed = false; const sy = this.synced();
@@ -141,6 +151,8 @@ const Sync = {
       // 내가 쓴 것이 돌아온 것: 서버가 받은 것일 때만 "보냄"으로 친다 (기기 안에서 기다리는 것은 hasPendingWrites)
       if (raw === this.last.s[k]) { if (!(d.metadata && d.metadata.hasPendingWrites)) sy.s[k] = hashStr(raw); return; }
       if (dirty && this.writable(k) && (!KID_KEYS.includes(k) || canWriteKid())) return;   // 아직 못 보낸 내 변경이 우선 (곧 덮어씀)
+      // 엄마·오빠 역할로 잘못 연결된 태블릿: 재윤이 진도·스티커를 서버의 예전 값으로 되돌리지 않는다 ("재윤이 태블릿으로 바꾸기"를 누르면 그대로 올라감)
+      if (KID_KEYS.includes(k) && wrongRoleTablet()) return;
       this.last.s[k] = raw; sy.s[k] = hashStr(raw); S[k] = this.unpack(d.data().v); changed = true; });
     this.saveSynced();
     if (changed) this.afterRemote();
@@ -209,6 +221,12 @@ const Sync = {
     const days = Object.keys(S.days), sy = this.synced(), unsent = days.filter(k => !sy.d[k]).length; this.beatUnsent = unsent;
     const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, online:navigator.onLine !== false, failSince:this.failSince || 0 };
     this.write(`${this.base()}/meta/kid`, info).then(() => { if (!this.okAt) this.okAt = Date.now(); }, e => { this.beatAt = 0; this.sentBad(e); });
+  },
+  /* 엄마·오빠 기기: 30분에 한 번 "이 기기는 무슨 역할 · 태블릿인지 · 여기서 공부한 날"을 올린다 */
+  devBeat(force){
+    if (!this.ready || role() === 'kid') return;
+    const t = Date.now(); if (!force && t - this.devAt < 30 * 60000) return; this.devAt = t;
+    this.write(`${this.base()}/meta/dev-${devId()}`, { role:role(), at:t, tab:isTabletDev(), study3:localStudyDays(), stickers:S.stickers.length, ver:String(window.APP_VERSION || '') }).catch(() => { this.devAt = 0; });
   },
   kidSeenAt(){ return Math.max((this.kid && this.kid.at) || 0, this.kidDayAt || 0); },
   /* 알림함: 인터넷이 없거나 아직 연결 전에 생긴 알림은 기기에 모아 두었다가(jaeyun-noteq, 7일까지) 연결되면 올린다 */
@@ -283,6 +301,17 @@ const Sync = {
     if (!window.firebase || !window.FIREBASE_CONFIG) { this.status = 'nosdk'; return false; }
     if (S.started) { try { const bk = Object.assign({}, S, { days:{} }); Object.keys(S.days).forEach(k => { const d = Object.assign({}, S.days[k]); if (d.dict) d.dict = Object.assign({}, d.dict, { photo:null }); bk.days[k] = d; }); localStorage.setItem('jaeyun-backup', JSON.stringify({ at:Date.now(), S:bk })); } catch (e) {} }
     const mine = { kid:Object.fromEntries(KID_KEYS.map(k => [k, S[k]])), days:S.days, score:S.started ? studyScore(S) : 0 };
+    // 같은 가족방에서 이 기기만 "재윤이"로 바꾸는 경우(엄마·오빠로 잘못 연결된 태블릿 고치기): 서버에서 받을 것 없이 바로.
+    // 이 기기가 가진 재윤이 기록이 원본이라 전부 올린다. (서버 읽기가 막혀도 멈추지 않게 — 10/29)
+    if (roleName === 'kid' && S.local && S.local.fid === fid && S.local.role !== 'kid') {
+      this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false;
+      S.local = { fid, role:'kid' }; this.resetSynced(); this.kept = mine.score;
+      const sy = this.synced(); ADULT_KEYS.forEach(k => sy.s[k] = hashStr(JSON.stringify(this.pack(S[k]))));   // 어른 설정은 서버에서 받은 그대로
+      delete sy.fresh; this.saveSynced(); saveLocal();
+      await this.start(); this.beat(true); this.devAt = 0;
+      this.write(`${this.base()}/meta/dev-${devId()}`, { role:'kid', at:Date.now() }).catch(() => {});
+      return true;
+    }
     this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false;
     S.local = { fid, role:roleName }; saveLocal();
     await this.fs();
@@ -316,16 +345,18 @@ const Sync = {
     Object.keys(S.days).forEach(k => { const raw = JSON.stringify(this.pack(S.days[k])); if (srvDays[k] === raw) sy.d[k] = hashStr(raw); });
     delete sy.fresh; this.saveSynced();
     saveLocal(); await this.start(); if (roleName === 'kid') this.beat(true);
+    // 이 기기의 예전 역할 표시(meta/dev-…)를 바로 고친다 (오빠 폰에 남은 "역할이 잘못된 태블릿" 경고가 사라지게)
+    this.devAt = 0; if (roleName === 'kid') this.write(`${this.base()}/meta/dev-${devId()}`, { role:'kid', at:Date.now() }).catch(() => {}); else this.devBeat(true);
     return true;
   },
   leave(){ this.unsub.forEach(f => { try { f(); } catch (e) {} }); this.unsub = []; this.ready = false; S.local = null; this.status = 'off'; saveLocal(); },
 };
 /* 인터넷이 다시 되거나, 앱을 다시 볼 때 · 끌 때 바로 보낸다 */
 window.addEventListener('online', () => { if (!Sync.ready) Sync.start(); else { Sync.push(); Sync.flushNotes(); } });
-document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) { Sync.beat(); Sync.flushNotes(); } });
+document.addEventListener('visibilitychange', () => { if (!linked()) return; if (!Sync.ready) { if (!document.hidden) Sync.start(); return; } Sync.push(); if (!document.hidden) { Sync.beat(); Sync.devBeat(); Sync.flushNotes(); } });
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
-  if (['home','adult','map','gift','cal','room','alldone','book','study'].includes(SCREEN)) {
+  if (['home','adult','map','gift','cal','room','alldone','book','study','notebook'].includes(SCREEN)) {
     const y = scrollY; const active = document.activeElement;
     if (active && /INPUT|TEXTAREA|SELECT/.test(active.tagName)) return;
     VIEWS[SCREEN](); scrollTo(0, y);
@@ -398,6 +429,9 @@ function syncAlert(){
   if (!Sync.ready) return '';
   const seen = Sync.kidSeenAt(), kid = Sync.kid || {};
   const have = Object.keys(S.days).length;
+  const bad = Object.entries(Sync.devs || {}).find(([id, d]) => id !== devId() && d && d.role !== 'kid' && d.tab && d.study3 > 0 && Date.now() - (d.at || 0) < 3 * 86400000);
+  if (bad) { const d = bad[1], who = d.role === 'mom' ? '엄마 폰' : '오빠 폰';
+    return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 스티커 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
   // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
   const diag = kid.at ? `<br><span class="muted" style="font-size:12px">태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}</span>` : '';
   if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
@@ -413,8 +447,24 @@ function kidSyncNote(){
   if (!(window.firebase && window.FIREBASE_CONFIG) || !S.started) return '';
   const note = t => `<button class="kid-sync-note" data-a="go" data-v="pin">⚠️ ${t} <span>엄마 · 오빠가 볼게요</span></button>`;
   if (!linked()) return studyScore(S) > 0 ? note('이 태블릿은 아직 엄마·오빠 폰과 연결되지 않았어요') : '';
-  if (role() !== 'kid') return '';
+  if (role() !== 'kid') return '';   // 엄마·오빠 역할 태블릿은 첫 화면 맨 위(wrongRoleHTML)에서 크게 알려 줌
   if (navigator.onLine === false) return '';
   if (Sync.failSince && Date.now() - Sync.failSince > 10 * 60000) return note('공부 기록이 엄마·오빠 폰으로 안 가고 있어요');
   return '';
 }
+
+/* 재윤이 첫 화면 맨 위: 이 태블릿이 엄마·오빠 역할이면 크게 알리고 한 번에 고치기 */
+function wrongRoleHTML(){
+  if (!wrongRoleTablet()) return '';
+  const who = role() === 'mom' ? '엄마 폰' : '오빠 폰';
+  return `<div class="role-warn"><b>⚠️ 이 태블릿은 "${who}"으로 연결돼 있어요</b><span>그래서 재윤이가 공부한 게 엄마·오빠 폰에 안 가요. 재윤이 태블릿이면 아래 버튼을 눌러 주세요. 공부한 기록은 지워지지 않고 그대로 올라가요.</span>
+    <button class="btn small" data-a="tokid">재윤이 태블릿으로 바꾸기</button></div>`;
+}
+ACT.tokid = async () => {
+  if (!linked()) return;
+  if (!confirm('이 태블릿을 "재윤이" 기기로 바꿀까요?\n이 태블릿에서 공부한 기록은 지워지지 않고 엄마·오빠 폰으로 올라가요.')) return;
+  toast('바꾸는 중이에요…');
+  const ok = await Sync.join(S.local.fid, 'kid').catch(e => { console.warn(e); return false; });
+  if (!ok) return toast('바꾸지 못했어요. 인터넷이 되는지 확인하고 다시 눌러 주세요');
+  toast(`재윤이 태블릿이 됐어요! 공부 기록(스티커 ${S.stickers.length}개)을 엄마·오빠 폰으로 보내요`); go('home');
+};
