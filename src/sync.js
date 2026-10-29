@@ -303,7 +303,7 @@ const Sync = {
   async join(fid, roleName){
     const old = S.local;
     if (!window.firebase || !window.FIREBASE_CONFIG) { this.status = 'nosdk'; return false; }
-    if (S.started) { try { const bk = Object.assign({}, S, { days:{} }); Object.keys(S.days).forEach(k => { const d = Object.assign({}, S.days[k]); if (d.dict) d.dict = Object.assign({}, d.dict, { photo:null, pen:null }); if (d.writes) d.writes = Object.fromEntries(Object.entries(d.writes).map(([wk, w]) => [wk, Object.assign({}, w, { img:null })])); bk.days[k] = d; });   // 백업엔 사진·글씨 그림 빼기 (기기 저장 공간 5MB) localStorage.setItem('jaeyun-backup', JSON.stringify({ at:Date.now(), S:bk })); } catch (e) {} }
+    if (S.started) { try { const bk = Object.assign({}, S, { days:{} }); Object.keys(S.days).forEach(k => { const d = Object.assign({}, S.days[k]); if (d.dict) d.dict = Object.assign({}, d.dict, { photo:null, pen:null }); if (d.writes) d.writes = Object.fromEntries(Object.entries(d.writes).map(([wk, w]) => [wk, Object.assign({}, w, { img:null })])); /* 백업엔 사진·글씨 그림 빼기 (기기 저장 공간 5MB) */ bk.days[k] = d; }); localStorage.setItem('jaeyun-backup', JSON.stringify({ at:Date.now(), S:bk })); } catch (e) {} }
     const mine = { kid:Object.fromEntries(KID_KEYS.map(k => [k, S[k]])), days:S.days, score:S.started ? studyScore(S) : 0 };
     // 같은 가족방에서 이 기기만 "재윤이"로 바꾸는 경우(엄마·오빠로 잘못 연결된 태블릿 고치기): 서버에서 받을 것 없이 바로.
     // 이 기기가 가진 재윤이 기록이 원본이라 전부 올린다. (서버 읽기가 막혀도 멈추지 않게 — 10/29)
