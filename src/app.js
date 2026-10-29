@@ -1111,6 +1111,10 @@ function todayPanel(){
     return `<div class="li"><span class="grow">${b.name}</span>${st === 'done' ? `<span class="muted" style="font-size:14px">${bo.correct}/${bo.n || bo.qs.length} · ${Math.max(1, Math.round(bo.secs / 60))}분</span><span class="pill ok">완료</span>` : st === 'doing' ? `<span class="pill wait">하는 중</span>` : `<span class="pill no">아직</span>`}</div>`; }).join('')}</div>
     <p class="muted" style="font-size:15px">오늘 공부 시간 ${minutesOf(d)}분 · 받은 스티커 ${d.earned.length}개</p></div>`;
 }
+/* 엄마 탭 접는 칸: 열어 둔 칸은 화면을 다시 그려도 열린 채로 */
+const MOM_OPEN = new Set();
+function momFold(k, title, html){ return `<details class="mom-fold" data-k="${k}" ${MOM_OPEN.has(k) ? 'open' : ''}><summary>${title}</summary><div class="mom-fold-body">${html}</div></details>`; }
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.matches && d.matches('details.mom-fold')) { if (d.open) MOM_OPEN.add(d.dataset.k); else MOM_OPEN.delete(d.dataset.k); } }, true);
 function notesPanel(to, title){
   const al = alarmInfo(); const extra = [];
   if (to === 'mom' && S.alarms.nudge && al && al.late && !al.started) extra.push({ text:`⏰ ${al.time} 공부 알림 뒤 30분이 지났는데 재윤이가 아직 시작하지 않았어요`, at:Date.now() });
@@ -1124,8 +1128,24 @@ VIEWS.adult = () => {
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
     const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
-    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + (gradeTodo ? dictGradePanel(pend) : '') + reportPanel() + dayGoalPanel() + writesPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel() + levelPanel() + `
-      ${gradeTodo ? '' : dictGradePanel(pend)}
+    // 2026-10-29 오빠 요청 "엄마 화면은 간단히": 매일 하는 것(오늘 · 할 일 · 바로가기)만 위에, 나머지는 접어 둠 (열어 둔 것은 기억)
+    const writesTodo = Object.entries(S.days).some(([dk, dy]) => Object.entries(dy.writes || {}).some(([k, w]) => w && w.img && !(S.writeFb || {})[`${dk}|${k}`]));
+    const nbTodo = typeof notebookItems === 'function' ? notebookItems().filter(x => !x.fixed).length : 0;
+    const newNotes = S.notes.filter(n => n.to === 'mom' && Date.now() - n.at < 86400000).length;
+    body = glancePanel()
+      + (gradeTodo ? dictGradePanel(pend) : '') + (writesTodo ? writesPanel(true) : '')
+      + `<div class="mom-quick">
+        <button class="mq" data-a="notebook"><span class="ic">📒</span><b>오답노트</b><small>${nbTodo ? `같이 풀 문제 ${nbTodo}개` : '다 맞혔어요 ✓'}</small></button>
+        <button class="mq" data-a="study"><span class="ic">📅</span><b>공부 기록</b><small>달력 · 푼 문제</small></button>
+        <button class="mq" data-a="momfold" data-v="notes"><span class="ic">🔔</span><b>알림함</b><small>${newNotes ? `오늘 ${newNotes}개` : '새 알림 없음'}</small></button>
+        <button class="mq" data-a="momfold" data-v="report"><span class="ic">📊</span><b>주간 리포트</b><small>지난주 한눈에</small></button>
+      </div>`
+      + momFold('notes', '🔔 엄마 알림함', notesPanel('mom', '엄마 알림함'))
+      + momFold('report', '📊 주간 리포트', reportPanel())
+      + momFold('curr', `📚 진도 · 강의 <small>${esc(currLabel('math').slice(0, 18))} …</small>`, currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel())
+      + (gradeTodo ? '' : momFold('dict', '📝 받아쓰기 채점한 것', dictGradePanel(pend)))
+      + momFold('writes', '✏️ 재윤이가 쓴 글', writesPanel())
+      + momFold('set', '⚙️ 공부 설정 <small>하루 공부 시간 · 난이도 · 알림 시간 · 눈 건강 · 받아쓰기</small>', dayGoalPanel() + levelPanel() + `
       ${isInstalled() ? '' : `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>`}
       <div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
         <p class="muted" style="font-size:13px">강의를 볼 때는 "팔 길이만큼 떨어져서 보기" 안내가 먼저 나와요.</p></div>
@@ -1135,10 +1155,10 @@ VIEWS.adult = () => {
       <div class="panel"><h3>공부 알림 시간</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 화면 맨 위에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 태블릿 앱이 닫혀 있으면 안 들리니, 그 시간에 태블릿 알람을 같이 맞춰 두면 좋아요.</p>
         ${[1,2,3,4,5,6,0].map(i => `<div class="alarm-row"><span class="dn">${DOW[i]}</span><input type="time" id="al${i}" value="${S.alarms.time[i]}" data-ch="altime" data-v="${i}" ${S.alarms.on[i] ? '' : 'disabled'}><button class="switch ${S.alarms.on[i] ? 'on' : ''}" data-a="alon" data-v="${i}" aria-label="${DOW[i]}요일 알림 켜기"></button></div>`).join('')}
         <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림<br><span class="muted" style="font-size:13px">엄마·오빠 메뉴를 열었을 때 보여요 (태블릿이 꺼져 있으면 폰 알림은 못 보내요)</span></span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
-      </div>` + notesPanel('mom', '엄마 알림함');
+      </div>`);
   } else if (tab === 'oppa') {
     const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), i - 6));
-    const mins = keys.map(k => minutesOf(S.days[k])); const maxM = Math.max(60, ...mins);
+    const mins = keys.map(k => dayMins(k).total); const maxM = Math.max(60, ...mins);
     const studyDays = keys.filter(k => S.days[k] && Object.keys(S.days[k].boards).length).length;
     const acc = {}; ['kor','math','eng','rev'].forEach(s => acc[s] = [0, 0]);
     keys.forEach(k => { const dy = S.days[k]; if (!dy) return; Object.entries(dy.boards).forEach(([s, bo]) => { const n = bo.done ? (bo.n || bo.qs.length) : bo.idx; acc[s][0] += bo.correct; acc[s][1] += n; }); });
@@ -1175,7 +1195,7 @@ VIEWS.adult = () => {
         <div class="bars">${keys.map((k, i) => `<div class="bcol"><span class="v">${mins[i] || ''}</span><span class="bar ${mins[i] ? '' : 'zero'}" style="height:${Math.round(mins[i] / maxM * 90)}px"></span><small>${DOW[new Date(k).getDay()]}</small></div>`).join('')}</div>
         <div class="subj-acc">${[['kor','국어','var(--pink)'],['math','수학','var(--sky-deep)'],['eng','영어','var(--mint-deep)'],['rev','복습','var(--lav-deep)']].map(([s, l, c]) => { const p = acc[s][1] ? Math.round(acc[s][0] / acc[s][1] * 100) : 0; return `<div class="r"><span>${l}</span><span class="m"><i style="width:${p}%;background:${c}"></i></span><span style="text-align:right;font-variant-numeric:tabular-nums">${acc[s][1] ? p + '%' : '-'}</span></div>`; }).join('')}</div>
       </div>
-      <div class="panel"><h3>자주 틀리는 문제</h3>${top.length ? `<div class="list">${top.map(w => `<div class="li"><span class="grow">${esc(qText(w))}</span><span class="pill">${w.misses}번</span></div>`).join('')}</div>` : '<p class="muted">아직 없어요</p>'}<p class="muted" style="font-size:14px">복습 판에서 두 번 연속 맞히면 목록에서 빠져요. 지금 복습 대기 ${S.wrong.filter(w => w.subj !== 'dict').length}문제.</p></div>
+      <button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">자주 틀리는 문제는 오답노트에서<br><span class="muted" style="font-family:var(--f-body);font-size:15px">${top.length ? `많이 틀린 것: ${top.slice(0, 3).map(w => esc(qText(w))).join(' · ')}` : '틀린 문제를 모아서 재윤이랑 같이 다시 풀어요'}</span></span></button>
       ${ebsLinkPanel()}
       ${reviewPanel()}
       ${notesPanel('oppa', '오빠 알림함')}`;
@@ -1255,7 +1275,7 @@ const ACT = {
   lecopt(el){ const [s, n] = el.dataset.v.split('|'); openLecture(s, +n, true); },
   lecdone(el){ const w = LECW; if (!w) return go('home'); const mins = Math.round((Date.now() - w.at) / 60000), li = lectInfo(w.s, w.n);
     if (mins < 10 && !el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 끝까지 다 봤어요!'; speak(`벌써 다 봤어? ${li.no}강은 ${li.mins}분짜리야. 끝까지 봤으면 한 번 더 눌러 줘!`); return; }
-    if (w.opt) { const c = curr(w.s); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins }; noteLecWatched(w.s, w.n); notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save();
+    if (w.opt) { const c = curr(w.s); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins }; noteLecWatched(w.s, w.n, mins); notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save();
       LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {} SFX.sticker(); return afterLecture(true); }
     w.mins = mins; try { sessionStorage.setItem('lecw', JSON.stringify(w)); } catch (e) {}
     go('leccheck'); },
@@ -1272,7 +1292,7 @@ const ACT = {
     // 다른 강의를 봤어요: 오늘 강의는 내일 다시, 이번 판은 문제로 넘어감
     const got = m > 0 ? lectInfo(w.s, m) : { no:'다른 ' };
     if (m > w.n && !c.seen[m]) c.seen[m] = { d:todayKey(), mins, early:true };
-    noteLecWatched(w.s, m > 0 ? m : 'x');
+    noteLecWatched(w.s, m > 0 ? m : 'x', mins);
     c.missed = [...new Set([...(c.missed || []).filter(x => !c.seen[x]), w.n])];
     const b = RUN && RUN.b; if (b && b.cur) b.lecSkip = true;
     const d = day(); if (d.lec) d.lec.missed = m;

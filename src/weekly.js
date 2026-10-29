@@ -15,13 +15,13 @@ function buildWeekReport(mon){
   const days = keys.map(k => S.days[k]).filter(Boolean);
   const studied = keys.filter(k => S.days[k] && Object.values(S.days[k].boards || {}).some(b => b.done)).length;
   const fullDays = keys.filter(k => S.days[k] && S.days[k].done).length;
-  const mins = keys.reduce((a, k) => a + minutesOf(S.days[k]), 0);
+  const mins = keys.reduce((a, k) => a + dayMins(k).total, 0);   // 문제 + EBS 강의
   const acc = {}; ['kor','math','eng','rev'].forEach(s => acc[s] = [0, 0]);
   days.forEach(dy => Object.entries(dy.boards || {}).forEach(([s, bo]) => { if (!acc[s] || !bo.done) return; acc[s][0] += bo.correct; acc[s][1] += bo.n || (bo.qs || []).length; }));
   const subj = SUBJS.map(s => {
     const c = curr(s), passed = Object.entries(c.done).filter(([, d]) => d.pass && inWeek(d.date)).map(([id]) => id);
     const failed = Object.entries(c.done).filter(([, d]) => !d.pass && inWeek(d.date)).map(([id]) => id);
-    const lec = Object.entries(c.seen || {}).filter(([, v]) => inWeek(v.d)).map(([n, v]) => ({ n:+n, mins:v.mins || 0 }));
+    const lec = keys.flatMap(k => lecturesOn(k).filter(x => x.s === s)).map(x => ({ n:x.info ? +x.info.no : x.n, mins:x.mins }));
     return { s, name:SUBJ_NAME[s], now:currLabel(s), passed:passed.length, failed:failed.filter(id => !passed.includes(id)).map(id => lessonById(id).title), medals:c.medals.filter(m => inWeek(m.date)).length, lec, rate:acc[s][1] ? Math.round(acc[s][0] / acc[s][1] * 100) : null };
   });
   const dict = keys.map(k => gradeOf(k)).filter(g => g.graded).map(g => g.score);

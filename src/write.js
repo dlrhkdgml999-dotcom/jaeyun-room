@@ -74,8 +74,8 @@ function applyWriteFb(){
   return changed;
 }
 /* 엄마 메뉴: 재윤이가 쓴 글 */
-function writesPanel(){
-  const items = Object.entries(S.days).flatMap(([dk, dy]) => Object.entries(dy.writes || {}).map(([k, w]) => ({ dk, k, w }))).sort((a, b) => b.w.at - a.w.at).slice(0, 5);
+function writesPanel(onlyTodo){
+  const items = Object.entries(S.days).flatMap(([dk, dy]) => Object.entries(dy.writes || {}).map(([k, w]) => ({ dk, k, w }))).filter(x => !onlyTodo || (x.w.img && !(S.writeFb || {})[`${x.dk}|${x.k}`])).sort((a, b) => b.w.at - a.w.at).slice(0, 5);
   return `<div class="panel"><h3>✏️ 재윤이가 쓴 글</h3>
     ${items.length ? items.map(({ dk, k, w }) => { const key = `${dk}|${k}`, fb = (S.writeFb || {})[key];
       return `<div class="panel" style="padding:12px;background:var(--bg);border:0">

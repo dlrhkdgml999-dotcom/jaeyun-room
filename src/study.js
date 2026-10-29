@@ -98,7 +98,14 @@ function studyPreset(p){
   }
 }
 /* 하루 공부 시간: 앱에서 푼 시간 + EBS 강의 본 시간 (강의는 한 편 최대 40분까지만 셈) */
-function lecturesOn(k){ return SUBJS.flatMap(s => Object.entries(curr(s).seen || {}).filter(([, v]) => v.d === k).map(([n, v]) => ({ s, n:+n, mins:Math.min(40, v.mins || 0), info:lectInfo(s, +n) }))); }
+/* 그날 본 EBS 강의: 그날 기록(d.lm, 10/29부터)과 진도 기록(seen)을 합친다. 한 편은 최대 40분으로 센다 */
+function lecturesOn(k){
+  const m = new Map(), dy = S.days[k];
+  SUBJS.forEach(s => Object.entries(curr(s).seen || {}).forEach(([n, v]) => { if (v && v.d === k) m.set(s + n, { s, n:+n, mins:v.mins || 0 }); }));
+  Object.entries((dy && dy.lm) || {}).forEach(([key, mins]) => { const s = key.slice(0, key.match(/[^a-z]/) ? key.match(/[^a-z]/).index : key.length), n = +key.slice(s.length);
+    const cur = m.get(key); if (cur) cur.mins = Math.max(cur.mins, mins || 0); else m.set(key, { s, n:n || 0, mins:mins || 0 }); });
+  return [...m.values()].map(x => ({ s:x.s, n:x.n, mins:Math.min(40, x.mins), info:x.n ? lectInfo(x.s, x.n) : null }));
+}
 function dayMins(k){ const dy = S.days[k], app = minutesOf(dy), lec = lecturesOn(k).reduce((a, x) => a + x.mins, 0); return { app, lec, total:app + lec }; }
 function dayLogs(k){ const dy = S.days[k]; if (!dy || !dy.boards) return []; return BOARDS.flatMap(b => ((dy.boards[b.k] || {}).log || []).map(x => ({ k, board:b.k, t:x[0], a:x[1], w:x[2], r:x[3], s:x[4], subj:x[5] || b.k }))); }
 const logSubj = x => x.board === 'rev' ? 'rev' : x.subj;

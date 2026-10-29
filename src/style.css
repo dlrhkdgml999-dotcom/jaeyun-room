@@ -687,3 +687,21 @@ button.sd:active{transform:scale(.95)}
 .nb-w s{color:#C2504F;margin-left:4px}
 .nb-show{justify-self:start}
 .fam-code{font-family:var(--f-display);letter-spacing:.08em;color:var(--pink-deep)}
+.nb-play{width:100%;display:flex;justify-content:center;align-items:center;gap:10px}
+.nb-play span{font-size:16px;opacity:.85}
+.opt.nb-x{opacity:.45;text-decoration:line-through}
+/* 엄마 탭 간단하게 (10/29) */
+.mom-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mq{background:#fff;border:2.5px solid var(--line);border-radius:18px;padding:12px;display:grid;justify-items:start;gap:2px;text-align:left;box-shadow:var(--shadow)}
+.mq .ic{font-size:28px}.mq b{font-family:var(--f-display);font-weight:400;font-size:19px}.mq small{color:var(--ink-soft);font-size:13px}
+.mq:active{transform:translateY(2px)}
+.mom-fold{background:#fff;border:2px solid var(--line);border-radius:16px}
+.mom-fold>summary{list-style:none;cursor:pointer;padding:14px 16px;font-family:var(--f-display);font-size:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mom-fold>summary::-webkit-details-marker{display:none}
+.mom-fold>summary::after{content:'▾';margin-left:auto;color:var(--ink-soft);transition:transform .2s}
+.mom-fold[open]>summary::after{transform:rotate(180deg)}
+.mom-fold>summary small{font-family:var(--f-body);font-size:13px;color:var(--ink-soft);width:100%}
+.mom-fold-body{padding:0 10px 10px;display:grid;gap:10px}
+.mom-fold-body>.panel{box-shadow:none}
+@media (min-width:700px){ .mom-quick{grid-template-columns:repeat(4,1fr)} }
+.opt.shake{animation:capshake .45s}

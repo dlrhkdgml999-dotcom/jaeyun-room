@@ -12,6 +12,7 @@
     </section>`;
     return;
   }
+  try { backfillLectures(); } catch (e) { console.warn('backfill', e); }   // 지난 강의 시간 되살리기 (한 번만)
   const m = location.hash.match(/#join=([a-z0-9]{20,})/);
   if (m && !(S.local && S.local.fid === m[1])) { JOIN_FID = m[1]; return go('join'); }
   if (linked()) { Sync.start().then(() => { if (SCREEN === 'adult' || SCREEN === 'home') refreshIfIdle(); if (role() !== 'kid') Push.refresh(); }); if (role() !== 'kid' && !wrongRoleTablet()) { S.adultTab = S.adultTab === 'set' ? 'set' : role(); return go('adult'); } }

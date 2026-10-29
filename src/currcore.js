@@ -191,7 +191,9 @@ function lecturesWatchedOn(k = todayKey()){
   return set.size;
 }
 /* 그날 본 강의를 날짜 기록에 남긴다 (다시 보기는 처음 본 날짜가 그대로라 따로 남겨야 하루 한 편을 지킬 수 있음) */
-function noteLecWatched(s, n){ const d = day(); d.lw = [...new Set([...(d.lw || []), s + n])]; }
+function noteLecWatched(s, n, mins){ const d = day(); d.lw = [...new Set([...(d.lw || []), s + n])];
+  // 강의 본 분도 그날 기록에 (10/29: 진도 기록의 seen만 보다가, 진도가 되돌아가면 강의 시간이 공부 시간에서 빠졌음)
+  if (mins != null) { d.lm = Object.assign({}, d.lm); d.lm[s + n] = Math.max(d.lm[s + n] || 0, Math.round(mins)); } }
 /* 강의는 하루 한 편 (2026-10-29 "국어·수학 강의가 둘 다 나와서 1시간 30분"):
    오늘 강의가 정해졌거나 이미 한 편 봤으면 "골라 보기·다시 보기" 강의 버튼을 숨긴다 */
 function lectureDayUsed(d = day()){
@@ -264,7 +266,7 @@ function makeCurrBoard(k, n){
   return Object.assign(base, { qs, cur:{ subj:k, test:c.test, unit:c.unit, lesson: c.test || !cl ? null : cl.id, items:[], lec: isLec ? lec.n : null } });
 }
 function markLectureSeen(s, n, mins){
-  const c = curr(s); c.seen[n] = { d:todayKey(), mins }; noteLecWatched(s, n);
+  const c = curr(s); c.seen[n] = { d:todayKey(), mins }; noteLecWatched(s, n, mins || 0);
   S.lastLec = s; const d = day(); if (d.lec && d.lec.s === s) d.lec.done = true;
   const li = lectInfo(s, n);
   notify('mom', `📺 재윤이가 EBS ${li.name} ${li.no}강을 봤어요${mins ? ` (${mins}분)` : ''}`);

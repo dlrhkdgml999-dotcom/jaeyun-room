@@ -303,7 +303,7 @@ const Sync = {
   async join(fid, roleName){
     const old = S.local;
     if (!window.firebase || !window.FIREBASE_CONFIG) { this.status = 'nosdk'; return false; }
-    if (S.started) { try { const bk = Object.assign({}, S, { days:{} }); Object.keys(S.days).forEach(k => { const d = Object.assign({}, S.days[k]); if (d.dict) d.dict = Object.assign({}, d.dict, { photo:null }); bk.days[k] = d; }); localStorage.setItem('jaeyun-backup', JSON.stringify({ at:Date.now(), S:bk })); } catch (e) {} }
+    if (S.started) { try { const bk = Object.assign({}, S, { days:{} }); Object.keys(S.days).forEach(k => { const d = Object.assign({}, S.days[k]); if (d.dict) d.dict = Object.assign({}, d.dict, { photo:null, pen:null }); if (d.writes) d.writes = Object.fromEntries(Object.entries(d.writes).map(([wk, w]) => [wk, Object.assign({}, w, { img:null })])); bk.days[k] = d; });   // 백업엔 사진·글씨 그림 빼기 (기기 저장 공간 5MB) localStorage.setItem('jaeyun-backup', JSON.stringify({ at:Date.now(), S:bk })); } catch (e) {} }
     const mine = { kid:Object.fromEntries(KID_KEYS.map(k => [k, S[k]])), days:S.days, score:S.started ? studyScore(S) : 0 };
     // 같은 가족방에서 이 기기만 "재윤이"로 바꾸는 경우(엄마·오빠로 잘못 연결된 태블릿 고치기): 서버에서 받을 것 없이 바로.
     // 이 기기가 가진 재윤이 기록이 원본이라 전부 올린다. (서버 읽기가 막혀도 멈추지 않게 — 10/29)
@@ -474,3 +474,35 @@ ACT.tokid = async () => {
   if (!ok) return toast('바꾸지 못했어요. 인터넷이 되는지 확인하고 다시 눌러 주세요');
   toast(`재윤이 태블릿이 됐어요! 공부 기록(스티커 ${S.stickers.length}개)을 엄마·오빠 폰으로 보내요`); go('home');
 };
+
+/* 지난 강의 시간 되살리기 (10/29): 오빠 역할이던 동안 진도(seen)가 되돌아가서 그날 본 강의가 공부 시간에서 빠졌다.
+   태블릿 알림함에 남은 "📺 … n강을 봤어요 (m분)" 글로 날짜별 기록(d.lm)을 채운다. 재윤이 기기에서 한 번만 */
+function backfillLectures(){
+  if (!S.started || (linked() && role() !== 'kid')) return 0;
+  try { if (localStorage.getItem('jaeyun-lecfill') === '1') return 0; } catch (e) {}
+  let added = 0;
+  const courseByName = name => { for (const s of ['math','kor']) for (const co of CURRS[s].courses) if (co.ebs && co.ebs.name === name) return { s, co }; return null; };
+  S.notes.forEach(n => {
+    const t = String(n.text || ''), dk = n.d || (n.at ? keyOf(new Date(n.at)) : ''); if (!dk || !S.days[dk]) return;
+    let s = null, no = 0, mins = 0, co = null, m;
+    if ((m = t.match(/EBS (.+?) (\d+)강을 봤어요 \((\d+)분\)/))) { const c = courseByName(m[1]); if (!c) return; s = c.s; co = c.co; no = +m[2]; mins = +m[3]; }
+    else if ((m = t.match(/(수학|국어) (\d+)강 대신 (\d+)강을 봤어요 \((\d+)분\)/))) { s = m[1] === '수학' ? 'math' : 'kor'; no = +m[3]; mins = +m[4]; }
+    else if ((m = t.match(/(수학|국어) (\d+)강 ".*"을 봤어요 \((\d+)분\)/))) { s = m[1] === '수학' ? 'math' : 'kor'; no = +m[2]; mins = +m[3]; }
+    else return;
+    if (!co) co = CURRS[s].courses[0];   // 강좌 이름이 없는 글: 지금은 1-2 강좌
+    const gn = co.lectOff + no, key = s + gn, dy = S.days[dk];
+    dy.lm = Object.assign({}, dy.lm); if (!(dy.lm[key] >= mins)) { dy.lm[key] = mins; added++; }
+    dy.lw = [...new Set([...(dy.lw || []), key])];
+  });
+  // 알림함 글이 없는 날(가족방을 옮기면서 알림함이 바뀜): 그날 정해진 강의를 "다 봤어요"로 끝냈으면 그 강의 길이(EBS 표시 시간)로 센다
+  Object.entries(S.days).forEach(([dk, dy]) => {
+    const L = dy && dy.lec; if (!L || !L.s || !L.n || !(L.done || L.missed !== undefined)) return;
+    const n = L.missed > 0 ? L.missed : L.missed === undefined ? L.n : 0; if (!n) return;
+    const key = L.s + n, li = lectInfo(L.s, n); if (!li) return;
+    dy.lm = Object.assign({}, dy.lm); if (dy.lm[key] == null && !(curr(L.s).seen[n] && curr(L.s).seen[n].d === dk)) { dy.lm[key] = Math.min(40, li.mins || 28); added++; }
+    dy.lw = [...new Set([...(dy.lw || []), key])];
+  });
+  try { localStorage.setItem('jaeyun-lecfill', '1'); } catch (e) {}
+  if (added) save();
+  return added;
+}

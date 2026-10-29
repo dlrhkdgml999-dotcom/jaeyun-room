@@ -79,11 +79,13 @@ async def main():
             await tab.click(f'[data-a="nbset"][data-k="subj"][data-v="{subj}"]'); await tab.p.wait_for_timeout(120)
             ok = await tab.ev(f"VIEWS.notebook.list.every(x => x.subj === '{subj}')"); tab.expect(ok, f'N1: {subj}만 거르기가 안 맞음')
         await tab.click('[data-a="nbset"][data-k="subj"][data-v="all"]')
-        # 다시 맞힌 문제: 틀린 문제를 다음 날 한 번에 맞힌 기록을 넣으면 "다시 맞혔어요"
-        fx = await tab.ev("""(() => { const x = notebookItems().find(i => !i.fixed && i.subj !== 'dict'); if (!x) return null; const k = todayKey(); const dy = day(k); dy.boards.rev = dy.boards.rev || { done:true, log:[] }; (dy.boards.rev.log = dy.boards.rev.log || []).push([x.t, x.a, '', 1, 5, x.subj]); return notebookItems().find(i => i.id === x.id).fixed; })()""")
-        print('N1 다시 맞힌 뒤:', fx); tab.expect(fx, 'N1: 다시 맞힌 문제가 표시되지 않음')
-        await tab.click('[data-a="nbset"][data-k="st"][data-v="fixed"]'); await tab.p.wait_for_timeout(150)
-        tab.expect(await tab.ev("document.querySelectorAll('.nb-card.fixed').length") >= 1, 'N1: 다시 맞힌 문제 거르기에 안 나옴')
+        # 규칙(10/29): 복습 판에서 혼자 맞힌 건 남고, 엄마랑 같이 풀어서 맞힌 것만 오답노트에서 없어진다
+        fx = await tab.ev("""(() => { const x = notebookItems().find(i => !i.fixed && i.subj !== 'dict'); if (!x) return null; const dy = day();
+          dy.boards.rev = dy.boards.rev || { done:true, log:[] }; (dy.boards.rev.log = dy.boards.rev.log || []).push([x.t, x.a, '', 1, 5, x.subj]);
+          const solo = !!notebookItems().find(i => i.id === x.id).fixed;
+          dy.nb = (dy.nb || []).concat([[x.t, x.a, '', 1, x.subj]]); const together = !!notebookItems().find(i => i.id === x.id).fixed;
+          VIEWS.notebook(); return { solo, together, shown:VIEWS.notebook.list.some(i => i.id === x.id) }; })()""")
+        print('N1 혼자 맞힘 / 같이 맞힘 / 아직 보임:', fx); tab.expect(fx and not fx['solo'] and fx['together'] and not fx['shown'], f'N1: 오답노트 없어지는 규칙이 다름 {fx}')
         await tab.overflow('오답노트 태블릿')
         # 엄마 메뉴(오빠 폰)에서도
         await oppa.adult_tab('mom'); await oppa.click('.nb-tile'); await oppa.p.wait_for_timeout(300)
