@@ -223,7 +223,7 @@ const Sync = {
     // 오빠 폰에서 원인을 볼 수 있게: 앱 버전, 보낸 길, 못 보낸 기록 수, 기기 저장 공간, 마지막으로 공부한 날
     let ls = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {}
     const days = Object.keys(S.days), sy = this.synced(), unsent = days.filter(k => !sy.d[k]).length; this.beatUnsent = unsent;
-    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, lf:(() => { try { return +localStorage.getItem('jaeyun-lecfill-n') || 0; } catch (e) { return 0; } })(), online:navigator.onLine !== false, failSince:this.failSince || 0 };
+    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, lf:(() => { try { return +localStorage.getItem('jaeyun-lecfill-n') || 0; } catch (e) { return 0; } })(), ld:lecDiag(), online:navigator.onLine !== false, failSince:this.failSince || 0 };
     this.write(`${this.base()}/meta/kid`, info).then(() => { if (!this.okAt) this.okAt = Date.now(); }, e => { this.beatAt = 0; this.sentBad(e); });
   },
   /* 엄마·오빠 기기: 30분에 한 번 "이 기기는 무슨 역할 · 태블릿인지 · 여기서 공부한 날"을 올린다 */
@@ -439,7 +439,7 @@ function syncAlert(){
   if (bad) { const d = bad[1], who = d.role === 'mom' ? '엄마 폰' : '오빠 폰';
     return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 스티커 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
   // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
-  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}${kid.lf ? ` · 지난 강의 시간 ${kid.lf}편 되살림` : ''}</span>` : '';
+  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}${kid.ld ? ` · 강의 기록 ${kid.ld}` : ''}</span>` : '';
   if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
   if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.${diag}`, 'soft');
   if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);
@@ -510,4 +510,15 @@ function backfillLectures(){
   try { localStorage.setItem('jaeyun-lecfill2', '1'); localStorage.setItem('jaeyun-lecfill-n', String(added)); } catch (e) {}
   if (added) save();
   return added;
+}
+
+/* 강의 기록 진단 (오빠 폰 맨 위 작은 글씨): 날짜 기록에 강의 흔적이 얼마나 있는지
+   "정한날 a(끝냄 b) · 강의판 c · 분기록 d · 본목록 e · 되살림 f" */
+function lecDiag(){
+  let a = 0, b = 0, c = 0, d = 0;
+  Object.values(S.days).forEach(dy => { if (!dy) return; if (dy.lec && dy.lec.s) { a++; if (dy.lec.done) b++; }
+    Object.values(dy.boards || {}).forEach(x => { if (x && x.cur && x.cur.lec) c++; }); d += Object.keys(dy.lm || {}).length; });
+  const e = ['math','kor'].reduce((t, s) => t + Object.keys(curr(s).seen || {}).length, 0);
+  let f = 0; try { f = +localStorage.getItem('jaeyun-lecfill-n') || 0; } catch (x) {}
+  return `정한날 ${a}(끝냄 ${b}) · 강의판 ${c} · 분기록 ${d} · 본목록 ${e} · 되살림 ${f}`;
 }
