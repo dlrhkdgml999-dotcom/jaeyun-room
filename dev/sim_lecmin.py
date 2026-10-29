@@ -26,12 +26,17 @@ async def main():
         wk = await s.ev("(() => { const r = buildWeekReport(mondayOf(todayKey())); const ks = Array.from({length:7}, (_, i) => addDays(r.mon, i)).filter(k => k <= todayKey()); return { mins:r.mins, should:ks.reduce((a, k) => a + dayMins(k).total, 0) }; })()")
         print('L1 주간 리포트 분:', wk); s.expect(wk['mins'] == wk['should'], 'L1: 주간 리포트 공부 시간에 강의가 빠짐')
         # L2: 진도의 본 강의 목록 · 그날 강의 분 · 알림함이 사라진 태블릿
-        await s.ev("(() => { S.curr.seen = {}; Object.values(S.currs).forEach(c => c.seen = {}); Object.values(S.days).forEach(d => { delete d.lm; delete d.lw; }); S.notes = []; localStorage.removeItem('jaeyun-lecfill'); saveLocal(); })()")
+        await s.ev("(() => { S.curr.seen = {}; Object.values(S.currs).forEach(c => c.seen = {}); Object.values(S.days).forEach(d => { delete d.lm; delete d.lw; }); S.notes = []; localStorage.removeItem('jaeyun-lecfill2'); saveLocal(); })()")
         lost = await s.ev(f"{json.dumps(lecdays)}.map(k => dayMins(k).lec)"); print('L2 사라진 뒤 강의 분:', lost)
         await p.reload(); await p.wait_for_timeout(600)
         back = await s.ev(f"{json.dumps(lecdays)}.map(k => dayMins(k).lec)"); print('L2 앱 다시 켠 뒤:', back)
         s.expect(all(b >= 20 for b in back), f'L2: 강의 시간이 안 되살아남 {back}')
         again = await s.ev("backfillLectures()"); s.expect(again == 0, 'L2: 되살리기가 두 번 돌아감')
+        # 판에 붙은 강의만 남은 날(d.lec도 지움)도 찾는지
+        await s.ev(f"(() => {{ Object.values(S.days).forEach(d => {{ delete d.lm; delete d.lw; delete d.lec; }}); S.curr.seen = {{}}; Object.values(S.currs).forEach(c => c.seen = {{}}); localStorage.removeItem('jaeyun-lecfill2'); saveLocal(); }})()")
+        await p.reload(); await p.wait_for_timeout(600)
+        back2 = await s.ev(f"{json.dumps(lecdays)}.map(k => dayMins(k).lec)"); print('L2 판에 붙은 강의로만:', back2, '| 되살린 편 수', await s.ev("localStorage.getItem('jaeyun-lecfill-n')"))
+        s.expect(all(b >= 20 for b in back2), f'L2: 판에 붙은 강의로 못 찾음 {back2}')
         nolec = await s.ev(f"Object.keys(S.days).filter(k => !{json.dumps(lecdays)}.includes(k)).map(k => dayMins(k).lec)")
         s.expect(all(x == 0 for x in nolec), f'L2: 강의 없는 날에 강의 시간이 생김 {nolec}')
 

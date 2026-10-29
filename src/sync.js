@@ -223,7 +223,7 @@ const Sync = {
     // 오빠 폰에서 원인을 볼 수 있게: 앱 버전, 보낸 길, 못 보낸 기록 수, 기기 저장 공간, 마지막으로 공부한 날
     let ls = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {}
     const days = Object.keys(S.days), sy = this.synced(), unsent = days.filter(k => !sy.d[k]).length; this.beatUnsent = unsent;
-    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, online:navigator.onLine !== false, failSince:this.failSince || 0 };
+    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, lf:(() => { try { return +localStorage.getItem('jaeyun-lecfill-n') || 0; } catch (e) { return 0; } })(), online:navigator.onLine !== false, failSince:this.failSince || 0 };
     this.write(`${this.base()}/meta/kid`, info).then(() => { if (!this.okAt) this.okAt = Date.now(); }, e => { this.beatAt = 0; this.sentBad(e); });
   },
   /* 엄마·오빠 기기: 30분에 한 번 "이 기기는 무슨 역할 · 태블릿인지 · 여기서 공부한 날"을 올린다 */
@@ -439,13 +439,13 @@ function syncAlert(){
   if (bad) { const d = bad[1], who = d.role === 'mom' ? '엄마 폰' : '오빠 폰';
     return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 스티커 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
   // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
-  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}</span>` : '';
+  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}${kid.lf ? ` · 지난 강의 시간 ${kid.lf}편 되살림` : ''}</span>` : '';
   if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
   if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.${diag}`, 'soft');
   if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);
   // 하루 넘게 소식이 없으면: 인터넷 탓이라고만 하지 않고, 태블릿에서 무엇을 보면 되는지 알려 준다
   if (Date.now() - seen > 26 * 3600000) return box(`<b>재윤이 태블릿 마지막 연결: ${agoText(seen)}</b><br>재윤이가 그 뒤에도 공부했다면, 태블릿에서 공부방 앱을 열고 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 봐 주세요.<br>· 거기 <b>가족방 번호</b>가 이 폰(<b>${famCode()}</b>)과 다르면 → 이 폰 설정의 <b>가족 링크</b>를 태블릿 크롬에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 그대로 이 방으로 와요)<br>· "이 기기: 재윤이 태블릿"이 아니거나 가족방 만들기 화면이 보이면 → 가족 링크를 태블릿에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 지워지지 않아요)<br>· 빨간 글씨(보내기 실패)가 있으면 → 그 화면을 오빠에게 캡처${diag}`, 'warn');
-  return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓${kid.unsent ? ` · 보내는 중 ${kid.unsent}일` : ''}`, 'ok');
+  return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓${kid.unsent ? ` · 보내는 중 ${kid.unsent}일` : ''}${diag}`, 'ok');
 }
 function kidVer(v){ if (!v) return '예전 버전(10/28 이전)'; const m = String(v).match(/^\d{4}(\d\d)(\d\d)(\d\d)(\d\d)/); return m ? `${+m[1]}/${+m[2]} ${m[3]}:${m[4]} 버전` : v; }
 /* 재윤이 태블릿 첫 화면 아래: 기록이 가족에게 안 가고 있으면 엄마가 알아볼 수 있게 작게 표시 (재윤이는 신경 안 써도 되는 말투) */
@@ -479,7 +479,8 @@ ACT.tokid = async () => {
    태블릿 알림함에 남은 "📺 … n강을 봤어요 (m분)" 글로 날짜별 기록(d.lm)을 채운다. 재윤이 기기에서 한 번만 */
 function backfillLectures(){
   if (!S.started || (linked() && role() !== 'kid')) return 0;
-  try { if (localStorage.getItem('jaeyun-lecfill') === '1') return 0; } catch (e) {}
+  // v2(10/29 14:40): 판에 붙은 강의로도 찾음 → 이미 한 번 돈 기기도 한 번 더
+  try { if (localStorage.getItem('jaeyun-lecfill2') === '1') return 0; } catch (e) {}
   let added = 0;
   const courseByName = name => { for (const s of ['math','kor']) for (const co of CURRS[s].courses) if (co.ebs && co.ebs.name === name) return { s, co }; return null; };
   S.notes.forEach(n => {
@@ -494,15 +495,19 @@ function backfillLectures(){
     dy.lm = Object.assign({}, dy.lm); if (!(dy.lm[key] >= mins)) { dy.lm[key] = mins; added++; }
     dy.lw = [...new Set([...(dy.lw || []), key])];
   });
-  // 알림함 글이 없는 날(가족방을 옮기면서 알림함이 바뀜): 그날 정해진 강의를 "다 봤어요"로 끝냈으면 그 강의 길이(EBS 표시 시간)로 센다
+  // 알림함 글이 없는 날(가족방을 옮기면서 알림함이 바뀜): 그날 본 강의를 날짜 기록에서 찾아 그 강의 길이(EBS 표시 시간)로 센다
+  //  ① 그날 정해진 강의(d.lec)를 "다 봤어요"로 끝냄  ② 그날 강의가 붙은 판(b.cur.lec)을 강의 건너뛰기 없이 풀었음
+  const put = (dk, dy, s, n) => { const key = s + n, li = lectInfo(s, n); if (!li) return;
+    if (Object.keys(dy.lm || {}).some(k => k.startsWith(s))) return;   // 그 과목 강의 시간이 이미 있으면 그대로
+    if (curr(s).seen[n] && curr(s).seen[n].d === dk) return;
+    dy.lm = Object.assign({}, dy.lm, { [key]:Math.min(40, li.mins || 28) }); dy.lw = [...new Set([...(dy.lw || []), key])]; added++; };
   Object.entries(S.days).forEach(([dk, dy]) => {
-    const L = dy && dy.lec; if (!L || !L.s || !L.n || !(L.done || L.missed !== undefined)) return;
-    const n = L.missed > 0 ? L.missed : L.missed === undefined ? L.n : 0; if (!n) return;
-    const key = L.s + n, li = lectInfo(L.s, n); if (!li) return;
-    dy.lm = Object.assign({}, dy.lm); if (dy.lm[key] == null && !(curr(L.s).seen[n] && curr(L.s).seen[n].d === dk)) { dy.lm[key] = Math.min(40, li.mins || 28); added++; }
-    dy.lw = [...new Set([...(dy.lw || []), key])];
+    if (!dy) return;
+    const L = dy.lec;
+    if (L && L.s && L.n && (L.done || L.missed !== undefined)) { const n = L.missed > 0 ? L.missed : L.missed === undefined ? L.n : 0; if (n) put(dk, dy, L.s, n); }
+    Object.values(dy.boards || {}).forEach(b => { if (b && b.cur && b.cur.lec && !b.lecSkip && (b.done || b.idx > 0)) put(dk, dy, b.cur.subj, b.cur.lec); });
   });
-  try { localStorage.setItem('jaeyun-lecfill', '1'); } catch (e) {}
+  try { localStorage.setItem('jaeyun-lecfill2', '1'); localStorage.setItem('jaeyun-lecfill-n', String(added)); } catch (e) {}
   if (added) save();
   return added;
 }

@@ -745,7 +745,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261029142223";
+window.APP_VERSION = "20261029142526";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -5625,7 +5625,7 @@ const Sync = {
     // 오빠 폰에서 원인을 볼 수 있게: 앱 버전, 보낸 길, 못 보낸 기록 수, 기기 저장 공간, 마지막으로 공부한 날
     let ls = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {}
     const days = Object.keys(S.days), sy = this.synced(), unsent = days.filter(k => !sy.d[k]).length; this.beatUnsent = unsent;
-    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, online:navigator.onLine !== false, failSince:this.failSince || 0 };
+    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, lf:(() => { try { return +localStorage.getItem('jaeyun-lecfill-n') || 0; } catch (e) { return 0; } })(), online:navigator.onLine !== false, failSince:this.failSince || 0 };
     this.write(`${this.base()}/meta/kid`, info).then(() => { if (!this.okAt) this.okAt = Date.now(); }, e => { this.beatAt = 0; this.sentBad(e); });
   },
   /* 엄마·오빠 기기: 30분에 한 번 "이 기기는 무슨 역할 · 태블릿인지 · 여기서 공부한 날"을 올린다 */
@@ -5841,13 +5841,13 @@ function syncAlert(){
   if (bad) { const d = bad[1], who = d.role === 'mom' ? '엄마 폰' : '오빠 폰';
     return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 스티커 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
   // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
-  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}</span>` : '';
+  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}${kid.lf ? ` · 지난 강의 시간 ${kid.lf}편 되살림` : ''}</span>` : '';
   if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
   if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.${diag}`, 'soft');
   if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);
   // 하루 넘게 소식이 없으면: 인터넷 탓이라고만 하지 않고, 태블릿에서 무엇을 보면 되는지 알려 준다
   if (Date.now() - seen > 26 * 3600000) return box(`<b>재윤이 태블릿 마지막 연결: ${agoText(seen)}</b><br>재윤이가 그 뒤에도 공부했다면, 태블릿에서 공부방 앱을 열고 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 봐 주세요.<br>· 거기 <b>가족방 번호</b>가 이 폰(<b>${famCode()}</b>)과 다르면 → 이 폰 설정의 <b>가족 링크</b>를 태블릿 크롬에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 그대로 이 방으로 와요)<br>· "이 기기: 재윤이 태블릿"이 아니거나 가족방 만들기 화면이 보이면 → 가족 링크를 태블릿에서 열고 <b>"재윤이"</b> 고르기 (태블릿 기록은 지워지지 않아요)<br>· 빨간 글씨(보내기 실패)가 있으면 → 그 화면을 오빠에게 캡처${diag}`, 'warn');
-  return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓${kid.unsent ? ` · 보내는 중 ${kid.unsent}일` : ''}`, 'ok');
+  return box(`재윤이 태블릿 마지막 연결: ${agoText(seen)} ✓${kid.unsent ? ` · 보내는 중 ${kid.unsent}일` : ''}${diag}`, 'ok');
 }
 function kidVer(v){ if (!v) return '예전 버전(10/28 이전)'; const m = String(v).match(/^\d{4}(\d\d)(\d\d)(\d\d)(\d\d)/); return m ? `${+m[1]}/${+m[2]} ${m[3]}:${m[4]} 버전` : v; }
 /* 재윤이 태블릿 첫 화면 아래: 기록이 가족에게 안 가고 있으면 엄마가 알아볼 수 있게 작게 표시 (재윤이는 신경 안 써도 되는 말투) */
@@ -5881,7 +5881,8 @@ ACT.tokid = async () => {
    태블릿 알림함에 남은 "📺 … n강을 봤어요 (m분)" 글로 날짜별 기록(d.lm)을 채운다. 재윤이 기기에서 한 번만 */
 function backfillLectures(){
   if (!S.started || (linked() && role() !== 'kid')) return 0;
-  try { if (localStorage.getItem('jaeyun-lecfill') === '1') return 0; } catch (e) {}
+  // v2(10/29 14:40): 판에 붙은 강의로도 찾음 → 이미 한 번 돈 기기도 한 번 더
+  try { if (localStorage.getItem('jaeyun-lecfill2') === '1') return 0; } catch (e) {}
   let added = 0;
   const courseByName = name => { for (const s of ['math','kor']) for (const co of CURRS[s].courses) if (co.ebs && co.ebs.name === name) return { s, co }; return null; };
   S.notes.forEach(n => {
@@ -5896,15 +5897,19 @@ function backfillLectures(){
     dy.lm = Object.assign({}, dy.lm); if (!(dy.lm[key] >= mins)) { dy.lm[key] = mins; added++; }
     dy.lw = [...new Set([...(dy.lw || []), key])];
   });
-  // 알림함 글이 없는 날(가족방을 옮기면서 알림함이 바뀜): 그날 정해진 강의를 "다 봤어요"로 끝냈으면 그 강의 길이(EBS 표시 시간)로 센다
+  // 알림함 글이 없는 날(가족방을 옮기면서 알림함이 바뀜): 그날 본 강의를 날짜 기록에서 찾아 그 강의 길이(EBS 표시 시간)로 센다
+  //  ① 그날 정해진 강의(d.lec)를 "다 봤어요"로 끝냄  ② 그날 강의가 붙은 판(b.cur.lec)을 강의 건너뛰기 없이 풀었음
+  const put = (dk, dy, s, n) => { const key = s + n, li = lectInfo(s, n); if (!li) return;
+    if (Object.keys(dy.lm || {}).some(k => k.startsWith(s))) return;   // 그 과목 강의 시간이 이미 있으면 그대로
+    if (curr(s).seen[n] && curr(s).seen[n].d === dk) return;
+    dy.lm = Object.assign({}, dy.lm, { [key]:Math.min(40, li.mins || 28) }); dy.lw = [...new Set([...(dy.lw || []), key])]; added++; };
   Object.entries(S.days).forEach(([dk, dy]) => {
-    const L = dy && dy.lec; if (!L || !L.s || !L.n || !(L.done || L.missed !== undefined)) return;
-    const n = L.missed > 0 ? L.missed : L.missed === undefined ? L.n : 0; if (!n) return;
-    const key = L.s + n, li = lectInfo(L.s, n); if (!li) return;
-    dy.lm = Object.assign({}, dy.lm); if (dy.lm[key] == null && !(curr(L.s).seen[n] && curr(L.s).seen[n].d === dk)) { dy.lm[key] = Math.min(40, li.mins || 28); added++; }
-    dy.lw = [...new Set([...(dy.lw || []), key])];
+    if (!dy) return;
+    const L = dy.lec;
+    if (L && L.s && L.n && (L.done || L.missed !== undefined)) { const n = L.missed > 0 ? L.missed : L.missed === undefined ? L.n : 0; if (n) put(dk, dy, L.s, n); }
+    Object.values(dy.boards || {}).forEach(b => { if (b && b.cur && b.cur.lec && !b.lecSkip && (b.done || b.idx > 0)) put(dk, dy, b.cur.subj, b.cur.lec); });
   });
-  try { localStorage.setItem('jaeyun-lecfill', '1'); } catch (e) {}
+  try { localStorage.setItem('jaeyun-lecfill2', '1'); localStorage.setItem('jaeyun-lecfill-n', String(added)); } catch (e) {}
   if (added) save();
   return added;
 }
