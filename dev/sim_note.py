@@ -75,7 +75,7 @@ async def main():
         # ---------- 엄마 화면 ----------
         for (w, h, tag) in [(384, 832, 'phone'), (1280, 800, 'tab')]:
             await p.set_viewport_size({'width': w, 'height': h})
-            await s.adult('mom'); await p.wait_for_timeout(250)
+            await s.adult('mom'); await s.ev("MOM_OPEN.clear(); go('adult')"); await p.wait_for_timeout(250)   # 처음 모습(전부 접힘)부터
             m = await s.ev("""(() => ({ quick:document.querySelectorAll('.mom-quick .mq').length, folds:[...document.querySelectorAll('details.mom-fold')].map(d => d.dataset.k + (d.open ? '+' : '')),
               panelsOpen:[...document.querySelectorAll('.screen > .panel')].map(x => (x.querySelector('h3')||x).textContent.trim().slice(0, 12)), height:document.documentElement.scrollHeight }))()""")
             print(f'[{tag}] 엄마 탭:', m)

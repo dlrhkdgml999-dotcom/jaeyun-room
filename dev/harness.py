@@ -161,6 +161,11 @@ class Sim:
             for _ in range(4): await self.click('[data-a="pin"][data-v="0"]')
         await self.p.wait_for_timeout(150)
         await self.click(f'[data-a="atab"][data-v="{tab}"]'); await self.p.wait_for_timeout(150)
+        await self.open_folds()
+
+    async def open_folds(self):
+        # 10/29 엄마 탭이 간단해지면서 진도·설정 칸이 접힘 → 예전 시뮬레이션이 그 안의 칸을 쓸 수 있게 펼쳐 둔다 (펼친 상태는 앱이 기억)
+        await self.ev("document.querySelectorAll('details.mom-fold').forEach(d => { d.open = true; MOM_OPEN.add(d.dataset.k); })")
 
     async def grade_all(self, wrong_idx=()):
         while await self.p.locator('[data-a="grade"]').count():

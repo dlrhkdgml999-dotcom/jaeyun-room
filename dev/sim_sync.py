@@ -57,6 +57,7 @@ class Device(Sim):
         print(f'[{self.name}] 오류:', self.errors or '없음', '| 문제:', self.issues or '없음')
     async def adult_tab(self, t):
         await self.ev(f"S.adultTab = '{t}'; go('adult')"); await self.p.wait_for_timeout(200)
+        await self.ev("document.querySelectorAll('details.mom-fold').forEach(d => { d.open = true; MOM_OPEN.add(d.dataset.k); })")
 
 def days_on_server(fid): return sorted(k.split('/')[-1] for k in STORE if k.startswith(f'families/{fid}/days/'))
 
