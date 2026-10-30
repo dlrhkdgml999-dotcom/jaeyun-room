@@ -705,3 +705,7 @@ button.sd:active{transform:scale(.95)}
 .mom-fold-body>.panel{box-shadow:none}
 @media (min-width:700px){ .mom-quick{grid-template-columns:repeat(4,1fr)} }
 .opt.shake{animation:capshake .45s}
+/* 오답노트 같이 풀기: 낱말 블록·펜으로 쓴 답 (10/30) */
+.slots .s.w,.tiles button.w{width:auto;min-width:72px;padding:0 14px;font-size:28px}
+.nb-ink{display:flex;justify-content:center}
+.nb-ink img{max-width:100%;max-height:150px;border:2.5px solid var(--mint);border-radius:12px;background:#fff}

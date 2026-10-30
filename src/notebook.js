@@ -77,7 +77,11 @@ Object.assign(ACT, {
 
 /* ---------- 엄마랑 같이 풀기: 한 문제씩, 맞히면 다음으로 (10/29 오빠 요청) ----------
    - 보기 문제·숫자 문제: 재윤이가 직접 눌러서. 맞히면 "다시 맞혔어요" + 다음 문제, 두 번 틀리면 정답 보여 주고 다음에 다시
-   - 받아쓰기·낱말 만들기·원래 모양을 모르는 문제: 말하거나 써 보고 → 정답 보기 → 엄마가 ⭕ / ❌
+   - 10/30 오빠 요청 "태블릿으로 정답 입력": 모든 문제를 재윤이가 화면에서 직접 답한다 (nbInputQ)
+     · 원래 문제 모양을 알면 그대로(보기·숫자·글자 블록)
+     · 모르면 기록에서 되살림: [보기 …]가 남아 있으면 보기 문제, 숫자 답이면 숫자판, 짧은 낱말이면 글자 블록(가짜 글자 2개 섞음),
+       띄어 쓴 짧은 말이면 낱말 블록
+     · 받아쓰기·긴 답: 태블릿이면 펜으로 써서 "다 썼어요" → 쓴 글씨 옆에 정답 → 엄마 ⭕/❌ (폰이면 예전처럼 정답 보기 → 엄마 ⭕/❌)
    - 결과는 그날 d.nb에 남고(오답노트 "다시 맞혔어요" 판단), 복습 줄(S.wrong)도 같이 맞춘다 */
 let NBP = null;
 function nbStart(){
@@ -92,6 +96,38 @@ function nbRecord(x, ok, w){
   if (x.subj === 'dict') { const wd = S.wrong.find(y => y.subj === 'dict' && y.q && y.q.w === x.a); if (wd && ok) S.wrong = S.wrong.filter(y => y !== wd); }
   save();
 }
+/* 같이 풀기에서 재윤이가 답을 넣는 모양 (10/30). 원래 문제(S.wrong)는 바꾸지 않고 얕은 복사본을 쓴다 */
+function nbInputQ(x){
+  const a = String(x.a), pen = penMode();
+  const shown = String(noteShow(x)).replace(/\s*·?\s*\[보기[^\]]*\]/g, '').replace(/\s*·\s*$/, '').trim();
+  if (x.subj === 'dict') return { input: pen ? 'pen' : 'mom', prompt: pen ? '잘 듣고 펜으로 써 봐요' : '불러 주는 낱말을 써 봐요' };
+  const o = nbQ(x);
+  if (o && ['choice', 'numpad', 'build'].includes(o.input) && (o.input !== 'choice' || (o.opts || []).map(String).includes(a))) return Object.assign({}, o, { orig:o });
+  const base = { prompt: shown || '정답을 찾아봐요', subj:x.subj };
+  const m = String(x.t).match(/\[보기 ([^\]]*)\]/);
+  if (m) { const opts = m[1].split(' · ').map(t => t.trim()).filter(Boolean); if (opts.includes(a) && opts.length >= 2) return Object.assign(base, { input:'choice', opts, ans:a }); }
+  if (/^\d{1,4}$/.test(a)) return Object.assign(base, { input:'numpad', ans:a });
+  const ko = /^[가-힣]+$/.test(a), en = /^[A-Za-z]+$/.test(a);
+  if ((ko && a.length >= 2 && a.length <= 6) || (en && a.length >= 2 && a.length <= 7)) {
+    const parts = [...a], fakes = new Set(); let g = 0;
+    while (fakes.size < 2 && g++ < 40) { const f = ko ? fakeSyl(pick(parts)) : pick('abcdefghiklmnoprstuw'.split('')); if (!parts.includes(f)) fakes.add(en && a === a.toUpperCase() ? f.toUpperCase() : f); }
+    return Object.assign(base, { input:'build', parts, sep:'', tiles:shuffle([...parts, ...fakes]), ans:a, say:`${shown}. 글자 블록을 차례대로 눌러서 답을 만들어 봐요` });
+  }
+  const ws = a.split(/\s+/).filter(Boolean);
+  if (ws.length >= 2 && ws.length <= 5 && ws.every(w => w.length <= 7) && new Set(ws).size === ws.length) {
+    const others = shuffle(notebookItems().flatMap(y => String(y.a).split(/\s+/)).filter(w => w && w.length <= 7 && !ws.includes(w) && /^[가-힣A-Za-z]+$/.test(w)));
+    return Object.assign(base, { input:'build', parts:ws, sep:' ', wide:true, tiles:shuffle([...ws, ...[...new Set(others)].slice(0, 1)]), ans:a, say:`${shown}. 낱말 블록을 차례대로 눌러서 답을 만들어 봐요` });
+  }
+  return Object.assign(base, { input: pen ? 'pen' : 'mom', prompt: shown + (pen ? ' (펜으로 답을 써 봐요)' : '') });
+}
+function nbBuildHTML(q, built){
+  const n = q.parts ? q.parts.length : [...q.ans].length, w = q.wide ? ' w' : '';
+  return `<div class="slots">${Array.from({ length:n }, (_, i) => `<span class="s${w} ${built[i] != null ? 'filled' : ''}" data-a="nbunbuild" data-i="${i}">${built[i] != null ? esc(q.tiles[built[i]]) : ''}</span>`).join('')}</div>
+      <div class="tiles">${q.tiles.map((t, i) => `<button class="${w.trim()} ${built.includes(i) ? 'used' : ''}" data-a="nbtile" data-i="${i}">${esc(t)}</button>`).join('')}</div>`;
+}
+function nbWrongTry(){ const P = NBP; P.tries++; SFX.wrong();
+  if (P.tries >= 2) return nbAfter(false);
+  VIEWS.nbplay(); const fb = $('#nbfb'); if (fb) fb.innerHTML = `<div class="bubble" style="font-size:19px">음… 다시 한 번 생각해 볼까?</div>`; speak('음, 다시 한 번 생각해 볼까?'); }
 VIEWS.nbplay = () => {
   const P = NBP; if (!P) return go('notebook');
   if (P.i >= P.items.length) {
@@ -103,14 +139,19 @@ VIEWS.nbplay = () => {
     if (P.right) SFX.sticker(); speak(P.right === P.items.length ? '전부 맞혔어! 최고야!' : '잘했어! 다음에 또 같이 해 보자!');
     return;
   }
-  const x = P.items[P.i], q = nbQ(x), sn = { kor:'국어', math:'수학', eng:'영어', dict:'받아쓰기' }[x.subj] || '';
-  const mode = q && q.input === 'choice' ? 'choice' : q && q.input === 'numpad' ? 'numpad' : 'mom';
-  P.mode = mode; P.q = q;
-  const prompt = q ? q.prompt : x.subj === 'dict' ? '불러 주는 낱말을 써 봐요' : noteShow(x);
-  const body = mode === 'choice' ? `<div class="options ${q.cols === 2 && !q.sayOpts ? 'cols2' : ''}">${q.opts.map((o, i) => `<button class="opt ${q.pic ? 'pic-opt' : ''} ${P.wrongs.includes(String(o)) ? 'nb-x' : ''}" data-a="nbans" data-i="${i}" ${P.wrongs.includes(String(o)) ? 'disabled' : ''}>${optLabel(q, o)}</button>`).join('')}</div>`
+  const x = P.items[P.i], sn = { kor:'국어', math:'수학', eng:'영어', dict:'받아쓰기' }[x.subj] || '';
+  if (!P.q || P.qFor !== x.id) { P.q = nbInputQ(x); P.qFor = x.id; P.built = []; }
+  const q = P.q, mode = q.input;
+  P.mode = mode;
+  const prompt = q.prompt;
+  const ink = P.ink ? `<div class="nb-ink"><img src="${P.ink}" alt="재윤이가 쓴 답"></div>` : '';
+  const judge = `<div class="nb-a" style="justify-content:center">정답 <b>${esc(x.a)}</b></div>${ink}<p class="muted" style="text-align:center;margin:0">엄마가 봐 주세요. 재윤이가 맞혔나요?</p>
+        <div class="row" style="gap:12px;justify-content:center"><button class="btn mint big" data-a="nbjudge" data-v="1">⭕ 맞혔어요</button><button class="btn ghost big" data-a="nbjudge" data-v="0">❌ 다음에 다시</button></div>`;
+  const body = mode === 'choice' ? `<div class="options ${q.cols === 2 && !q.sayOpts ? 'cols2' : q.opts.length === 3 && !q.opts.some(o => String(o).length > 5) && !q.sayOpts && !q.pic ? 'cols3' : ''}">${q.opts.map((o, i) => `<button class="opt ${q.pic ? 'pic-opt' : ''} ${P.wrongs.includes(String(o)) ? 'nb-x' : ''}" data-a="nbans" data-i="${i}" ${P.wrongs.includes(String(o)) ? 'disabled' : ''}>${optLabel(q, o)}</button>`).join('')}</div>`
     : mode === 'numpad' ? `<div class="answer-box"><span class="slot">${esc(P.typed)}</span></div><div class="numpad">${[1,2,3,4,5,6,7,8,9].map(n => `<button data-a="nbnum" data-v="${n}">${n}</button>`).join('')}<button class="del" data-a="nbnum" data-v="del">지우기</button><button data-a="nbnum" data-v="0">0</button><button class="ok" data-a="nbnum" data-v="ok">확인</button></div>`
-    : P.show ? `<div class="nb-a" style="justify-content:center">정답 <b>${esc(x.a)}</b></div><p class="muted" style="text-align:center;margin:0">엄마가 봐 주세요. 재윤이가 맞혔나요?</p>
-        <div class="row" style="gap:12px;justify-content:center"><button class="btn mint big" data-a="nbjudge" data-v="1">⭕ 맞혔어요</button><button class="btn ghost big" data-a="nbjudge" data-v="0">❌ 다음에 다시</button></div>`
+    : mode === 'build' ? nbBuildHTML(q, P.built)
+    : P.show ? judge
+    : mode === 'pen' ? `<div class="pen-wrap"><canvas id="pen" class="pen-canvas" aria-label="답 쓰는 칸"></canvas><div class="row" style="gap:10px;justify-content:center"><button class="btn ghost small" data-a="penclear">지우고 다시 쓰기</button><button class="btn mint big" data-a="nbpendone">다 썼어요</button></div></div>`
       : `<p class="muted" style="text-align:center;margin:0">${x.subj === 'dict' ? '공책에 써 보고' : '답을 말해 보고'} 정답을 눌러서 확인해요</p><button class="btn big" data-a="nbreveal">정답 보기</button>`;
   app().innerHTML = `<section class="screen">
     <div class="q-top"><button class="icon-btn" data-a="nbdone" aria-label="그만하기">${ICON.close}</button><span class="disp" style="flex:1;text-align:center;font-size:18px">📒 같이 풀기</span><span class="disp" style="font-size:18px">${P.i + 1}/${P.items.length}</span></div>
@@ -122,9 +163,10 @@ VIEWS.nbplay = () => {
     </div>
     <div class="feedback" id="nbfb"></div>
   </section>`;
+  if (mode === 'pen' && !P.show) setupPen(2);
   if (!P.said) { P.said = true; nbSay(); }
 };
-function nbSay(){ const P = NBP, x = P.items[P.i], q = P.q; ++SEQ;
+function nbSay(){ const P = NBP, x = P.items[P.i], q = P.q && P.q.orig; ++SEQ;
   if (q) { if (q.listen) { (async () => { const my = SEQ; if (q.say) await speak(q.say); if (my === SEQ) speak(q.listen, q.lang || 'ko-KR'); })(); } else speak(q.say || q.prompt); }
   else speak(noteSay(x)); }
 function nbAfter(ok){
@@ -135,7 +177,7 @@ function nbAfter(ok){
   if (fb) fb.innerHTML = ok ? `<div class="bubble" style="font-size:20px">⭕ 맞았어! 다음 문제로 가자!</div>` : `<div class="bubble" style="font-size:20px">정답은 <b>${esc(x.a)}</b>. 다음에 또 해 보자!</div>`;
   if (ok) { SFX.right(); speak(pick(['맞았어! 잘했어!', '와, 이제 알겠지?', '정답! 멋지다!'])); } else speak(`정답은 ${x.subj === 'dict' ? x.a : String(x.a)}. 다음에 또 해 보자!`);
   document.querySelectorAll('[data-a^="nb"]').forEach(b => { if (b.dataset.a !== 'nbdone') b.disabled = true; });
-  setTimeout(() => { if (SCREEN !== 'nbplay' || NBP !== P) return; P.i++; P.tries = 0; P.typed = ''; P.show = false; P.wrongs = []; P.said = false; VIEWS.nbplay(); }, ok ? 1300 : 2200);
+  setTimeout(() => { if (SCREEN !== 'nbplay' || NBP !== P) return; P.i++; P.tries = 0; P.typed = ''; P.show = false; P.wrongs = []; P.said = false; P.ink = null; P.q = null; P.built = []; VIEWS.nbplay(); }, ok ? 1300 : 2200);
 }
 Object.assign(ACT, {
   nbplay(){ nbStart(); if (!NBP.items.length) return go('notebook'); SFX.tap(); go('nbplay'); },
@@ -148,10 +190,20 @@ Object.assign(ACT, {
     P.wrongs.push(String(o)); P.tries++; SFX.wrong();
     if (P.tries >= 2) return nbAfter(false);
     el.classList.add('nb-x', 'shake'); el.disabled = true; const fb = $('#nbfb'); if (fb) fb.innerHTML = `<div class="bubble" style="font-size:19px">음… 다시 한 번 생각해 볼까?</div>`; speak('음, 다시 한 번 생각해 볼까?'); },
+  nbtile(el){ const P = NBP, q = P.q, i = +el.dataset.i, n = q.parts ? q.parts.length : [...q.ans].length;
+    if (P.locked || P.built.includes(i) || P.built.length >= n) return;
+    SFX.tap(); P.built.push(i); VIEWS.nbplay();
+    if (P.built.length === n) { P.locked = true; setTimeout(() => { P.locked = false; if (NBP !== P || SCREEN !== 'nbplay') return;
+      const got = P.built.map(k => q.tiles[k]).join(q.sep || '');
+      if (got === String(q.ans)) return nbAfter(true);
+      P.wrongs.push(got); P.built = []; nbWrongTry(); }, 280); } },
+  nbunbuild(el){ const P = NBP, i = +el.dataset.i; if (P.locked || P.built[i] == null) return; P.built = P.built.slice(0, i); SFX.tap(); VIEWS.nbplay(); },
+  nbpendone(){ const P = NBP; if (!PEN.drawn) { toast('칸에 먼저 써 주세요'); speak('칸에 먼저 써 볼까?'); return; }
+    P.ink = penImage(); P.show = true; SFX.tap(); VIEWS.nbplay(); speak('다 썼구나! 엄마, 정답이랑 맞는지 봐 주세요'); },
   nbnum(el){ const P = NBP, v = el.dataset.v;
     if (v === 'del') P.typed = P.typed.slice(0, -1);
     else if (v === 'ok') { if (!P.typed) return; if (Number(P.typed) === Number(P.q.ans)) return nbAfter(true);
-      P.wrongs.push(P.typed); P.tries++; SFX.wrong(); P.typed = ''; if (P.tries >= 2) return nbAfter(false); VIEWS.nbplay(); const fb = $('#nbfb'); if (fb) fb.innerHTML = `<div class="bubble" style="font-size:19px">음… 다시 한 번 생각해 볼까?</div>`; speak('음, 다시 한 번 생각해 볼까?'); return; }
+      P.wrongs.push(P.typed); P.typed = ''; return nbWrongTry(); }
     else if (P.typed.length < 4) P.typed += v;
     SFX.tap(); const sl = document.querySelector('.answer-box .slot'); if (sl) sl.textContent = P.typed; },
 });
