@@ -555,7 +555,19 @@ function checkGift(){
 /* ===================== 화면 ===================== */
 const app = () => $('#app');
 let SCREEN = 'home';
-function go(name, arg){ ++SEQ; stopSound(); SCREEN = name; window.scrollTo(0, 0); (VIEWS[name] || VIEWS.home)(arg); }
+/* 판 시간 = 문제 시간(b.secs) + 받아쓰기·개념 카드·글쓰기·사진 화면에 있던 시간(b.xs) (11/2: 강의·받아쓰기까지 다 했는데 공부 시간 7분) */
+let SCR_AT = Date.now();
+const XS_SCREENS = ['dict','photo','write','cards'];
+function addScreenTime(){
+  const now = Date.now(), sec = (now - SCR_AT) / 1000; SCR_AT = now;
+  if (!XS_SCREENS.includes(SCREEN) || !RUN || !RUN.b || document.hidden) return;
+  if (SCREEN === 'cards' && !(CARDS && CARDS.fromBoard)) return;
+  const d = S.days[todayKey()]; if (!d || !d.boards || d.boards[RUN.k] !== RUN.b) return;
+  RUN.b.xs = Math.round((RUN.b.xs || 0) + Math.min(600, Math.max(0, sec)));
+}
+const bsecs = b => b ? (b.secs || 0) + (b.xs || 0) : 0;
+function go(name, arg){ try { addScreenTime(); } catch (e) {} ++SEQ; stopSound(); SCREEN = name; window.scrollTo(0, 0); (VIEWS[name] || VIEWS.home)(arg); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) { try { addScreenTime(); } catch (e) {} } else SCR_AT = Date.now(); });
 function toast(msg){ const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
 
 const VIEWS = {};
@@ -882,7 +894,7 @@ function finishBoard(k){
   if (b.done) return go('home');
   b.done = true; b.endedAt = Date.now();
   const st = pick(STICKERS); d.earned.push(st); S.stickers.push({ e:st, d:todayKey() });
-  const mins = Math.max(1, Math.round(b.secs / 60));
+  const mins = Math.max(1, Math.round(bsecs(b) / 60));
   if (b.cur) b.cur.result = judgeCurriculum(b);
   b.n = b.qs.length; b.qs = [];   // 끝난 판의 문제 목록은 지워서 폰 저장 공간을 아낀다
   notify('oppa', `재윤이가 ${josa(BNAME[k], "을", "를")} 끝냈어요 · ${b.n}문제 중 ${b.correct}개 한 번에 정답 · ${mins}분`);
@@ -890,7 +902,7 @@ function finishBoard(k){
   if (BOARDS.every(x => boardState(x.k, d) === 'done') && !d.done) {
     d.done = true; allDone = true;
     const bonus = pick(STICKERS); d.earned.push(bonus); S.stickers.push({ e:bonus, d:todayKey(), bonus:true });
-    const totalMin = Math.round(BOARDS.reduce((s, x) => s + d.boards[x.k].secs, 0) / 60);
+    const totalMin = Math.round(BOARDS.reduce((s, x) => s + bsecs(d.boards[x.k]), 0) / 60);
     notify('oppa', `🎉 재윤이가 오늘 공부를 모두 끝냈어요 (${totalMin}분). 칭찬 녹음을 남겨 주세요!`);
     notify('mom', `🎉 재윤이가 오늘 공부를 모두 끝냈어요 (${totalMin}분)`);
     checkGift();
@@ -917,7 +929,7 @@ VIEWS.reward = ({ k, st, allDone }) => {
   setTimeout(() => playMom('m1'), 900);
 };
 VIEWS.alldone = () => {
-  const d = day(); const totalMin = Math.round(BOARDS.reduce((s, x) => s + (d.boards[x.k] ? d.boards[x.k].secs : 0), 0) / 60);
+  const d = day(); const totalMin = Math.round(BOARDS.reduce((s, x) => s + bsecs(d.boards[x.k]), 0) / 60);
   const pr = S.praise;
   app().innerHTML = `<section class="screen reward">
     <h1>재윤아, 오늘 공부 다 끝!</h1>
@@ -1087,7 +1099,7 @@ function levelPanel(){
     <p class="muted" style="font-size:14px">받아쓰기는 국어 단계를 따라가요. 바꾸면 다음에 시작하는 판부터 적용돼요. 한 번에 90% 넘게 맞히는 날이 이어지면 여기서 올리자고 알려 드려요.</p>
   </div>`;
 }
-function minutesOf(dy){ return dy ? Math.round(BOARDS.reduce((s, b) => s + (dy.boards[b.k] ? dy.boards[b.k].secs : 0), 0) / 60) : 0; }
+function minutesOf(dy){ return dy ? Math.round(BOARDS.reduce((s, b) => s + bsecs(dy.boards[b.k]), 0) / 60) : 0; }
 function adultHead(){
   return `<div class="row"><button class="icon-btn" data-a="home" aria-label="재윤이 화면으로">${ICON.back}</button><h2 style="flex:1">엄마 · 오빠 메뉴</h2></div>
   <div class="tabs">${[['mom','엄마'],['oppa','오빠'],['set','설정']].map(([v, l]) => `<button class="${S.adultTab === v ? 'on' : ''}" data-a="atab" data-v="${v}">${l}</button>`).join('')}</div>`;
@@ -1097,7 +1109,7 @@ function dayGoalPanel(){
   const goal = +S.dayGoal || 60, keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), -i - 1)).concat(todayKey());
   const per = {}; BOARDS.forEach(b => per[b.k] = []);
   const tot = [];
-  keys.forEach(k => { const dy = S.days[k]; if (!dy || !dy.done) return; tot.push(dayMins(k).total); BOARDS.forEach(b => { const bo = dy.boards[b.k]; if (bo && bo.done) per[b.k].push(bo.secs / 60); }); });
+  keys.forEach(k => { const dy = S.days[k]; if (!dy || !dy.done) return; tot.push(dayMins(k).total); BOARDS.forEach(b => { const bo = dy.boards[b.k]; if (bo && bo.done) per[b.k].push(bsecs(bo) / 60); }); });
   const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null, avgT = avg(tot);
   const verdict = avgT == null ? '다 끝낸 날이 생기면 실제로 걸린 시간이 여기 나와요.' : avgT > goal + 10 ? `목표보다 ${avgT - goal}분 길어요. 문제를 푸는 속도에 맞춰 판마다 문제 수가 저절로 줄어요. 그래도 길면 목표를 줄여 주세요.` : avgT < goal - 15 ? `목표보다 ${goal - avgT}분 짧게 끝내고 있어요. 문제가 쉬워서 빨리 푸는 거라면 목표를 늘려도 좋아요.` : '목표와 비슷하게 공부하고 있어요 👍';
   return `<div class="panel"><h3>하루 공부 시간</h3>
@@ -1108,7 +1120,7 @@ function dayGoalPanel(){
 function todayPanel(){
   const d = day();
   return `<div class="panel"><h3>오늘 재윤이 (${korDate(now())})</h3><div class="list">${BOARDS.map(b => { const bo = d.boards[b.k], st = boardState(b.k, d);
-    return `<div class="li"><span class="grow">${b.name}</span>${st === 'done' ? `<span class="muted" style="font-size:14px">${bo.correct}/${bo.n || bo.qs.length} · ${Math.max(1, Math.round(bo.secs / 60))}분</span><span class="pill ok">완료</span>` : st === 'doing' ? `<span class="pill wait">하는 중</span>` : `<span class="pill no">아직</span>`}</div>`; }).join('')}</div>
+    return `<div class="li"><span class="grow">${b.name}</span>${st === 'done' ? `<span class="muted" style="font-size:14px">${bo.correct}/${bo.n || bo.qs.length} · ${Math.max(1, Math.round(bsecs(bo) / 60))}분</span><span class="pill ok">완료</span>` : st === 'doing' ? `<span class="pill wait">하는 중</span>` : `<span class="pill no">아직</span>`}</div>`; }).join('')}</div>
     <p class="muted" style="font-size:15px">오늘 공부 시간 ${minutesOf(d)}분 · 받은 스티커 ${d.earned.length}개</p></div>`;
 }
 /* 엄마 탭 접는 칸: 열어 둔 칸은 화면을 다시 그려도 열린 채로 */
@@ -1275,15 +1287,15 @@ const ACT = {
   lecopt(el){ const [s, n] = el.dataset.v.split('|'); openLecture(s, +n, true); },
   lecdone(el){ const w = LECW; if (!w) return go('home'); const mins = Math.round((Date.now() - w.at) / 60000), li = lectInfo(w.s, w.n);
     if (mins < 10 && !el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 끝까지 다 봤어요!'; speak(`벌써 다 봤어? ${li.no}강은 ${li.mins}분짜리야. 끝까지 봤으면 한 번 더 눌러 줘!`); return; }
-    if (w.opt) { const c = curr(w.s); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins }; noteLecWatched(w.s, w.n, mins); notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save();
-      LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {} SFX.sticker(); return afterLecture(true); }
-    w.mins = mins; try { sessionStorage.setItem('lecw', JSON.stringify(w)); } catch (e) {}
+    if (w.opt) { const c = curr(w.s), cm = lecCredit(w.s, w.n, mins); if (!c.seen[w.n]) c.seen[w.n] = { d:todayKey(), mins:cm }; noteLecWatched(w.s, w.n, cm); notify('mom', `📺 재윤이가 EBS ${li.no}강(${li.desc})을 골라서 봤어요 (${mins}분)`); save();
+      LECW = null; saveLecw(null); SFX.sticker(); return afterLecture(true); }
+    w.mins = mins; saveLecw(w);
     go('leccheck'); },
   /* 몇 강 봤는지 고른 결과 */
   async lecwatched(el){
     const w = LECW; if (!w) return go('home');
-    const m = +el.dataset.v, li = lectInfo(w.s, w.n), c = curr(w.s), mins = w.mins || 0;
-    LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
+    const m = +el.dataset.v, li = lectInfo(w.s, w.n), c = curr(w.s), mins = lecCredit(w.s, m > 0 ? m : m === 0 ? w.n : 0, w.mins || 0);
+    LECW = null; saveLecw(null);
     if (m === w.n || m === 0) {
       markLectureSeen(w.s, w.n, mins);
       if (m === 0) notify('mom', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강을 봤는지 잘 모르겠대요. 진도 기록에서 확인해 주세요`);
@@ -1305,7 +1317,7 @@ const ACT = {
     speak(`앗, 오늘은 숫자 ${li.local}, ${li.local}강이었어! ${m !== w.n ? '그 강의도 잘 봤어! ' : ''}${li.local}강은 내일 같이 보자. 오늘은 문제만 풀자!`);
   },
   lecafter(){ SFX.tap(); afterLecture(false); },
-  lecfail(){ const w = LECW; LECW = null; try { sessionStorage.removeItem('lecw'); } catch (e) {}
+  lecfail(){ const w = LECW; LECW = null; saveLecw(null);
     notify('mom', ebsUseApp() ? '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿에 EBS 초등 앱이 깔려 있고 로그인돼 있는지 확인해 주세요' : '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
     const b = RUN && RUN.b; if (b && b.cur) { b.lecSkip = true; save(); }
     speak('괜찮아! 엄마한테 알려 둘게. 오늘은 토리랑 개념을 배우자!');

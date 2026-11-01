@@ -51,6 +51,12 @@ async def main():
                 else:
                     for ch in ans: await p.locator(f'[data-a="nbnum"][data-v="{ch}"]').click()
                     await p.locator('[data-a="nbnum"][data-v="ok"]').click(); exp = True
+            elif mode == 'build':   # 10/30부터 글자·낱말 블록도 재윤이가 직접 (자세한 검사는 sim_nbinput)
+                q = await s.ev("({ tiles:NBP.q.tiles, parts:NBP.q.parts || [...String(NBP.q.ans)] })"); used = set()
+                for ch in q['parts']:
+                    k = next(k for k, t in enumerate(q['tiles']) if t == ch and k not in used); used.add(k)
+                    await p.locator('[data-a="nbtile"]').nth(k).click()
+                exp = True
             else:
                 await s.click('[data-a="nbreveal"]'); await p.wait_for_timeout(60)
                 s.expect(await s.ev("!!document.querySelector('.nb-a')"), '엄마 판정 문제에서 정답이 안 보임')

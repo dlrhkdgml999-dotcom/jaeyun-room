@@ -104,7 +104,16 @@ function lecturesOn(k){
   SUBJS.forEach(s => Object.entries(curr(s).seen || {}).forEach(([n, v]) => { if (v && v.d === k) m.set(s + n, { s, n:+n, mins:v.mins || 0 }); }));
   Object.entries((dy && dy.lm) || {}).forEach(([key, mins]) => { const s = key.slice(0, key.match(/[^a-z]/) ? key.match(/[^a-z]/).index : key.length), n = +key.slice(s.length);
     const cur = m.get(key); if (cur) cur.mins = Math.max(cur.mins, mins || 0); else m.set(key, { s, n:n || 0, mins:mins || 0 }); });
-  return [...m.values()].map(x => ({ s:x.s, n:x.n, mins:Math.min(40, x.mins), info:x.n ? lectInfo(x.s, x.n) : null }));
+  // 11/2: 강의를 다 봤다고 했는데 0~1분으로 남은 날(공부방 앱이 꺼졌다 켜져 잰 시간이 사라짐) → 그 강의 길이(EBS 표시 분)로 센다.
+  // 기록에 강의가 없어도 그날 정해진 강의를 "다 봤어요"로 끝냈거나, 강의가 붙은 판을 강의 건너뛰기 없이 풀었으면 본 것으로.
+  if (dy) {
+    const has = s => [...m.values()].some(x => x.s === s);
+    const add = (s, n) => { if (n && EBS_LECT[s] && !has(s) && lectInfo(s, n)) m.set(s + n, { s, n, mins:0 }); };
+    const L = dy.lec; if (L && L.s && L.n && L.done && !(L.missed > 0)) add(L.s, L.n);
+    Object.values(dy.boards || {}).forEach(b => { if (b && b.cur && b.cur.lec && !b.lecSkip && (b.done || b.idx > 0)) add(b.cur.subj, b.cur.lec); });
+  }
+  return [...m.values()].map(x => { const info = x.n ? lectInfo(x.s, x.n) : null;
+    return { s:x.s, n:x.n, mins:Math.min(40, Math.max(x.mins, (info && info.mins) || 0)), info }; });
 }
 function dayMins(k){ const dy = S.days[k], app = minutesOf(dy), lec = lecturesOn(k).reduce((a, x) => a + x.mins, 0); return { app, lec, total:app + lec }; }
 function dayLogs(k){ const dy = S.days[k]; if (!dy || !dy.boards) return []; return BOARDS.flatMap(b => ((dy.boards[b.k] || {}).log || []).map(x => ({ k, board:b.k, t:x[0], a:x[1], w:x[2], r:x[3], s:x[4], subj:x[5] || b.k }))); }
@@ -113,10 +122,10 @@ function heat(m){ return m <= 0 ? 0 : m < 20 ? 1 : m < 40 ? 2 : m < 60 ? 3 : 4; 
 function studyRange(){ const out = []; for (let k = STUDY.from; k <= STUDY.to; k = addDays(k, 1)) out.push(k); return out; }
 function studySummary(){
   const ks = studyRange(), t = todayKey();
-  const days = ks.filter(k => S.days[k] && Object.values(S.days[k].boards || {}).some(b => b && (b.done || b.secs > 30)));
+  const days = ks.filter(k => S.days[k] && Object.values(S.days[k].boards || {}).some(b => b && (b.done || bsecs(b) > 30)));
   const mins = ks.reduce((a, k) => a + dayMins(k).total, 0), full = ks.filter(k => S.days[k] && S.days[k].done).length;
   const acc = {}; ['kor','math','eng','rev'].forEach(s => acc[s] = { c:0, n:0, m:0 });
-  ks.forEach(k => { const dy = S.days[k]; if (!dy) return; Object.entries(dy.boards || {}).forEach(([s, b]) => { if (!acc[s] || !b) return; acc[s].m += b.secs || 0; if (b.done) { acc[s].c += b.correct; acc[s].n += b.n || (b.qs || []).length; } }); });
+  ks.forEach(k => { const dy = S.days[k]; if (!dy) return; Object.entries(dy.boards || {}).forEach(([s, b]) => { if (!acc[s] || !b) return; acc[s].m += bsecs(b); if (b.done) { acc[s].c += b.correct; acc[s].n += b.n || (b.qs || []).length; } }); });
   const logs = ks.flatMap(dayLogs);
   const avail = ks.filter(k => k <= t && k >= (S.firstDay || ks[0])).length;
   return { ks, days:days.length, mins, full, acc, logs, avail };
@@ -155,7 +164,7 @@ function dayDetailHTML(k){
     const logs = (bo.log || []).map(x => ({ k, board:b.k, t:x[0], a:x[1], w:x[2], r:x[3], s:x[4], subj:x[5] || b.k })).filter(x => !only || x.r !== 1);
     const firstN = (bo.log || []).filter(x => x[3] === 1).length;
     return `<div class="sboard"><div class="row" style="gap:8px;flex-wrap:wrap"><span class="sbadge ${b.cls}">${b.badge}</span><b style="font-size:18px">${b.name}</b>
-        <span class="spacer"></span><span class="muted" style="font-size:14px">${bo.done ? `${bo.correct}/${n} 한 번에 · ` : `${bo.idx || 0}/${n} 푸는 중 · `}${Math.max(1, Math.round((bo.secs || 0) / 60))}분</span>
+        <span class="spacer"></span><span class="muted" style="font-size:14px">${bo.done ? `${bo.correct}/${n} 한 번에 · ` : `${bo.idx || 0}/${n} 푸는 중 · `}${Math.max(1, Math.round(bsecs(bo) / 60))}분</span>
         ${res ? `<span class="pill ${res.pass ? 'ok' : 'wait'}">${res.test ? '평가 ' : ''}${res.pass ? '통과' : '다시'} ${Math.round(res.rate * 100)}%</span>` : ''}</div>
       ${what ? `<p class="muted" style="font-size:14px;margin:4px 0 0">${esc(what)}</p>` : ''}
       ${bo.log ? (logs.length ? `<div class="lqs">${logs.map(x => logRowHTML(x)).join('')}</div>` : `<p class="muted" style="font-size:14px">틀린 문제가 없어요! (${firstN}문제 모두 한 번에 정답)</p>`)

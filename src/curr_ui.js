@@ -130,7 +130,13 @@ function mapTileHTML(){
 }
 
 /* ===================== EBS 강의 보기 ===================== */
-let LECW = null;   // { s, n, at, opt }
+let LECW = null;   // { s, n, at, opt, d }
+/* 강의 보러 나간 기록은 localStorage에 (11/2: sessionStorage는 EBS 앱을 보는 동안 공부방 앱이 꺼지면 사라져서,
+   돌아오면 강의 안내가 처음부터 다시 나오고 바로 "다 봤어요" → 강의가 0분으로 남았음) */
+function saveLecw(w){ try { if (w) localStorage.setItem('jaeyun-lecw', JSON.stringify(Object.assign({ d:todayKey() }, w))); else localStorage.removeItem('jaeyun-lecw'); } catch (e) {} }
+function loadLecw(){ try { const w = JSON.parse(localStorage.getItem('jaeyun-lecw') || 'null'); if (w && w.d === todayKey() && Date.now() - w.at < 4 * 3600e3) return w; } catch (e) {} return null; }
+/* 끝까지 봤다고 한 강의는 그 강의 길이(EBS 표시 분)로 센다. 잰 시간은 앱이 꺼지면 짧아질 수 있어서 */
+function lecCredit(s, n, measured){ const li = n > 0 && EBS_LECT[s] ? lectInfo(s, n) : null; return Math.min(40, Math.max(Math.round(measured || 0), (li && li.mins) || 0)); }
 /* 같은 강좌 안의 앞 · 오늘 · 다음 강의 (EBS 강의목록과 같은 순서) */
 function lecNeighbors(s, n){
   const me = lectInfo(s, n); if (!me) return [];
@@ -157,12 +163,13 @@ function lectureGuardHTML(s, n){
 function openLecture(s, n, opt){
   eyeOverlay(lectureGuardHTML(s, n), o => {
     const a = o.querySelector('[data-lecgo]');
-    a.addEventListener('click', () => { LECW = { s, n, at:Date.now(), opt:!!opt }; try { sessionStorage.setItem('lecw', JSON.stringify(LECW)); } catch (e) {} setTimeout(() => go('lecwait'), 50); });
+    a.addEventListener('click', () => { LECW = { s, n, at:Date.now(), opt:!!opt, k:RUN && RUN.k }; saveLecw(LECW); setTimeout(() => go('lecwait'), 50); });
   });
   { const li = lectInfo(s, n); speak(ebsUseApp() ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 이 에스 앱이 열리면 나의 학습방에서 ${li.local}강을 찾아서 눌러!` : ebsLinkOf(s, n) && S.ebsPlayer ? `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 ${li.local}강이야. 버튼을 누르면 바로 나와!` : `강의 보기 전에! 태블릿을 팔 길이만큼 떨어뜨려 놓고, 바르게 앉아서 봐요. 오늘은 숫자 ${li.local}, ${li.local}강이야. 목록에서 ${li.local}강을 찾아서 눌러!`); }
 }
 VIEWS.lecwait = () => {
-  if (!LECW) { try { LECW = JSON.parse(sessionStorage.getItem('lecw') || 'null'); } catch (e) {} }
+  if (!LECW) LECW = loadLecw();
+  if (LECW && !RUN && LECW.k && day().boards[LECW.k]) RUN = { k:LECW.k, b:day().boards[LECW.k] };   // 앱이 꺼졌다 켜져도 그 판으로 돌아가게
   if (!LECW) return go('home');
   const li = lectInfo(LECW.s, LECW.n), mins = Math.floor((Date.now() - LECW.at) / 60000);
   app().innerHTML = `<section class="screen" style="justify-content:center;align-items:center;text-align:center">

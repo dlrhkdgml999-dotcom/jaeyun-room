@@ -20,6 +20,7 @@ async def main():
         print('L1 강의 날:', rows)
         s.expect(lecdays and all(r['m']['lec'] >= 20 and r['m']['total'] == r['m']['app'] + r['m']['lec'] and r['lm'] for r in rows), 'L1: 강의 날 공부 시간에 강의가 안 들어감')
         await s.adult('mom'); await s.click('[data-a="study"]'); await p.wait_for_timeout(300)
+        await s.ev(f"(() => {{ Object.assign(STUDY, {{ from:'{lecdays[0]}', to:todayKey(), preset:'custom' }}); go('study'); }})()"); await p.wait_for_timeout(300)   # 오늘 날짜와 상관없이 (11/2: 월요일·월초엔 지난 날짜가 '이번 달'에 없음)
         k0 = lecdays[0]
         cell = await s.ev(f"+(document.querySelector('button.sd[data-day=\"{k0}\"] b')||{{}}).textContent || 0")
         print('L1 달력 칸:', k0, cell, '= 문제', rows[0]['m']['app'], '+ 강의', rows[0]['m']['lec']); s.expect(cell == rows[0]['m']['total'], 'L1: 달력 칸에 강의 시간이 안 들어감')
