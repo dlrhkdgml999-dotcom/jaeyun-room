@@ -7,7 +7,7 @@ async (acc) => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const log = { lec:null, boards:{}, screens:[], errs:[] };
   const rnd = () => Math.random();
-  for (const k of ['kor','math','eng','rev']) {
+  for (const k of (window.__order || ['kor','math','eng','rev'])) {
     if (boardState(k) === 'done') continue;
     try { ACT.board({ dataset:{ k } }); } catch (e) { log.errs.push(k + ' board 오류 ' + e.message + ' ' + JSON.stringify(day().boards[k] && day().boards[k].cur) + ' ' + JSON.stringify(curr(k === 'rev' ? 'math' : k))); go('home'); continue; } await sleep(5);
     if (SCREEN !== 'intro') { log.errs.push(k + ': intro 아님 ' + SCREEN); continue; }

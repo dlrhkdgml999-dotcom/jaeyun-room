@@ -245,11 +245,34 @@ function planLecture(d = day()){
   d.lec = s ? { s, n:dueLecture(s), done:false } : null;
   return d.lec;
 }
+/* 11/3 오빠 "국어 영상 아직 많이 남았는데 태블릿에서 더 없다고 떠서 문제만 풀었대":
+   예전엔 오늘 강의 과목을 첫 화면을 그릴 때 번갈아 순서로 미리 정해 버려서, 어제 국어 강의를 봤으면
+   오늘 국어 판을 먼저 열어도 "지난 시간 다지기 · 새 강의는 내일"이었음.
+   이제 오늘 강의는 재윤이가 "먼저 연 과목"이 가져가요 (아직 아무 강의도 시작 안 했을 때만).
+   대신 한 과목이 강의를 3일 연속 독차지하지는 않게(앞의 강의 날 두 번이 모두 그 과목이면 안 바꿈) */
+function recentLecSubjs(cnt = 2){
+  const out = []; let k = todayKey();
+  for (let i = 0; i < 14 && out.length < cnt; i++) { k = addDays(k, -1); const d = S.days[k]; if (d && d.lec && d.lec.done && d.lec.s) out.push(d.lec.s); }
+  return out;
+}
+function lecClaimable(k, d = day()){
+  const lec = planLecture(d);
+  if (!lec || lec.s === k || lec.done || d.boards[lec.s] || d.boards[k]) return false;
+  if (k !== 'math' && k !== 'kor') return false;
+  if (lecturesWatchedOn() > 0 || !dueLecture(k)) return false;
+  const r = recentLecSubjs(2); if (r.length === 2 && r.every(x => x === k)) return false;
+  return true;
+}
+function claimLecture(k, d = day()){
+  if (!lecClaimable(k, d)) return false;
+  d.lec = { s:k, n:dueLecture(k), done:false, claimed:true };
+  return true;
+}
 function boardHasLecture(b){ return b && b.cur && b.cur.lec && !curr(b.cur.subj).seen[b.cur.lec]; }
 
 /* 판 만들기 (진도 과목) */
 function makeCurrBoard(k, n){
-  const d = day(), lec = planLecture(d), need = dueLecture(k);
+  const d = day(); claimLecture(k, d); const lec = planLecture(d), need = dueLecture(k);
   const base = { idx:0, correct:0, secs:0, done:false, phase: k === 'eng' ? 'eng' : 'q', intro:false, startedAt:Date.now() };
   // 강의 보는 날은 다른 판을 줄여서 하루 1시간 안팎으로
   if (lec && lec.s !== k) n = Math.max(7, Math.round(n * .5));

@@ -18,11 +18,13 @@ async def main():
         # 이틀 동안 강의 보며 공부 (수학 1강 · 국어 1강) → 사흘째는 수학 2강 날
         await s.ev("window.__oST = window.setTimeout"); await s.ev(FAST)
         for d in range(2):
+            # 11/3부터 오늘 강의는 먼저 연 과목이 가져감 → 첫날 수학, 둘째 날 국어를 먼저 열어서 수학 1강 · 국어 1강
+            await s.ev(f"window.__order = {['math','kor','eng','rev'] if d == 0 else ['kor','math','eng','rev']}".replace("'", '"'))
             await s.ev(f"S.dayOffset = {d}; saveLocal(); go('home')"); log = await p.evaluate(f"({DAY})(0.95)")
             if log['errs']: s.issues.append(log['errs'][:2])
         await s.ev("window.setTimeout = window.__oST; window.__dur = 350")
         await s.ev("S.dayOffset = 2; saveLocal(); go('home')"); await p.wait_for_timeout(200)
-        print('본 강의:', await s.ev("({ m:Object.keys(curr('math').seen), k:Object.keys(curr('kor').seen) })"))
+        await s.ev('window.__order = null'); print('본 강의:', await s.ev("({ m:Object.keys(curr('math').seen), k:Object.keys(curr('kor').seen) })"))
         k = await to_lecture(s)
         n = await s.ev("RUN.b.cur.lec"); no = await s.ev(f"lectInfo('{k}', {n}).no")
         print('오늘 강의:', k, n, no + '강')

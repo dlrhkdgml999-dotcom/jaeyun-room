@@ -28,8 +28,10 @@ function lessonIntroHTML(b){
 }
 function waitLecHTML(k){
   const C = CURRS[k], c = curr(k), last = C.all.filter(x => x.ui < c.unit || (x.ui === c.unit && x.li < c.lesson)).pop();
-  const nx = currentLesson(k);
-  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 지난 시간 다지기</span><span class="disp" style="font-size:21px">${last ? `"${esc(last.title)}" 한 번 더!` : `${SUBJ_NAME[k]} 몸풀기!`}</span><span class="muted" style="font-size:15px">강의는 하루에 한 편만 봐요. ${nx ? `내일은 ${SUBJ_NAME[k]} 새 강의 "${esc(nx.title)}" 📺` : `${SUBJ_NAME[k]} 새 강의는 내일 📺`}</span></div>`;
+  const nx = currentLesson(k), lec = day().lec, other = lec && lec.s && lec.s !== k ? lectInfo(lec.s, lec.n) : null;
+  // 11/3: "영상이 더 없대" → 강의가 끝난 게 아니라 오늘은 다른 과목 강의 날이라는 걸 분명하게
+  const why = other ? `오늘 강의는 ${SUBJ_NAME[lec.s]} ${other.no}강${lec.done ? '을 봤어요' : '이에요'}. 강의는 하루에 한 편만!` : '강의는 하루에 한 편만 봐요.';
+  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 지난 시간 다지기</span><span class="disp" style="font-size:21px">${last ? `"${esc(last.title)}" 한 번 더!` : `${SUBJ_NAME[k]} 몸풀기!`}</span><span class="muted" style="font-size:15px">${why} ${nx ? `${SUBJ_NAME[k]} 강의 "${esc(nx.title)}"는 내일 봐요 📺` : `${SUBJ_NAME[k]} 새 강의는 내일 📺`}</span></div>`;
 }
 function lessonResultHTML(r0){
   const s = r0.subj || 'math', C = CURRS[s];

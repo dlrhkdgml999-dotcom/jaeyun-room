@@ -14,7 +14,10 @@ async def main():
         poke = await s.ev("$('#heroBubble').textContent"); s.expect(poke != greet, '토리 쓰다듬어도 말이 안 바뀜')
 
         # ---- 다시 듣기 확인: 듣기 문제가 나올 때까지 국어를 풀면서 확인
+        # 11/3부터 오늘 강의는 먼저 연 과목이 가져감 → 예전처럼 수학이 강의 날이 되게 수학 판을 먼저 만들어 둠 (국어 = 듣기 문제가 있는 다지기 판)
+        await s.ev("day().boards.math = makeBoard('math'); save(); go('home')")
         await s.click('[data-k="kor"]'); await s.p.wait_for_timeout(200); await s.click('[data-a="begin"]'); await s.p.wait_for_timeout(100)
+        await s.through_lecture()
         checked = 0
         while await s.screen() == 'q':
             q = await s.ev('({listen:RUN.q.listen||"", say:RUN.q.say||"", type:RUN.q.type})')

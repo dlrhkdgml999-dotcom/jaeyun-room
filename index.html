@@ -749,7 +749,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261102032629";
+window.APP_VERSION = "20261103143531";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -2725,8 +2725,10 @@ function boardSub(k){
   if (currOn(k)) { const d = day(), b = d.boards[k];
     const lec = !b || !b.done ? planLecture(d) : null;
     // 오늘 강의가 다른 과목이고 이 과목도 새 강의가 필요하면: 판을 열기 전에도 같은 말로
-    if ((b && b.waitLec) || (!b && lec && lec.s !== k && dueLecture(k))) return '지난 시간 다지기 · 새 강의는 내일 📺';
-    const tag = lec && lec.s === k && !lec.done ? `📺 ${lectInfo(k, lec.n).no}강 보는 날 · ` : '';
+    // 11/3: 아직 아무 강의도 시작 안 했으면 이 과목을 먼저 열어도 강의를 볼 수 있다 (lecClaimable)
+    const mine = lec && lec.s === k && !lec.done ? lec.n : !b && lecClaimable(k, d) ? dueLecture(k) : null;
+    if (!mine && ((b && b.waitLec) || (!b && lec && lec.s !== k && dueLecture(k)))) return lec && lec.s && lec.s !== k ? `지난 시간 다지기 · 오늘 강의는 ${SUBJ_NAME[lec.s]} 📺` : `지난 시간 다지기 · ${SUBJ_NAME[k]} 새 강의는 내일 📺`;
+    const tag = mine ? `📺 ${lectInfo(k, mine).no}강 보는 날 · ` : '';
     return `${tag}${currLabel(k)}${k === 'eng' ? ' + 받아쓰기' : ''}`; }
   if (k === 'eng') return `${levelLabel('eng')} · ${BOARD_SUB.eng[lv('eng')]} + 받아쓰기`;
   return `${levelLabel(k)} · ${BOARD_SUB[k][lv(k)]}`;
@@ -5119,11 +5121,34 @@ function planLecture(d = day()){
   d.lec = s ? { s, n:dueLecture(s), done:false } : null;
   return d.lec;
 }
+/* 11/3 오빠 "국어 영상 아직 많이 남았는데 태블릿에서 더 없다고 떠서 문제만 풀었대":
+   예전엔 오늘 강의 과목을 첫 화면을 그릴 때 번갈아 순서로 미리 정해 버려서, 어제 국어 강의를 봤으면
+   오늘 국어 판을 먼저 열어도 "지난 시간 다지기 · 새 강의는 내일"이었음.
+   이제 오늘 강의는 재윤이가 "먼저 연 과목"이 가져가요 (아직 아무 강의도 시작 안 했을 때만).
+   대신 한 과목이 강의를 3일 연속 독차지하지는 않게(앞의 강의 날 두 번이 모두 그 과목이면 안 바꿈) */
+function recentLecSubjs(cnt = 2){
+  const out = []; let k = todayKey();
+  for (let i = 0; i < 14 && out.length < cnt; i++) { k = addDays(k, -1); const d = S.days[k]; if (d && d.lec && d.lec.done && d.lec.s) out.push(d.lec.s); }
+  return out;
+}
+function lecClaimable(k, d = day()){
+  const lec = planLecture(d);
+  if (!lec || lec.s === k || lec.done || d.boards[lec.s] || d.boards[k]) return false;
+  if (k !== 'math' && k !== 'kor') return false;
+  if (lecturesWatchedOn() > 0 || !dueLecture(k)) return false;
+  const r = recentLecSubjs(2); if (r.length === 2 && r.every(x => x === k)) return false;
+  return true;
+}
+function claimLecture(k, d = day()){
+  if (!lecClaimable(k, d)) return false;
+  d.lec = { s:k, n:dueLecture(k), done:false, claimed:true };
+  return true;
+}
 function boardHasLecture(b){ return b && b.cur && b.cur.lec && !curr(b.cur.subj).seen[b.cur.lec]; }
 
 /* 판 만들기 (진도 과목) */
 function makeCurrBoard(k, n){
-  const d = day(), lec = planLecture(d), need = dueLecture(k);
+  const d = day(); claimLecture(k, d); const lec = planLecture(d), need = dueLecture(k);
   const base = { idx:0, correct:0, secs:0, done:false, phase: k === 'eng' ? 'eng' : 'q', intro:false, startedAt:Date.now() };
   // 강의 보는 날은 다른 판을 줄여서 하루 1시간 안팎으로
   if (lec && lec.s !== k) n = Math.max(7, Math.round(n * .5));
@@ -5178,8 +5203,10 @@ function lessonIntroHTML(b){
 }
 function waitLecHTML(k){
   const C = CURRS[k], c = curr(k), last = C.all.filter(x => x.ui < c.unit || (x.ui === c.unit && x.li < c.lesson)).pop();
-  const nx = currentLesson(k);
-  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 지난 시간 다지기</span><span class="disp" style="font-size:21px">${last ? `"${esc(last.title)}" 한 번 더!` : `${SUBJ_NAME[k]} 몸풀기!`}</span><span class="muted" style="font-size:15px">강의는 하루에 한 편만 봐요. ${nx ? `내일은 ${SUBJ_NAME[k]} 새 강의 "${esc(nx.title)}" 📺` : `${SUBJ_NAME[k]} 새 강의는 내일 📺`}</span></div>`;
+  const nx = currentLesson(k), lec = day().lec, other = lec && lec.s && lec.s !== k ? lectInfo(lec.s, lec.n) : null;
+  // 11/3: "영상이 더 없대" → 강의가 끝난 게 아니라 오늘은 다른 과목 강의 날이라는 걸 분명하게
+  const why = other ? `오늘 강의는 ${SUBJ_NAME[lec.s]} ${other.no}강${lec.done ? '을 봤어요' : '이에요'}. 강의는 하루에 한 편만!` : '강의는 하루에 한 편만 봐요.';
+  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 지난 시간 다지기</span><span class="disp" style="font-size:21px">${last ? `"${esc(last.title)}" 한 번 더!` : `${SUBJ_NAME[k]} 몸풀기!`}</span><span class="muted" style="font-size:15px">${why} ${nx ? `${SUBJ_NAME[k]} 강의 "${esc(nx.title)}"는 내일 봐요 📺` : `${SUBJ_NAME[k]} 새 강의는 내일 📺`}</span></div>`;
 }
 function lessonResultHTML(r0){
   const s = r0.subj || 'math', C = CURRS[s];

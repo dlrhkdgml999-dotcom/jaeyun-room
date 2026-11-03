@@ -11,7 +11,8 @@ async def main():
         # 1) 국어 3문제 풀고 나가기 → 다시 열기 → 이어서
         await s.click('[data-k="kor"]'); await p.wait_for_timeout(200)
         said = await s.ev('window.__said'); s.expect('[clip]' in said, f'국어 시작 때 엄마 목소리가 안 나옴: {said}')
-        await s.click('[data-a="begin"]')
+        await s.click('[data-a="begin"]'); await p.wait_for_timeout(150)
+        await s.through_lecture()   # 11/3: 먼저 연 국어가 오늘 강의를 가져감
         for _ in range(3): await s.answer(None)
         key4 = await s.ev('RUN.q.key')
         await s.click('[data-a="home"]'); await p.wait_for_timeout(150)
