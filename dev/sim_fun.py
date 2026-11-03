@@ -88,7 +88,7 @@ async def main():
         found = await s.ev("(day().ev||{}).found || 0")
         print('황금 당근 찾음:', found, '(판 3개에서)'); s.expect(found >= 3, f'하루에 황금 당근 3개를 다 못 찾음 ({found})')
         # 한 판에서 못 다 찾았으면 다른 날 판으로 더 (하루 4판이면 다 찾을 수 있어야 함): 숨는 확률 직접 확인
-        prob = await s.ev("(() => { const e = funDay(); const keep = [e.found, e.huntSeen]; let n = 0; e.found = 0; for (let i = 0; i < 400; i++) { e.huntSeen = 5 + i % 40; document.querySelectorAll('.hunt-carrot').forEach(x => x.remove()); funHuntMaybe(RUN.b || {}); if (document.querySelector('.hunt-carrot')) n++; } document.querySelectorAll('.hunt-carrot').forEach(x => x.remove()); [e.found, e.huntSeen] = keep; return n / 400; })()")
+        prob = await s.ev("(() => { let tmp = null; if (!document.querySelector('.fun-row')) { tmp = document.createElement('div'); tmp.className = 'fun-row'; document.body.appendChild(tmp); } const e = funDay(); const keep = [e.found, e.huntSeen]; let n = 0; e.found = 0; for (let i = 0; i < 400; i++) { e.huntSeen = 5 + i % 40; document.querySelectorAll('.hunt-carrot').forEach(x => x.remove()); funHuntMaybe(RUN.b || {}); if (document.querySelector('.hunt-carrot')) n++; } document.querySelectorAll('.hunt-carrot').forEach(x => x.remove()); [e.found, e.huntSeen] = keep; if (tmp) tmp.remove(); return n / 400; })()")
         print('숨는 확률(문제마다):', round(prob, 2)); s.expect(.15 < prob < .6, f'황금 당근이 너무 드물거나 잦음 {prob}')
         if found >= 3: s.expect(await s.ev("S.stickers.filter(x => x.bonus === 'hunt').length") == 1, '황금 당근 3개 보너스 없음')
         # ---------- C) 친구 방문 ----------
@@ -134,7 +134,9 @@ async def main():
             while await s.screen() == 'q': await answer_right(s)
             if await s.screen() == 'write': await s.click('[data-a="writeskip"]'); await p.wait_for_timeout(200)
             if await p.locator('.cheer-box').count(): seen += 1
-        print('깜짝 응원 나온 판:', seen, '/ 8'); s.expect(1 <= seen <= 7, f'깜짝 응원이 너무 안 나오거나 매번 나옴 ({seen}/8)')
+        print('깜짝 응원 나온 판:', seen, '/ 8'); s.expect(seen >= 1, f'깜짝 응원이 한 번도 안 나옴 ({seen}/8)')
+        ratio = await s.ev("(() => { let n = 0; for (let i = 0; i < 400; i++) if (cheerPick()) n++; return n / 400; })()")
+        print('깜짝 응원 확률(400번 뽑기):', ratio); s.expect(.4 < ratio < .7, f'깜짝 응원 확률 이상 {ratio}')
         # ---------- 넘침 (폰) ----------
         await s.ev("go('home')"); await p.wait_for_timeout(100); await s.overflow('첫 화면'); await s.shot('fun_home')
         await s.ev("window.__ev = 'combo'"); await open_board(s, 'kor'); await s.overflow('문제 화면')

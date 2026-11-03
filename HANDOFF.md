@@ -196,6 +196,9 @@ git add -A && git commit && git push
 - 고친 것: ① 강의 없는 과목 판 = **연습 + 미리 맛보기**: `genCurrReview(s, n, true)`가 오늘 차시(내일 강의) 문제를 40%(최소 3) `q.preview`로 넣음 — 판정 안 함(b.cur 없음), `addWrong` 안 함, 판 기록엔 "🔭 "을 붙여 남기고 오답노트는 건너뜀, 문제 위 "🔭 내일 배울 것 미리 맛보기 · 틀려도 괜찮아!". 판 `b.preview` = 개수. ② `lecClaimable`: 최근 강의 날 6번(`recentLecSubjs(6)`) 중 이 과목이 다른 과목보다 많으면 못 가져감 → 사실상 번갈아(같으면 먼저 연 과목). ③ `orderedBoards`: 재윤이가 순서를 안 골랐으면 오늘 영상 과목을 맨 위("시작!")로. 첫 화면 칸 글 "연습 + 미리 맛보기 🔭 · 오늘 영상은 수학 📺".
 - 결과(40일): 미리 맛보기 없는 복습만 날 25일 → 0, 국어부터 여는 재윤이 강의 13/25 → 17/22, 앱 순서대로 하면 "먼저 열었는데 영상 없음" 0. 국어를 고집하면 수학 날 국어 칸이 "오늘 영상은 수학"(하루 한 편이라 피할 수 없음, 대신 새 문제가 나옴).
 
+## 2026-11-04 30일 선물은 재윤이가 직접 (오빠 요청)
+- 선물 길 화면(`VIEWS.gift`)에 "✏️ 선물 적기 / 고치기"(`ACT.giftwish` → `giftwishsave`): `S.gift.name`, `S.gift.wishBy='kid'`, `wishAt`. 목표 날수를 다 채우기(giftAch) 전까지 언제든 고침. 적거나 바꾸면 오빠 알림("🎁 재윤이가 30일 선물로 …를 적었어요 (전에는 …)"). 첫 화면 선물 칸에 "🎁 선물 이름". 오빠 탭 선물 칸도 그대로 고칠 수 있음(`wishBy='oppa'`). "선물 줬어요"를 누르면 이름이 비워져 다음 선물도 재윤이가 적음. `S.gift`는 ADULT_KEYS지만 태블릿도 씀(어른 칸은 누구나 쓸 수 있음). 검증: sim_kq G.
+
 ## 2026-11-04 재미 더하기 + 부족한 것 고치기 (오빠: "재윤이가 슬슬 지겨워하는 것 같아" → 1~5 다 넣기)
 - `src/fun.js` (build 목록 capsule.js 다음). 새 상태: `S.garden`(KID_KEYS), `S.cheers`(ADULT_KEYS), 그날 기록 `d.ev`(found·huntSeen·combo5·quiz·fin[판]). 서버: `kq/{id}`(재윤이가 낸 문제, 그림은 jpeg 문자열) · `kqa/{id}`(오빠·엄마 답).
   1. **게임처럼:** 한 번에 맞히면 `b.carrots`·`b.combo`/`b.maxCombo`(🔥 n연속 칩, 3연속부터 말풍선), 진행 막대에 남은 문제마다 🥕(`funAfterQ`). 단원 평가는 **당근 탑 보스전**(`b.boss`: 한 번에 2칸, 다시 맞히면 1칸). 판 끝 보상 화면에 최고 콤보·당근·물뿌리개(`funRewardHTML`). app.js 연결: `VIEWS.q`(funQHTML·funAfterQ), `answer()`(funRight·funWrong), `finishBoard`(funOnFinish), `VIEWS.reward`.

@@ -634,7 +634,7 @@ VIEWS.home = () => {
           ${label ? `<span class="state">${label}</span>` : '<span></span>'}</button>`; }).join('')}
     </div>
     <button class="gift-card ${giftAch() ? 'won' : ''}" data-a="go" data-v="gift">${giftBox(58, giftAch() ? 'hop' : '')}
-      <span style="flex:1;display:grid;gap:6px">${giftAch() ? `<span class="disp" style="font-size:21px">오빠 선물 받는 날! 오빠한테 자랑하자!</span>` : `<span class="disp" style="font-size:19px">오빠 선물까지 <b style="color:var(--pink-deep);font-weight:400">${g.goal - gd}일</b> 남았어!</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span><span class="muted" style="font-size:14px">공부 다 한 날 ${gd} / ${g.goal}일</span>`}</span></button>
+      <span style="flex:1;display:grid;gap:6px">${giftAch() ? `<span class="disp" style="font-size:21px">오빠 선물 받는 날! 오빠한테 자랑하자!</span>` : `<span class="disp" style="font-size:19px">오빠 선물까지 <b style="color:var(--pink-deep);font-weight:400">${g.goal - gd}일</b> 남았어!</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span><span class="muted" style="font-size:14px">공부 다 한 날 ${gd} / ${g.goal}일 · ${g.name ? `🎁 ${esc(g.name)}` : '🎁 받고 싶은 선물을 적어 봐!'}</span>`}</span></button>
     ${gardenTileHTML()}
     ${mapTileHTML()}
     ${nextItem ? `<div class="next-item"><div class="row"><span class="disp" style="font-size:18px">스티커 ${nextItem.need - total}개 더 모으면 '${esc(nextItem.name)}'!</span></div><div class="meter"><i style="width:${Math.round((total - prevNeed) / (nextItem.need - prevNeed) * 100)}%"></i></div></div>` : ''}
@@ -997,6 +997,7 @@ VIEWS.room = () => {
 };
 
 /* ----- 오빠 선물 길 ----- */
+let GIFT_EDIT = false;   // 11/4 오빠: 30일 선물은 재윤이가 직접 적고 고칠 수 있게
 VIEWS.gift = () => {
   const g = S.gift, days = giftDays(), n = Math.min(days.length, g.goal);
   let path = '';
@@ -1007,8 +1008,13 @@ VIEWS.gift = () => {
   }
   app().innerHTML = `<section class="screen">
     <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">오빠랑 한 선물 약속</h2></div>
-    <div class="hero">${stageHTML(140, { expr: giftAch() ? 'wow' : 'happy', size:104 })}<div class="bubble left">${giftAch() ? '재윤아, 해냈어! 오빠한테 선물 받으러 가자!' : `재윤이가 공부를 다 한 날이 ${g.goal}일 모이면 오빠가 선물을 사 준대!`}</div></div>
-    <div class="gift-card ${giftAch() ? 'won' : ''}">${giftBox(64)}<span style="flex:1"><span class="muted" style="font-size:15px">오빠가 약속한 선물</span><br><span class="disp" style="font-size:22px">${g.name ? esc(g.name) : '오빠가 깜짝 선물을 준비하고 있어!'}</span></span></div>
+    <div class="hero">${stageHTML(140, { expr: giftAch() ? 'wow' : 'happy', size:104 })}<div class="bubble left">${giftAch() ? '재윤아, 해냈어! 오빠한테 선물 받으러 가자!' : !g.name ? '재윤이가 받고 싶은 선물을 직접 적어 봐! 오빠한테 알려 줄게.' : `재윤이가 공부를 다 한 날이 ${g.goal}일 모이면 오빠가 선물을 사 준대!`}</div></div>
+    <div class="gift-card ${giftAch() ? 'won' : ''}">${giftBox(64)}<span style="flex:1"><span class="muted" style="font-size:15px">${g.wishBy === 'kid' ? '재윤이가 갖고 싶은 선물' : '오빠가 약속한 선물'}</span><br><span class="disp" style="font-size:22px">${g.name ? esc(g.name) : '아직 안 정했어요'}</span></span>
+      ${giftAch() ? '' : `<button class="btn ${g.name ? 'ghost' : ''} small" data-a="giftwish">✏️ ${g.name ? '고치기' : '선물 적기'}</button>`}</div>
+    ${GIFT_EDIT && !giftAch() ? `<div class="panel gift-wish"><h3>🎁 ${g.goal}일 다 하면 받고 싶은 선물</h3>
+      <div class="field"><input type="text" id="giftWishIn" maxlength="30" value="${esc(g.name || '')}" placeholder="예: 토끼 인형, 색연필 세트"></div>
+      <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" data-a="giftwishsave">이걸로 할래! 🎁</button><button class="btn ghost small" data-a="giftwishcancel">안 바꿀래</button></div>
+      <p class="muted" style="font-size:14px">적으면 오빠 폰으로 알려 줘요. ${g.goal}일을 다 하기 전까지는 언제든 고칠 수 있어요.</p></div>` : ''}
     <p class="disp" style="font-size:20px;text-align:center">${giftAch() ? `${g.goal}일 모두 성공!` : `${n}일 했어! ${g.goal - n}일만 더 하면 선물!`}</p>
     <div class="gpath">${path}</div>
     <p class="muted" style="text-align:center;font-size:15px">4판을 다 한 날마다 발바닥 도장이 하나씩 찍혀요.<br>하루 쉬어도 괜찮아. 다음 날 이어서 하면 돼!</p>
@@ -1213,7 +1219,7 @@ VIEWS.adult = () => {
     body = glancePanel() + suggestPanel() + kqPanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
-        <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
+        <div class="field"><label for="gname">약속한 선물 — 재윤이가 직접 적어요${g.wishBy === 'kid' && g.wishAt ? ` (재윤이가 ${agoText(g.wishAt)} 적음)` : ''} · 오빠도 고칠 수 있어요</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
         <div class="row" style="flex-wrap:wrap"><span class="muted" style="font-size:15px">목표</span>${[20, 25, 30].map(v => `<button class="btn small ${g.goal === v ? '' : 'ghost'}" data-a="giftgoal" data-v="${v}">${v}일</button>`).join('')}</div>
         <button class="btn sky small" data-a="savegift" style="justify-self:start">선물 저장</button>
         ${giftAch() ? `<button class="btn mint" data-a="giftgiven">선물 줬어요 · 다음 약속 시작</button>` : ''}
@@ -1421,7 +1427,14 @@ const ACT = {
   ebsintent(){ S.ebsIntent = S.ebsIntent === 'launcher' ? '' : 'launcher'; save(); toast(S.ebsIntent ? '앱 첫 화면으로 열어요' : '강좌 주소로 앱을 열어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsplayer(){ S.ebsPlayer = !S.ebsPlayer; save(); toast(S.ebsPlayer ? '강의를 바로 재생해요. "시험" 버튼으로 열리는지 확인해 주세요' : '강좌 화면을 열고 강의목록에서 찾게 해요'); const y = scrollY; go('adult'); scrollTo(0, y); },
   ebsclear(el){ if (!el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 지울까요? 한 번 더 누르면 지워져요'; return; } S.ebsLinks = {}; save(); go('adult'); },
-  savegift(){ S.gift.name = $('#gname').value.trim(); save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },
+  savegift(){ S.gift.name = $('#gname').value.trim(); S.gift.wishBy = 'oppa'; save(); toast('선물 약속을 저장했어요. 재윤이 화면에 보여요'); },
+  giftwish(){ if (giftAch()) return; GIFT_EDIT = true; SFX.tap(); VIEWS.gift(); const i = $('#giftWishIn'); if (i) i.focus(); speak('받고 싶은 선물을 적어 봐!'); },
+  giftwishcancel(){ GIFT_EDIT = false; VIEWS.gift(); },
+  giftwishsave(){ if (giftAch()) return; const v = ($('#giftWishIn') || {}).value; const t = String(v || '').trim();
+    if (!t) { toast('받고 싶은 선물을 적어 주세요'); return; }
+    const old = S.gift.name; S.gift.name = t; S.gift.wishBy = 'kid'; S.gift.wishAt = Date.now(); GIFT_EDIT = false; save();
+    if (t !== old) notify('oppa', `🎁 재윤이가 ${S.gift.goal}일 선물로 "${t}"${hasBatchim(t) ? '을' : '를'} ${old ? `골랐어요 (전에는 "${old}")` : '적었어요'}`);
+    SFX.sticker(); VIEWS.gift(); speak(`${t}! 좋아, 오빠한테 알려 줄게!`); },
   giftgiven(){ const g = S.gift, ach = giftAch(); g.history.unshift({ round:g.round, name:g.name, achieved:ach }); S.gift = { name:'', goal:g.goal, round:g.round + 1, start:addDays(ach, 1), achieved:null, history:g.history }; if (S.gift.start > todayKey()) S.gift.start = addDays(todayKey(), day().done ? 1 : 0); save(); toast('다음 선물 약속을 시작했어요'); go('adult'); },
   instbr(el){ INSTALL.br = el.dataset.v; go('install'); },
   saystep(el){ speak(installSteps('kid', INSTALL.br)[+el.dataset.v]); },

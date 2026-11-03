@@ -48,7 +48,9 @@ async def run(mode, seed):
     return {'mode': mode, 'studied': studied, 'st': st, 'prog': prog, 'two': two, 'issues': issues}
 
 async def main():
-    res = await asyncio.gather(*[run(m, 11 + i) for i, m in enumerate(['app', 'kor', 'math', 'random', 'skip'])])
+    # 브라우저 5개를 한꺼번에 띄우면 CPU 2개 컴퓨터에서 도구가 멈춰서(11/4 2회차 EPIPE) 2개씩
+    modes = ['app', 'kor', 'math', 'random', 'skip']; res = []
+    for i in range(0, len(modes), 2): res += await asyncio.gather(*[run(m, 11 + modes.index(m)) for m in modes[i:i + 2]])
     bad = []
     print(f'{DAYS}일, 판 여는 방법별 (수학 / 국어):')
     for r in res:

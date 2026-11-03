@@ -60,7 +60,7 @@ async def main():
         # ---------- N1 오답노트 ----------
         await tab.ev("go('home')"); await tab.p.wait_for_timeout(200)
         await tab.click('.home-nav [data-a="notebook"]'); await tab.p.wait_for_timeout(300)
-        nb = await tab.ev("""(() => { const items = notebookItems(); const wrongLogs = Object.keys(S.days).flatMap(k => dayLogs(k)).filter(x => x.r !== 1);
+        nb = await tab.ev("""(() => { const items = notebookItems(); const wrongLogs = Object.keys(S.days).flatMap(k => dayLogs(k)).filter(x => x.r !== 1 && !String(x.t).startsWith('🔭'));   /* 11/4: 미리 맛보기는 오답노트에 안 넣음 */
           const ids = new Set(wrongLogs.map(x => x.subj + '|' + x.t + '|' + x.a));
           return { screen:SCREEN, items:items.length, uniq:ids.size, todo:items.filter(x => !x.fixed).length, cards:document.querySelectorAll('.nb-card').length,
             answersShown:document.querySelectorAll('.nb-a').length, showBtns:document.querySelectorAll('[data-a=nbopen]').length,
