@@ -25,7 +25,8 @@ const EBS_LECT_21 = {
 };
 CURRICULUM.lect = EBS_LECT_21.math; KOR_CURR.lect = EBS_LECT_21.kor;
 CURRICULUM.grade = '2학년 1학기'; CURRICULUM.short2 = '2-1'; KOR_CURR.grade = '2학년 1학기'; KOR_CURR.short2 = '2-1';
-const COURSES = { math:[MATH12, CURRICULUM], kor:[KOR12, KOR_CURR], eng:[ENG_CURR, ENG_CURR2] };
+/* 11/4: 2학년 2학기(MATH22·KOR22), 영어 3단계(ENG_CURR3) 이어 붙임 — 아직 없으면(null) 빠짐 */
+const COURSES = { math:[MATH12, CURRICULUM, MATH22].filter(Boolean), kor:[KOR12, KOR_CURR, KOR22].filter(Boolean), eng:[ENG_CURR, ENG_CURR2, ENG_CURR3].filter(Boolean) };
 const CURRS = {}, EBS_LECT = {};
 Object.entries(COURSES).forEach(([s, list]) => {
   const units = [], lect = []; let off = 0;
