@@ -29,6 +29,9 @@ const SIGHT = {
 /* 자주 쓰는 낱말 문장 더하기 (보기 두 개는 문법에 안 맞는 것만) */
 SIGHT['e5-1'].sents.push(['___ is big.','It',['I','A'],'그것은 커요.','🐘'],['It is ___ dog.','a',['I','is'],'그것은 강아지예요.','🐕'],['It ___ hot.','is',['I','a'],'그것은 뜨거워요.','🔥'],['___ have a ball.','I',['It','The'],'나는 공이 있어요.','⚽'],['Is ___ a cat?','it',['I','a'],'그것은 고양이예요?','🐱'],['I see ___ sea.','the',['is','I'],'나는 바다를 봐요.','🌊']);
 SIGHT['e5-2'].sents.push(['A bird ___ fly.','can',['my','you'],'새는 날 수 있어요.','🐦'],['This is ___ dog.','my',['you','can'],'이것은 내 강아지예요.','🐶'],['I ___ a rainbow.','see',['my','can'],'나는 무지개를 봐요.','🌈'],['I love ___.','you',['my','can'],'나는 너를 사랑해.','💗'],['I ___ ice cream.','like',['my','you'],'나는 아이스크림을 좋아해요.','🍦'],['___ can sing.','You',['My','Like'],'너는 노래할 수 있어.','🎤']);
+SIGHT['e5-1'].sents.push(['It ___ a bird.','is',['I','a'],'그것은 새예요.','🐦'],['I have ___ cup.','a',['is','I'],'나는 컵이 하나 있어요.','☕'],['Open ___ door.','the',['is','I'],'문을 열어요.','🚪'],['___ is a bus.','It',['I','A'],'그것은 버스예요.','🚌']);
+SIGHT['e5-2'].sents.push(['I ___ the moon.','see',['my','can'],'나는 달을 봐요.','🌙'],['This is ___ cat.','my',['you','can'],'이것은 내 고양이예요.','🐱'],['I ___ jump.','can',['my','you'],'나는 뛰어오를 수 있어요.','🤸'],['Can ___ swim?','you',['my','like'],'너는 수영할 수 있니?','🏊']);
+SIGHT['e5-3'].sents.push(['___ is my sister.','She',['He','We'],'그녀는 우리 언니예요.','👧'],['___ is my grandpa.','He',['She','We'],'그는 우리 할아버지예요.','👴'],['We ___ to bed.','go',['he','and'],'우리는 자러 가요.','🛌'],['I like milk ___ bread.','and',['go','she'],'나는 우유와 빵을 좋아해요.','🥛🍞']);
 SIGHT['e5-3'].sents.push(['___ is my dad.','He',['She','We'],'그는 우리 아빠예요.','👨'],['___ is my grandma.','She',['He','We'],'그녀는 우리 할머니예요.','👵'],['___ go to the park.','We',['He','She'],'우리는 공원에 가요.','🏞️'],["Let's ___ to the zoo.",'go',['she','and'],'동물원에 가자.','🦁'],['I like red ___ blue.','and',['go','he'],'나는 빨강과 파랑을 좋아해요.','🎨'],['We ___ home.','go',['he','and'],'우리는 집에 가요.','🏠']);
 const SENT6 = {
   'e6-1':{ frame:w => `It is a ${w}.`, ko:k => `그것은 ${k}${hasBatchim(k) ? '이에요' : '예요'}.`, items:PH_ALL.filter(x => !/^\d+$/.test(x.e) && !['hot','red','hug'].includes(x.w)).map(x => [x.w, x.k, x.e]) },
@@ -54,6 +57,15 @@ function qPickByLetter(id){ const set = lettersOf(id), L = pick(set), right = LE
   const others = shuffle(ABC.filter(x => x !== L && x !== 'X' && !(['C','K'].includes(L) && ['C','K'].includes(x)))).slice(0, 2).map(x => LETTER_WORD[x]);
   const all = [right, ...others];
   return eq_({ key:`e:pb:${L}${others.map(o => o[0])}`, type:'phonics', prompt:`${L}로 시작하는 것을 골라요`, say:`${L}로 시작하는 것을 골라 봐요`, listen:L, vis:{ k:'html', html:letterHTML(L) + `<span class="letter" style="font-size:70px;opacity:.75">${L.toLowerCase()}</span>` }, opts:all.map(x => x[0]), ans:right[0], pic:true, optHtml:Object.fromEntries(all.map(x => [x[0], phPic(x[2], false)])), hint:'그림의 영어 이름을 떠올리고 첫소리를 들어 봐요', explain:`${right[0]} = ${right[1]}` }); }
+// 11/4: 알파벳 차시 문제 더하기 — 작은 글자 보고 큰 글자, 앞에 올 글자, 듣고 작은 글자
+function qLetterLower(id){ const set = lettersOf(id), L = pick(set), lo = L.toLowerCase(), others = shuffle(set.filter(x => x !== L)).slice(0, 2);
+  return eq_({ key:`e:lu:${L}`, type:'letter', prompt:'작은 글자와 짝인 큰 글자를 골라요', say:'작은 글자와 짝인 큰 글자를 골라 봐요', listen:L, vis:{ k:'html', html:letterHTML(lo) }, opts:[L, ...others], ans:L, big:true, optHtml:Object.fromEntries([L, ...others].map(x => [x, letterHTML(x, 46)])), hint:'글자 이름을 소리 내어 말해 봐요', explain:`${lo} ↔ ${L}` }); }
+function qLetterPrev(id){ const set = lettersOf(id), L = pick(set.filter(x => ABC.indexOf(x) <= 22)) || set[0], i = ABC.indexOf(L);
+  const seq = ABC.slice(i + 1, i + 4), others = shuffle(ABC.filter(x => x !== L && !seq.includes(x)).filter(x => Math.abs(ABC.indexOf(x) - i) <= 4)).slice(0, 2);
+  return eq_({ key:`e:prev:${L}`, type:'letter', prompt:'맨 앞에 올 글자는?', say:'알파벳 순서대로! 맨 앞에 올 글자는?', vis:{ k:'html', html:`<div class="eq" style="font-family:var(--f-body)">${QB}, ${seq.join(', ')}</div>` }, opts:[L, ...others], ans:L, big:true, optHtml:Object.fromEntries([L, ...others].map(x => [x, letterHTML(x, 46)])), hint:'알파벳 노래를 거꾸로 떠올려 봐요', explain:`${L}, ${seq.join(', ')}` }); }
+function qLetterListenLow(id){ const set = lettersOf(id), L = pick(set), lo = L.toLowerCase();
+  const conf = (LETTER_CONFUSE[lo] || '').split('').filter(x => x !== lo), others = [...new Set([...conf, ...shuffle(set.map(x => x.toLowerCase()).filter(x => x !== lo))])].slice(0, 2);
+  return eq_({ key:`e:lnl:${L}`, type:'letter', prompt:'잘 듣고 알맞은 작은 글자를 골라요', say:'잘 듣고 알맞은 작은 글자를 골라 봐요', listen:L, vis:{ k:'listen' }, opts:[lo, ...others], ans:lo, big:true, optHtml:Object.fromEntries([lo, ...others].map(x => [x, letterHTML(x, 46)])), hint:`${L}... 다시 들어 봐요. 큰 글자를 먼저 떠올려 봐요`, explain:`${L} (${lo})` }); }
 /* 짧은 모음 */
 const BAD_WORDS = ['sex','fuk','fak'];
 function swapVowel(w, keep){ return ['a','e','i','o','u'].filter(v => v !== keep).map(v => w.replace(keep, v)).filter(x => !BAD_WORDS.includes(x)); }
@@ -78,6 +90,8 @@ function qSightListen(id){ const ws = SIGHT[id].words, w = pick(ws), others = sh
   return eq_({ key:`e:sw:${w}`, type:'sight', prompt:'잘 듣고 알맞은 낱말을 골라요', say:'잘 듣고 알맞은 낱말을 골라 봐요', listen:w === 'a' ? 'a, a cat' : w, vis:{ k:'listen' }, opts:[w, ...others], ans:w, big:true, optHtml:Object.fromEntries([w, ...others].map(x => [x, `<span class="letter" style="font-size:40px">${x}</span>`])), hint:'버튼을 눌러 다시 들어 봐요', explain:w }); }
 function qSightFill(id){ const [s, a, w, ko, e] = pick(SIGHT[id].sents);
   return eq_({ key:`e:sf:${s}`, type:'sight', prompt:'빈칸에 알맞은 낱말을 골라요', say:'잘 듣고 빈칸에 알맞은 낱말을 골라 봐요', listen:s.replace('___', a), vis:{ k:'html', html:`<span class="pic" style="font-size:64px">${e}</span><div class="sent text-q" style="font-family:var(--f-body)">${esc(s).replace('___', '<span class="blank">&nbsp;</span>')}</div>` }, opts:[a, ...w], ans:a, big:true, hint:`"${ko}" 라는 뜻이에요`, explain:`${s.replace('___', a)} = ${ko}` }); }
+function qSightMean(id){ const all = SIGHT[id].sents, x = pick(all), os = shuffle(all.filter(y => y[3] !== x[3])).filter((y, i, arr) => arr.findIndex(z => z[3] === y[3]) === i).slice(0, 2), s = x[0].replace('___', x[1]);   // 뜻이 같은 문장 두 개가 오답으로 같이 나오지 않게
+  return eq_({ key:`e:sm:${s}|${os.map(o => o[0])}`, type:'sight', prompt:'문장을 잘 듣고 뜻을 골라요', say:'문장을 잘 듣고 무슨 뜻인지 골라 봐요', listen:s, vis:{ k:'html', html:`<span class="pic" style="font-size:64px">${x[4]}</span><div class="sent text-q" style="font-family:var(--f-body)">${esc(s)}</div>` }, opts:[x[3], ...os.map(o => o[3])], ans:x[3], cols:1, hint:'그림을 보고 낱말 하나하나 떠올려 봐요', explain:`${s} = ${x[3]}` }); }
 /* 짧은 문장 */
 function qSentPic(id){ const S6 = SENT6[id], it = pick(S6.items), others = shuffle(S6.items.filter(x => x !== it)).slice(0, 2), all = [it, ...others];
   const sent = S6.frame(it[0]);
@@ -121,10 +135,10 @@ function qHowMany(){ const n = rnd(2, 9), [w, k, e] = pick([['apples','사과','
   return eq_({ key:`e:hm:${n}${w}`, type:'qa', prompt:`"How many ${w}?" 알맞은 대답을 골라요`, say:`How many ${w}? 세어 보고 골라 봐요`, listen:`How many ${w}?`, vis:{ k:'html', html:`<div class="count-grid"><span class="grp">${`<span>${e}</span>`.repeat(Math.min(n, 5))}</span>${n > 5 ? `<span class="grp">${`<span>${e}</span>`.repeat(n - 5)}</span>` : ''}</div>` }, opts:[n, ...others].map(x => NUMW[x]), ans:NUMW[n], sayOpts:true, cols:3, hint:'하나씩 세어 봐요. one, two, three…', explain:`${NUMW[n]} ${w} = ${k} ${n}개` }); }
 
 Object.assign(LESSON_GEN, Object.fromEntries([
-  ...['e1-1','e1-2','e1-3'].map(id => [id, () => pick([qLetterListen, qLetterListen, qLetterCase, qLetterCase, qLetterNext])(id)]),
+  ...['e1-1','e1-2','e1-3'].map(id => [id, () => pick([qLetterListen, qLetterCase, qLetterCase, qLetterNext, qLetterLower, qLetterPrev, qLetterListenLow])(id)]),
   ...['e2-1','e2-2','e2-3','e2-4'].map(id => [id, () => pick([qFirstSound, qFirstSound, qPickByLetter, qLetterCase])(id)]),
   ...['e3-1','e3-2','e3-3','e4-1','e4-2','e4-3'].map(id => [id, () => pick([qCvcListen, qCvcSpell, qCvcVowel, qCvcBuild, qRhyme])(id)]),
-  ...['e5-1','e5-2','e5-3'].map(id => [id, () => pick([qSightListen, qSightFill, qSightFill])(id)]),
+  ...['e5-1','e5-2','e5-3'].map(id => [id, () => pick([qSightListen, qSightFill, qSightFill, qSightMean])(id)]),
   ...['e6-1','e6-2','e6-3'].map(id => [id, () => pick([qSentPic, qSentChoose, qSentOrder])(id)]),
   ...['e7-1','e7-2','e7-3'].map(id => [id, () => pick([qDigraph, qDigraphPic])(id)]),
   ...['e8-1','e8-2','e8-3'].map(id => [id, () => pick([qMagic, qMagic, qMagicPic])(id)]),

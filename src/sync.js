@@ -6,8 +6,8 @@
    - 사진·녹음: families/{fid}/blobs/{해시}[_조각]                        (큰 파일은 조각내서)
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
-const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports','collect','friends'];
-const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey','ntfyOff','ebsPlayer','ebsMode','ebsIntent'];
+const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports','collect','friends','garden'];
+const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey','ntfyOff','ebsPlayer','ebsMode','ebsIntent','cheers'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
 function linked(){ return !!(S.local && S.local.fid); }
@@ -123,7 +123,7 @@ const Sync = {
       this.ready = true; this.status = 'on';
       // 태블릿: 아직 서버에 없는 사진(예전에 올리다 실패한 것)도 다시 올린다
       if (kid) Object.entries(this.blobCache).forEach(([h, d]) => this.putBlob(h, d));
-      this.schedule(); this.beat(); this.devBeat(true); this.flushNotes(); Suggest.flush();
+      this.schedule(); this.beat(); this.devBeat(true); this.flushNotes(); Suggest.flush(); kqFlush();
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.start(), 30000); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
@@ -141,6 +141,9 @@ const Sync = {
     // 건의함 (11/3): 글만 받는다. 사진·목소리(fbm)는 오빠가 "보기"를 누를 때만
     try { this.unsub.push(this.db.collection(`${b}/fb`).orderBy('at', 'desc').limit(80).onSnapshot(snap => Suggest.onList(snap)));
       this.unsub.push(this.db.collection(`${b}/fbst`).onSnapshot(snap => Suggest.onSt(snap))); } catch (e) {}
+    // 재윤이가 낸 문제 (11/4)
+    try { this.unsub.push(this.db.collection(`${b}/kq`).orderBy('at', 'desc').limit(60).onSnapshot(snap => kqOnList(snap)));
+      this.unsub.push(this.db.collection(`${b}/kqa`).onSnapshot(snap => kqOnAns(snap))); } catch (e) {}
     // 재윤이 태블릿이 마지막으로 연결된 때 (엄마·오빠 폰에서 보여 줌)
     // 기기들 상태(meta/dev-…): 엄마·오빠 역할로 연결된 태블릿에서 재윤이가 공부하고 있으면 폰에서 알려 준다
     try { this.unsub.push(this.db.collection(`${b}/meta`).onSnapshot(snap => { const devs = {}; let k = null;
@@ -365,7 +368,7 @@ document.addEventListener('visibilitychange', () => { if (!linked()) return; if 
 function famCode(){ return linked() ? S.local.fid.slice(-4).toUpperCase() : ''; }
 function familyLink(){ const base = location.href.split('#')[0].split('?')[0]; return `${base}#join=${S.local.fid}`; }
 function refreshIfIdle(){
-  if (['home','adult','map','gift','cal','room','alldone','book','study','notebook'].includes(SCREEN)) {
+  if (['home','adult','map','gift','cal','room','alldone','book','study','notebook','garden'].includes(SCREEN)) {
     const y = scrollY; const active = document.activeElement;
     if (active && /INPUT|TEXTAREA|SELECT/.test(active.tagName)) return;
     VIEWS[SCREEN](); scrollTo(0, y);

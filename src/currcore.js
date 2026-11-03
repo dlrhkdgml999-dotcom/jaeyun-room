@@ -58,6 +58,8 @@ function unitTag(u){ return u.course && u.course.short2 && CURRS[u.course.subj].
 const EBS_BUILTIN = {
   '100005137': { sid:'STEP1000010212', first:'LS00000000152376470', n:65, enc:'M05' },   // 만점왕 수학 플러스 1-2 (01강 …470 ~ 65강 …534)
   '100006226': { sid:'STEP1000011301', first:'LS00000000152384353', n:48, enc:'M10' },   // 만점왕 국어 1-2 (01강 …353 ~ 48강 …400)
+  '100006191': { sid:'STEP1000011266', first:'LS00000000152381348', n:48, enc:'M10' },   // 만점왕 수학 2-1 (01강 …348 ~ 48강 …395, 11/4 오빠가 1·2·3·48강 보내 줌)
+  '100006190': { sid:'STEP1000011265', first:'LS00000000152381051', n:56, enc:'M10' },   // 만점왕 국어 2-1 (01강 …051 ~ 56강 …106, 11/4 오빠가 1·2·3·56강 보내 줌)
 };
 const EBS_PLAYER = 'https://primary.ebs.co.kr/pleasure/course/player/main/index';
 function ebsCourseUrl(s, n){ const li = n ? lectInfo(s, n) : null, co = li ? li.course : CURRS[s].now, lk = n ? ebsLinkOf(s, n) : null, cid = co.ebs.id;
@@ -171,13 +173,17 @@ function genCurriculum(s, n){
 /* 강의가 다른 과목 차례인 날: "지난 시간 다지기" (진도는 그대로, 새 강의는 내일)
    2026-10-29 오빠 피드백 "국어 문제가 더 없어서 복습 문제만 줘": 예전엔 지난 차시 아무거나 60% + 1학기 기초 40%라서,
    진도 초반(지난 차시가 거의 없을 때)엔 거의 기초 문제만 나왔다. → 바로 앞 두 차시(이번 주에 배운 것) 위주로, 새로 만든 문제로 */
-function genCurrReview(s, n){
+/* 11/4 오빠 "문제 풀 게 없어서 복습만 하게 되는 경우": 강의가 다른 과목인 날도 새 문제가 나오게
+   → 어제 배운 차시 연습 + 오늘 차시(내일 강의) "미리 맛보기" 40% (판정·오답 목록에는 안 들어감, 강의는 그대로 다음 날) */
+function genCurrReview(s, n, withPreview){
   const C = CURRS[s], c = curr(s);
   const prev = C.all.filter(x => (x.ui < c.unit || (x.ui === c.unit && x.li < c.lesson)) && LESSON_GEN[x.id]);
   const recent = prev.slice(-2), older = prev.slice(0, -2);
   const out = [], used = new Set(); const add = q => { if (q && !used.has(q.key)) { used.add(q.key); out.push(q); return true; } return false; };
   // 전에 틀린 이 과목 문제를 조금 (한 번 더 맞히면 끝)
   takeDue(dueWrong(s), Math.min(2, Math.floor(n / 6))).forEach(add);
+  const cl = withPreview && !c.test ? currentLesson(s) : null;
+  if (cl && LESSON_GEN[cl.id]) { const want = Math.max(3, Math.round(n * .4)); let g0 = 0; while (out.filter(q => q.preview).length < want && g0++ < 200) { const q = lessonQ(cl); if (!used.has(q.key)) add(Object.assign(q, { preview:true })); } }
   let g = 0;
   if (recent.length) while (out.length < Math.round(n * .75) && g++ < 400) add(lessonQ(pick(recent)));
   g = 0; if (older.length) while (out.length < Math.round(n * .9) && g++ < 200) add(lessonQ(pick(older)));
@@ -261,7 +267,9 @@ function lecClaimable(k, d = day()){
   if (!lec || lec.s === k || lec.done || d.boards[lec.s] || d.boards[k]) return false;
   if (k !== 'math' && k !== 'kor') return false;
   if (lecturesWatchedOn() > 0 || !dueLecture(k)) return false;
-  const r = recentLecSubjs(2); if (r.length === 2 && r.every(x => x === k)) return false;
+  // 11/4: 늘 국어부터 여는 재윤이는 국어 강의가 2/3, 수학은 복습만 하는 날이 절반(sim_lecflow) → 최근 강의 날 6번 중 이 과목이 더 많으면 못 가져감 (번갈아)
+  // 같으면 원래 순서(번갈아)대로, 이 과목이 뒤처졌을 때만 먼저 연 과목이 가져감 (첫 화면이 오늘 영상 과목을 맨 위 "시작!"으로 보여 줌)
+  const r = recentLecSubjs(6), o = k === 'math' ? 'kor' : 'math'; if (r.filter(x => x === k).length >= r.filter(x => x === o).length) return false;
   return true;
 }
 function claimLecture(k, d = day()){
@@ -281,11 +289,16 @@ function makeCurrBoard(k, n){
   if (!CURRS[k].units[c0.unit]) return Object.assign(base, { qs:baseGen(k, n), finished:true });   // 이 과목 진도를 다 끝낸 뒤
   if (need && !(lec && lec.s === k)) {
     // 오늘 강의는 다른 과목 차례 → 이 과목은 복습하는 날
-    return Object.assign(base, { qs:genCurrReview(k, Math.min(n, 12)), waitLec:true });
+    const qs = genCurrReview(k, Math.min(n, 12), true);
+    return Object.assign(base, { qs, waitLec:true, preview:qs.filter(q => q.preview).length });
   }
   const c = curr(k), isLec = !!(lec && lec.s === k);
   const qs = genCurriculum(k, isLec ? Math.min(n, 5) : n);   // 강의 날은 교재로 같이 풀었으니 앱은 5문제만
-  if (!c.test) { const due = dueWrong(k); const old = takeDue(due, Math.min(isLec ? 1 : 3, Math.floor(n / 6))); old.forEach((q, i) => qs.splice(Math.min(qs.length, 4 + i * 5), 0, q)); }
+  // 전에 틀린 이 과목 문제를 조금 섞는다. 밀린 게 많으면(15개 넘게) 더 많이 섞고, 그만큼 새 문제를 빼서 하루 시간은 그대로 (11/4)
+  if (!c.test) { const due = dueWrong(k), many = due.length > 15;
+    const take = many ? Math.min(isLec ? 2 : 6, Math.floor(n / 3)) : Math.min(isLec ? 1 : 3, Math.floor(n / 6));
+    const old = takeDue(due, take); if (many && old.length > 3) qs.splice(qs.length - (old.length - 3));
+    old.forEach((q, i) => qs.splice(Math.min(qs.length, 3 + i * 3), 0, q)); }
   const cl = currentLesson(k);
   return Object.assign(base, { qs, cur:{ subj:k, test:c.test, unit:c.unit, lesson: c.test || !cl ? null : cl.id, items:[], lec: isLec ? lec.n : null } });
 }

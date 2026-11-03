@@ -175,6 +175,147 @@ Object.assign(LESSON_GEN, {
     return nq(`c12:6st${st}`, 'story2', '이야기를 읽고 답해요', st, storyH(st), add ? a + b : a - b, add ? '"모두"는 더하기' : '"남은", "더 많이"는 빼기', `${a} ${add ? '+' : '−'} ${b} = ${add ? a + b : a - b}`); },
 });
 
+/* ---------- 문제 늘리기 (2026-11-03): 같은 차시를 며칠씩 해도 같은 문제를 덜 만나게 ----------
+   curriculum.js의 moreGen·oxPic·halfOX·storyQ를 같이 씀. 예전 key·정답은 그대로, 새 문제 key는 c12:x… */
+const ALL_THINGS = Object.entries(SHAPE_THINGS).flatMap(([sh, l]) => l.map(([e, n]) => ({ sh, e, n })));
+const thingCard = t => `<span style="display:grid;place-items:center;gap:2px"><span style="font-size:44px">${t.e}</span><span class="muted" style="font-size:15px">${esc(t.n)}</span></span>`;
+const SH_WORD = { '○':'동그라미', '△':'세모', '□':'네모' };
+/* 그림(시계 등) 위에 문장을 보여 주는 O/X */
+const oxVis = (key, stmt, ans, hint, explain, vis) => cq(key, 'ox', stmt, `${stmt} 맞으면 O, 틀리면 X를 골라요`, null, ['O', 'X'], ans, hint, explain, { cols:2, big:true, vis });
+
+/* 1단원 */
+moreGen('m1-3', .3, [
+  () => { const t = rnd(5, 9), big = Math.random() < .5, o = big ? rnd(0, 8) : rnd(1, 9), ans = big ? o + 1 : o - 1;
+    return nq(`c12:xcb${t}${o}${big}`, 'cmpbox', `□ 안에 들어갈 수 있는 수 중에서 가장 ${big ? '작은' : '큰'} 수는?`, `네모 안에 들어갈 수 있는 수 중에서 가장 ${big ? '작은' : '큰'} 수는?`, eqH(`${t}${QB} ${big ? '&gt;' : '&lt;'} ${t * 10 + o}`, true), ans, '앞자리가 같아요. 뒷자리(낱개)만 비교해요', `${t}${ans} ${big ? '>' : '<'} ${t * 10 + o}`); },
+  () => { const t1 = rnd(5, 9), o1 = rnd(1, 9), n1 = t1 * 10 + o1; let n2; do { n2 = rnd(50, 99); } while (n2 === n1); const d = `10개씩 묶음 ${t1}개와 낱개 ${o1}개`;
+    return cq(`c12:xct${n1}-${n2}`, 'cmptens', '더 큰 수를 골라요', null, null, [d, String(n2)], n1 > n2 ? d : String(n2), '10개씩 묶음과 낱개를 먼저 수로 바꾸어 봐요', `${d}는 ${n1}. ${n1} ${n1 > n2 ? '>' : '<'} ${n2}`, { cols:1 }); },
+]);
+
+/* 2단원 */
+moreGen('m2-1', .35, [
+  () => { let a, b, c; do { a = rnd(1, 6); b = rnd(1, 5); c = rnd(1, 5); } while (a + b + c > 9); const h = rnd(0, 2), arr = [a, b, c], s = a + b + c;
+    return nq(`c12:x3q${h}:${a}+${b}+${c}`, 'three2', '□에 알맞은 수는?', null, eqH(arr.map((x, i) => i === h ? QB : x).join(' + ') + ` = ${s}`), arr[h], `아는 두 수를 먼저 더하고, ${numJosa(s, '이', '가')} 되려면 얼마가 더 필요한지 생각해요`, `${a} + ${b} + ${c} = ${s}`); },
+  () => { let a, b, c; do { a = rnd(1, 6); b = rnd(1, 5); c = rnd(1, 5); } while (a + b + c > 9); const i = rnd(0, 2);
+    const st = [`색연필을 빨강 ${a}자루, 파랑 ${b}자루, 노랑 ${c}자루 꺼냈어요. 꺼낸 색연필은 모두 몇 자루일까요?`, `연못에 오리가 ${a}마리 있었는데 ${b}마리가 오고, 또 ${c}마리가 왔어요. 오리는 모두 몇 마리일까요?`, `칭찬 스티커를 월요일에 ${a}장, 화요일에 ${b}장, 수요일에 ${c}장 받았어요. 모두 몇 장일까요?`][i];
+    return nq(`c12:x3st${i}:${a}+${b}+${c}`, 'threestory', '이야기를 읽고 답해요', st, storyBox(st), a + b + c, '세 수를 앞에서부터 차례로 더해요', `${a} + ${b} + ${c} = ${a + b + c}`); },
+]);
+moreGen('m2-2', .35, [() => { let a, b, c; do { a = rnd(5, 9); b = rnd(1, 4); c = rnd(1, 4); } while (a - b - c < 0); const r = a - b - c, h = rnd(0, 2), arr = [a, b, c];
+  return nq(`c12:x3sq${h}:${a}-${b}-${c}`, 'three2', '□에 알맞은 수는?', null, eqH(arr.map((x, i) => i === h ? QB : x).join(' − ') + ` = ${r}`), arr[h], h === 0 ? `${r}에 빼 준 두 수를 다시 더해 봐요` : '앞에서부터 차례로 빼 보며 □를 찾아요', `${a} − ${b} − ${c} = ${r}`); }]);
+const M10_ST = [
+  a => [`구슬이 ${a}개 있어요. 10개를 채우려면 몇 개가 더 있어야 할까요?`, '개'],
+  a => [`연필이 ${a}자루 있어요. 10자루가 되려면 몇 자루를 더 사야 할까요?`, '자루'],
+  a => [`스티커를 ${a}장 붙였어요. 10장을 다 붙이려면 몇 장을 더 붙여야 할까요?`, '장'],
+  a => [`달걀판 10칸 중에서 ${a}칸에 달걀이 있어요. 빈칸은 몇 칸일까요?`, '칸'],
+  a => [`줄넘기를 ${a}번 했어요. 10번을 채우려면 몇 번 더 해야 할까요?`, '번'],
+];
+moreGen('m2-3', .75, [
+  () => { const a = rnd(1, 9); return nq(`c12:xm10r${a}`, 'make10', '10이 되려면 □에 얼마를 넣어야 할까요?', null, eqH(`${QB} + ${a} = 10`), 10 - a, `${numJosa(a, '과', '와')} 모아서 10이 되는 수를 찾아요`, `${10 - a} + ${a} = 10`, { hintHTML:framesHTML(cellsFor(a)) }); },
+  () => { const a = rnd(1, 9), [e, name] = pick(FOODS); return nq(`c12:xm10e${a}${e}`, 'make10pic', `${josa(name, '이', '가')} ${a}개 있어요. 10개가 되려면 몇 개 더 있어야 할까요?`, null, `<div class="pic" style="font-size:38px;line-height:1.3">${e.repeat(a)}</div>`, 10 - a, '10개가 될 때까지 손가락으로 이어서 세어 봐요', `${a} + ${10 - a} = 10`); },
+  () => { const a = rnd(1, 9), i = rnd(0, M10_ST.length - 1), [st, u] = M10_ST[i](a); return nq(`c12:xm10s${i}:${a}`, 'story10', '이야기를 읽고 답해요', st, storyBox(st), 10 - a, `${numJosa(a, '과', '와')} 모아서 10이 되는 수를 찾아요`, `${a} + ${10 - a} = 10 → ${10 - a}${u}`); },
+  () => { const a = rnd(1, 9), ok = Math.random() < .5, b = ok ? 10 - a : pick([9 - a, 11 - a].filter(x => x >= 1 && x <= 9)), st = `${a} + ${b} = 10이에요.`;
+    return ox(`c12:xm10ox${a}+${b}`, st, ok ? 'O' : 'X', '두 수를 모아서 10이 되는지 세어 봐요', `${a} + ${b} = ${a + b}`); },
+]);
+const S10_ST = [
+  b => [`풍선 10개 중에서 ${b}개가 터졌어요. 남은 풍선은 몇 개일까요?`, '개'],
+  b => [`연필 10자루 중에서 ${b}자루를 친구에게 빌려주었어요. 남은 연필은 몇 자루일까요?`, '자루'],
+  b => [`색종이 10장 중에서 ${b}장을 썼어요. 남은 색종이는 몇 장일까요?`, '장'],
+  b => [`참새 10마리 중에서 ${b}마리가 날아갔어요. 남은 참새는 몇 마리일까요?`, '마리'],
+  b => [`동화책 10권 중에서 ${b}권을 읽었어요. 아직 안 읽은 책은 몇 권일까요?`, '권'],
+];
+moreGen('m2-4', .6, [
+  () => { const b = rnd(1, 9), i = rnd(0, S10_ST.length - 1), [st, u] = S10_ST[i](b); return nq(`c12:xs10s${i}:${b}`, 'story10', '이야기를 읽고 답해요', st, storyBox(st), 10 - b, '10에서 빼요', `10 − ${b} = ${10 - b}${u}`); },
+  () => { const b = rnd(1, 9); return nq(`c12:xs10f${b}`, 'from10pic', '10개 중에서 줄을 그어 지운 것을 빼면 몇 개가 남을까요?', null, framesHTML(cellsFor(10, 0, b)), 10 - b, '줄이 없는 동그라미를 세어 봐요', `10 − ${b} = ${10 - b}`); },
+  () => { const b = rnd(1, 9), ok = Math.random() < .5, x = ok ? 10 - b : pick([9 - b, 11 - b].filter(v => v >= 0 && v <= 9)), st = `10 − ${b} = ${numJosa(x, '이에요', '예요')}.`;
+    return ox(`c12:xs10ox${b}-${x}`, st, ok ? 'O' : 'X', `${x} + ${numJosa(b, '이', '가')} 10이 되는지 생각해 봐요`, `10 − ${b} = ${10 - b}`); },
+]);
+moreGen('m2-5', .35, [() => { let a; do { a = rnd(1, 9); } while (a === 5); const b = 10 - a; let c; do { c = rnd(1, 9); } while (c === a || c === b);
+  const arr = shuffle([a, b, c]), P = [[0, 1], [1, 2], [0, 2]], lab = ([i, j]) => `${numJosa(arr[i], '과', '와')} ${arr[j]}`, k = P.findIndex(([i, j]) => arr[i] + arr[j] === 10), ans = lab(P[k]);
+  return cq(`c12:xm10p${arr.join('+')}`, 'make10pick', '더해서 10이 되는 두 수를 골라요', `${arr.join(' 더하기 ')}에서 먼저 더하면 좋은 두 수는?`, eqH(arr.join(' + ')), P.map(lab), ans, '두 수씩 더해 보고 10이 되는 짝을 찾아요', `${a} + ${b} = 10, 10 + ${c} = ${10 + c}`, { cols:1 }); }]);
+
+/* 3단원 */
+moreGen('m3-1', .65, [
+  () => { const t = pick(ALL_THINGS), ok = Math.random() < .5, claim = ok ? t.sh : pick(Object.keys(SHAPE3).filter(x => x !== t.sh)), st = `${josa(t.n, '은', '는')} ${claim} 모양이에요.`;
+    return oxPic(`c12:xshox${t.n}${claim}`, st, ok ? 'O' : 'X', '테두리를 손가락으로 따라 그려 봐요', `${josa(t.n, '은', '는')} ${t.sh} 모양`, `<div class="pic">${t.e}</div>`); },
+  () => { const sh = pick(Object.keys(SHAPE3)); let ts, n; do { ts = shuffle(ALL_THINGS).slice(0, 5); n = ts.filter(t => t.sh === sh).length; } while (!n);
+    return nq(`c12:xshc${sh}${ts.map(t => t.n).sort().join('.')}`, 'shapecount', `${sh} 모양인 물건은 몇 개일까요?`, `${SH_WORD[sh]} 모양인 물건은 몇 개일까?`, rowH(ts.map(thingCard).join('')), n, '물건마다 테두리를 떠올려 봐요', `${ts.filter(t => t.sh === sh).map(t => t.n).join(', ')} → ${n}개`); },
+  () => { const [A, B] = shuffle(Object.keys(SHAPE3)).slice(0, 2), two = shuffle(SHAPE_THINGS[A]).slice(0, 2).map(x => x[1]), odd = pick(SHAPE_THINGS[B])[1];
+    return cq(`c12:xsho${[...two, odd].sort().join('.')}`, 'shapeodd', '모양이 다른 하나를 골라요', null, null, [...two, odd], odd, '물건마다 ○, △, □ 중 어떤 모양인지 떠올려 봐요', `${two[0]}, ${josa(two[1], '은', '는')} ${A} 모양, ${josa(odd, '은', '는')} ${B} 모양`, { cols:1 }); },
+]);
+const FEAT = [['뾰족한 곳이 없는 물건은?', '○'], ['뾰족한 곳이 3군데인 물건은?', '△'], ['뾰족한 곳이 4군데인 물건은?', '□'], ['곧은 선이 없는 물건은?', '○'], ['곧은 선이 3개인 물건은?', '△'], ['곧은 선이 4개인 물건은?', '□'], ['굴리면 잘 굴러가는 물건은?', '○']];
+moreGen('m3-2', .65, [
+  () => { const fi = rnd(0, FEAT.length - 1), [p, sh] = FEAT[fi], right = pick(SHAPE_THINGS[sh])[1], others = Object.keys(SHAPE3).filter(x => x !== sh).map(x => pick(SHAPE_THINGS[x])[1]);
+    return cq(`c12:xftt${fi}-${[right, ...others].sort().join('.')}`, 'shapefeat', p, `물건의 앞모습을 떠올려 봐요. ${p}`, null, [right, ...others], right, '물건이 ○, △, □ 중 어떤 모양인지 먼저 떠올려 봐요', `${josa(right, '은', '는')} ${sh} 모양`, { cols:1 }); },
+  () => { let a, b, c; do { a = rnd(0, 2); b = rnd(0, 2); c = rnd(0, 1); } while (a + b === 0 || a + b + c < 2); const what = pick(['뾰족한 곳', '곧은 선']), n = 3 * a + 4 * b;
+    const ids = shuffle([...Array(a).fill('tri1'), ...Array(b).fill('quad2'), ...Array(c).fill('circ')]), parts = [...Array(a).fill(3), ...Array(b).fill(4)];
+    return nq(`c12:xfmix${a}${b}${c}${what}`, 'shapesum', `${josa(what, '은', '는')} 모두 몇 ${what === '뾰족한 곳' ? '군데' : '개'}일까요?`, null, rowH(ids.map(id => shapeSVG(id, 84, { marks: what === '뾰족한 곳' })).join('')), n, '모양 하나씩 세어서 더해요. ○ 모양에는 없어요', parts.length > 1 ? `${parts.join(' + ')} = ${n}` : `${what} ${n}${what === '뾰족한 곳' ? '군데' : '개'}`); },
+  () => { const st = pickOX([['□ 모양은 곧은 선이 4개예요.','O'],['○ 모양은 잘 굴러가요.','O'],['△ 모양은 곧은 선이 3개예요.','O'],['△ 모양과 □ 모양에는 곧은 선이 있어요.','O'],['○ 모양에는 둥근 부분이 있어요.','O'],['곧은 선이 없는 모양은 ○ 모양이에요.','O'],['△ 모양의 뾰족한 곳은 □ 모양보다 적어요.','O'],
+      ['△ 모양은 굴리면 잘 굴러가요.','X'],['○ 모양에는 곧은 선이 2개 있어요.','X'],['□ 모양에는 뾰족한 곳이 3군데 있어요.','X'],['□ 모양은 둥근 부분만 있어요.','X'],['뾰족한 곳이 4군데인 모양은 △ 모양이에요.','X'],['○ 모양의 뾰족한 곳은 1군데예요.','X'],['□ 모양의 곧은 선은 3개예요.','X']]);
+    return ox(`c12:xoxsh${st[0]}`, st[0], st[1], '○ 둥근 부분만, △ 뾰족한 곳·곧은 선 3, □ 뾰족한 곳·곧은 선 4', `${st[0]} → ${st[1]}`); },
+]);
+moreGen('m3-3', .3, [() => { let items, cnt, A, B; do { items = classifySet(); cnt = { '○':0, '△':0, '□':0 }; items.forEach(i => cnt[{ circ:'○', tri1:'△', quad2:'□' }[i.s]]++); [A, B] = shuffle(Object.keys(cnt)).slice(0, 2); } while (cnt[A] <= cnt[B]);
+  return nq(`c12:xcd${items.map(i => i.s[0]).join('')}${A}${B}`, 'shapediff', `${A} 모양은 ${B} 모양보다 몇 개 더 많을까요?`, `${SH_WORD[A]} 모양은 ${SH_WORD[B]} 모양보다 몇 개 더 많을까?`, classifyHTML(items), cnt[A] - cnt[B], '모양별로 따로 세어서 비교해요', `${A} ${cnt[A]}개, ${B} ${cnt[B]}개 → ${cnt[A] - cnt[B]}개 더 많아요`); }]);
+const CK_LIFE = [['일어났어요', [6, 7, 8]], ['아침을 먹었어요', [7, 8]], ['학교에 갔어요', [8, 9]], ['점심을 먹었어요', [12, 1]], ['집에 왔어요', [2, 3, 4]], ['공부를 했어요', [4, 5, 6]], ['저녁을 먹었어요', [6, 7]], ['잠자리에 들었어요', [9, 10]]];
+moreGen('m3-4', .7, [
+  () => { const h = rnd(1, 12); return nq(`c12:xcks${h}`, 'clocktext', `${h}시에 짧은바늘이 가리키는 숫자는?`, null, null, h, '"몇 시"는 짧은바늘이 알려 줘요', `${h}시 → 짧은바늘 ${h}, 긴바늘 12`); },
+  () => { const h = rnd(1, 11), right = `짧은바늘 ${h}, 긴바늘 12`;
+    return cq(`c12:xckd${h}`, 'clockdesc', `${h}시를 시계에 바르게 나타낸 것은?`, null, null, [right, `짧은바늘 12, 긴바늘 ${h}`, `짧은바늘 ${h}, 긴바늘 6`], right, '"몇 시"에는 긴바늘이 언제나 12를 가리켜요', `${h}시: ${right}`, { cols:1 }); },
+  () => { const [act, hs] = pick(CK_LIFE), h = pick(hs), w = shuffle([h % 12 + 1, (h + 3) % 12 + 1]);
+    return cq(`c12:xckl${act}${h}`, 'clocklife', `재윤이는 ${h}시에 ${act}. 알맞은 시계를 골라요`, null, null, [hLab(h, 0), hLab(w[0], 0), hLab(w[1], 0)], hLab(h, 0), `짧은바늘이 ${h}, 긴바늘이 12를 가리키는 시계예요`, `${h}시`, { pic:true, grid3:true, cols:3, optHtml:clockOpts([[hLab(h, 0), h, 0], [hLab(w[0], 0), w[0], 0], [hLab(w[1], 0), w[1], 0]]) }); },
+  () => { const h = rnd(1, 12), ok = Math.random() < .5, x = ok ? h : pick([h % 12 + 1, h === 1 ? 12 : h - 1]);
+    return oxVis(`c12:xckox${h}-${x}`, `시계가 나타내는 시각은 ${x}시예요.`, ok ? 'O' : 'X', '짧은바늘이 가리키는 숫자를 읽어요', `${h}시`, { k:'clock', h, m:0 }); },
+]);
+moreGen('m3-5', .55, [
+  () => { const h = rnd(1, 12), nh = h % 12 + 1, ok = Math.random() < .5, x = ok ? h : pick([nh, h === 1 ? 12 : h - 1]);
+    return oxVis(`c12:xchox${h}-${x}`, `시계가 나타내는 시각은 ${x}시 30분이에요.`, ok ? 'O' : 'X', '짧은바늘이 두 숫자 사이에 있으면 앞의 숫자를 읽어요', `${h}시 30분`, { k:'clock', h, m:30 }); },
+  () => { const h = rnd(1, 12), nh = h % 12 + 1, nn = nh % 12 + 1, pv = h === 1 ? 12 : h - 1, lab = (x, y) => `${numJosa(x, '과', '와')} ${y} 사이`, right = lab(h, nh);
+    return cq(`c12:xchs${h}`, 'clockhand', `${h}시 30분일 때 짧은바늘은 어디에 있을까요?`, null, null, [right, lab(nh, nn), lab(pv, h)], right, `${h}시를 지나 30분 더 갔어요`, `${h}시 30분: 짧은바늘은 ${right}, 긴바늘은 6`, { cols:1 }); },
+  () => { const [act, hs] = pick(CK_LIFE), h = pick(hs), nh = h % 12 + 1, w1 = hLab(nh, 30), w2 = hLab(h, 0);
+    return cq(`c12:xchl${act}${h}`, 'clocklife', `재윤이는 ${h}시 30분에 ${act}. 알맞은 시계를 골라요`, null, null, [hLab(h, 30), w1, w2], hLab(h, 30), `긴바늘이 6, 짧은바늘이 ${numJosa(h, '과', '와')} ${nh} 사이`, `${h}시 30분`, { pic:true, grid3:true, cols:3, optHtml:clockOpts([[hLab(h, 30), h, 30], [w1, nh, 30], [w2, h, 0]]) }); },
+]);
+
+/* 4단원 */
+moreGen('m4-1', .3, [() => { let a, b; do { a = rnd(2, 9); b = rnd(2, 9); } while (a + b < 11); return storyQ('c12:x4ast', true, a, b); }]);
+moreGen('m4-2', .65, [
+  () => { let a, b; do { a = rnd(2, 9); b = rnd(2, 9); } while (a + b < 11); const k = 10 - b, r = a - k;
+    return nq(`c12:x4gf${a}+${b}`, 'make10add2', '앞의 수를 가르기 해서 10을 만들어요. □에 알맞은 수는?', `${a} 더하기 ${b}. ${numJosa(b, '이', '가')} 10이 되려면 ${numJosa(k, '이', '가')} 필요해요. 네모는?`, eqH(`${a} + ${b} = ${QB} + ${k} + ${b}`, true), r, `${numJosa(a, '을', '를')} 몇과 ${k}${numRo(k)} 가르기 할까요?`, `${a} = ${r} + ${k}, ${k} + ${b} = 10, ${r} + 10 = ${a + b}`); },
+  () => { let a, b; do { a = rnd(5, 9); b = rnd(3, 9); } while (a + b < 11); const k = 10 - a, r = b - k;
+    return nq(`c12:x4gs${a}+${b}`, 'make10sum', '10을 만들어 더해요. □에 알맞은 수는?', `${a} 더하기 ${numJosa(b, '은', '는')} ${a} 더하기 ${k} 더하기 ${r}. 10 더하기 ${numJosa(r, '은', '는')}?`, eqH(`${a} + ${b} = ${a} + ${k} + ${r}<br>10 + ${r} = ${QB}`, true), a + b, `${a} + ${k} = 10이에요. 10에 남은 ${numJosa(r, '을', '를')} 더해요`, `${a} + ${b} = 10 + ${r} = ${a + b}`); },
+  () => { let a, b; do { a = rnd(5, 9); b = rnd(3, 9); } while (a + b < 11); const k = 10 - a, r = b - k, right = `${a} + ${k} + ${r}`;
+    return cq(`c12:x4gc${a}+${b}`, 'make10pick', `${a} + ${numJosa(b, '을', '를')} 10을 만들어 바르게 계산한 식은?`, null, null, [right, `${a} + ${k + 1} + ${r}`, `${a} + ${k} + ${r + 1}`], right, `${a}에 ${numJosa(k, '을', '를')} 더하면 10. ${b}에서 ${numJosa(k, '을', '를')} 빼면 몇이 남을까요?`, `${b} = ${k} + ${r} → ${right}`, { cols:1, big:true }); },
+]);
+moreGen('m4-4', .35, [
+  () => { let a, b; do { a = rnd(11, 18); b = rnd(2, 9); } while (b <= a % 10 || a - b > 9); return nq(`c12:x4sq${a}-${b}`, 'subq', '□에 알맞은 수는?', `${a} 빼기 네모는 ${a - b}`, eqH(`${a} − ${QB} = ${a - b}`), b, `${a - b}에 얼마를 더하면 ${numJosa(a, '이', '가')} 될까요?`, `${a} − ${b} = ${a - b}`); },
+  () => { let a, b; do { a = rnd(11, 18); b = rnd(2, 9); } while (b <= a % 10 || a - b > 9); return storyQ('c12:x4sst', false, a, b); },
+]);
+moreGen('m4-5', .6, [
+  () => { let a, b; do { a = rnd(11, 18); b = rnd(2, 9); } while (b <= a % 10 || a - b > 9); const o = a - 10, r = b - o;
+    return nq(`c12:x4sgs${a}-${b}`, 'sub10sum', '먼저 10을 만들어 빼요. □에 알맞은 수는?', `${a} 빼기 ${numJosa(b, '은', '는')} ${a} 빼기 ${o} 빼기 ${r}. 10 빼기 ${numJosa(r, '은', '는')}?`, eqH(`${a} − ${b} = ${a} − ${o} − ${r}<br>10 − ${r} = ${QB}`, true), a - b, `${a} − ${o} = 10이에요. 10에서 ${numJosa(r, '을', '를')} 더 빼요`, `${a} − ${b} = 10 − ${r} = ${a - b}`); },
+  () => { let a, b; do { a = rnd(11, 18); b = rnd(2, 9); } while (b <= a % 10 || a - b > 9); const o = a - 10, r = b - o, right = `${a} − ${o} − ${r}`;
+    return cq(`c12:x4sgc${a}-${b}`, 'sub10pick', `${a} − ${numJosa(b, '을', '를')} 10을 만들어 바르게 계산한 식은?`, null, null, [right, `${a} − ${o + 1} − ${r}`, `${a} − ${o} − ${r + 1}`], right, `${a}에서 ${numJosa(o, '을', '를')} 빼면 10. ${b}에서 ${numJosa(o, '을', '를')} 빼면 몇이 남을까요?`, `${b} = ${o} + ${r} → ${right}`, { cols:1, big:true }); },
+]);
+
+/* 5단원 */
+moreGen('m5-1', .3, [() => { const pool = shuffle(['🍓','🍌','⭐','🌸','🐰','🍇','💖','🌙','🐥','🍩']), kind = pick(['AB','ABC','AAB','ABB','AABB']);
+  const unit = kind.split('').map(ch => pool['ABC'.indexOf(ch)]), seq = Array.from({ length:8 }, (_, i) => unit[i % unit.length]), hole = rnd(2, 6), ans = seq[hole], opts = [...new Set(unit)];
+  if (opts.length < 3) opts.push(pool[3]);
+  return { key:`c12:xpth${seq.join('')}${hole}`, subj:'math', type:'patternmid', prompt:'규칙을 찾아 ?에 알맞은 것을 골라요', say:'규칙을 찾아서 빈칸에 알맞은 것을 골라 봐요', vis:{ k:'html', html:`<div class="pattern">${seq.map((e, i) => i === hole ? '<span class="qbox">?</span>' : `<span>${e}</span>`).join('')}</div>` }, input:'choice', cols:3, pic:true, optHtml:Object.fromEntries(opts.map(o => [o, `<span style="font-size:44px">${o}</span>`])), opts:shuffle(opts), ans, hint:`'${unit.join(' ')}'가 되풀이돼요`, explain:`${unit.join(' ')}이 반복돼요` }; }]);
+moreGen('m5-2', .3, [() => { const pool = shuffle(['🍎','🍌','🔵','🔺','⭐','🐶']), kind = pick(['AB','AAB','ABB','ABC','AABB']), unit = kind.split('').map(ch => pool['ABC'.indexOf(ch)]), seq = Array.from({ length:8 }, (_, i) => unit[i % unit.length]);
+  return nq(`c12:xpl${seq.join('')}`, 'patternlen', '몇 개씩 되풀이될까요?', '무늬에서 되풀이되는 부분은 몇 개씩일까?', `<div class="pattern">${seq.map(e => `<span>${e}</span>`).join('')}</div>`, unit.length, '처음 모양이 다시 시작되는 곳을 찾아요', `${unit.join(' ')} → ${unit.length}개씩 되풀이돼요`); }]);
+moreGen('m5-3', .3, [() => { const step = pick([1, 2, 5, 10]), down = Math.random() < .35, start = down ? rnd(Math.max(30, step * 4 + 5), 99) : rnd(1, 99 - step * 4), seq = [0, 1, 2, 3].map(i => start + (down ? -step : step) * i);
+  const lab = (s, d) => `${s}씩 ${d ? '작아져요' : '커져요'}`, right = lab(step, down), other = pick([1, 2, 5, 10].filter(x => x !== step));
+  return cq(`c12:xnsr${start}${down}${step}`, 'npattern2', '수의 규칙으로 알맞은 것은?', null, eqH(seq.join(', '), true), [right, lab(step, !down), lab(other, down)], right, '이웃한 두 수를 비교해 봐요', `${seq.join(', ')} → ${right}`, { cols:1 }); }]);
+moreGen('m5-4', .3, [() => { const [d, v, ar] = pick([['바로 아래', 10, '↓'], ['바로 위', -10, '↑'], ['바로 오른쪽', 1, '→'], ['바로 왼쪽', -1, '←']]); let x; do { x = rnd(12, 88); } while (x % 10 < 2 || x % 10 > 8);
+  return nq(`c12:xhcn${x}${d}`, 'chart2', `수 배열표에서 ${x} ${d} 칸의 수는?`, null, null, x + v, '수 배열표는 → 쪽으로 1씩, ↓ 쪽으로 10씩 커져요', `${x} ${ar} ${x + v}`); }]);
+
+/* 6단원 */
+moreGen('m6-1', .3, [() => { let a, b; do { a = rnd(11, 88); b = rnd(1, 8); } while ((a % 10) + b > 9); return storyQ('c12:x6ast', true, a, b); }]);
+moreGen('m6-2', .3, [() => { let a, b; do { a = rnd(11, 78); b = rnd(11, 78); } while ((a % 10) + (b % 10) > 9 || a + b > 99); return storyQ('c12:x6bst', true, a, b); }]);
+moreGen('m6-3', .3, [() => { let a, b; do { a = rnd(12, 99); b = rnd(1, 9); } while (b > a % 10); return storyQ('c12:x6cst', false, a, b); }]);
+moreGen('m6-4', .3, [() => { let a, b; do { a = rnd(21, 99); b = rnd(11, a - 10); } while ((b % 10) > (a % 10)); return storyQ('c12:x6dst', false, a, b); }]);
+moreGen('m6-5', .3, [() => { let a, b, c, d; do { a = rnd(11, 60); b = rnd(11, 38); c = rnd(25, 99); d = rnd(11, c - 10); } while ((a % 10) + (b % 10) > 9 || a + b > 99 || (d % 10) > (c % 10) || a + b === c - d);
+  const x = `${a} + ${b}`, y = `${c} − ${d}`;
+  return cq(`c12:x6cmp${x}|${y}`, 'calccompare', '계산 결과가 더 큰 것을 골라요', null, null, [x, y], a + b > c - d ? x : y, '두 식을 각각 계산해 봐요', `${x} = ${a + b}, ${y} = ${c - d}`, { cols:2, big:true }); }]);
+
 /* ---------- 단원 · 차시 ---------- */
 const MATH12 = {
   title:'초1 2학기 수학', grade:'1학년 2학기', short2:'1-2', subj:'math', short:'수학', lectTitle:'name',

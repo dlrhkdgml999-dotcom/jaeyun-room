@@ -22,7 +22,7 @@ async (acc) => {
     try { ACT.board({ dataset:{ k } }); } catch (e) { log.errs.push(k + ' ' + e.message); go('home'); continue; } await sleep(5);
     if (SCREEN !== 'intro') { log.errs.push(k + ': intro 아님 ' + SCREEN); continue; }
     const b = RUN.b;
-    if (b.waitLec) log.wait[k] = { n:b.qs.length, base:b.qs.filter(q => q.review11).length, lessons:[...new Set(b.qs.filter(q => q.lesson).map(q => q.lesson))] };
+    if (b.waitLec) log.wait[k] = { n:b.qs.length, base:b.qs.filter(q => q.review11).length, lessons:[...new Set(b.qs.filter(q => q.lesson && !q.preview).map(q => q.lesson))], pv:b.qs.filter(q => q.preview).length };   // 11/4: 미리 맛보기(오늘 차시)는 지난 차시가 아님
     // 보이는 골라 보기 · 다시 보기 버튼은 전부 눌러 본다
     const opt = document.querySelector('[data-a="lecopt"]');
     if (opt) { const [s, n] = opt.dataset.v.split('|'); log.lecs.push('opt:' + s + n); await watch(s, +n, true); ACT.board({ dataset:{ k } }); await sleep(5); }

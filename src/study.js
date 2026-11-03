@@ -21,7 +21,7 @@ function qBrief(q){
 function logQ(b, q, r){
   try {
     const secs = Math.round(clamp((Date.now() - RUN.t0) / 1000, 1, 300));
-    (b.log = b.log || []).push([qBrief(q), String(q.ans).slice(0, 60), [...new Set(RUN.wrongs || [])].map(x => String(x).slice(0, 40)).join(' / '), r, secs, q.subj || '']);
+    (b.log = b.log || []).push([(q.preview ? '🔭 ' : '') + qBrief(q), String(q.ans).slice(0, 60), [...new Set(RUN.wrongs || [])].map(x => String(x).slice(0, 40)).join(' / '), r, secs, q.subj || '']);
   } catch (e) {}
 }
 

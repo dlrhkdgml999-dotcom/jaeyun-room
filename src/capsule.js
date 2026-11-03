@@ -80,7 +80,8 @@ function friendsHTML(){ const fr = (S.friends || []).map(id => COLLECT.find(c =>
 
 /* 오늘 순서 고르기: 국어 · 수학 · 영어 중 무엇부터 (복습은 늘 마지막) */
 function orderedBoards(d = day()){
-  const ord = d.order || ['kor','math','eng'];
+  let ord = d.order || ['kor','math','eng'];
+  if (!d.order) { try { const lec = currOn('math') || currOn('kor') ? planLecture(d) : null; if (lec && lec.s && !lec.done && !d.boards[lec.s]) ord = [lec.s, ...ord.filter(k => k !== lec.s)]; } catch (e) {} }
   return [...ord.map(k => BOARDS.find(b => b.k === k)), BOARDS.find(b => b.k === 'rev')];
 }
 function orderPickHTML(d = day()){

@@ -410,7 +410,7 @@ function genEngBase(n){
 }
 
 /* ---------- 복습 ---------- */
-function dueWrong(subj){ const t = todayKey(); return S.wrong.filter(w => w.subj !== 'dict' && w.due <= t && w.served !== t && (!subj || w.subj === subj)); }
+function dueWrong(subj){ const t = todayKey(); return S.wrong.filter(w => w.subj !== 'dict' && !w.rest && w.due <= t && w.served !== t && (!subj || w.subj === subj)); }
 /* 많이 틀린 것, 오래 기다린 것부터 */
 function takeDue(list, n){
   const t = todayKey();
@@ -430,11 +430,25 @@ function genReview(n){
 }
 /* soft: 힌트 보고 두 번째에 맞힌 문제 — 한 번만 더 맞히면 목록에서 빠진다 */
 function addWrong(q, soft){
+  if (q.preview) return;   // 미리 맛보기(아직 안 배운 것)는 틀려도 오답 목록에 안 넣음
   const t = todayKey();
   const id = q.rev || q.key;
   const w = S.wrong.find(x => x.id === id);
-  if (w) { w.streak = 0; w.due = addDays(t, 1); w.misses = (w.misses || 1) + (soft ? 0 : 1); w.last = t; }
+  if (w) { w.rest = false; w.streak = 0; w.due = addDays(t, 1); w.misses = (w.misses || 1) + (soft ? 0 : 1); w.last = t; }
   else { const clean = JSON.parse(JSON.stringify(q)); delete clean.rev; S.wrong.push({ id, subj:q.subj, q:clean, due:addDays(t, soft ? 2 : 1), streak:soft ? 1 : 0, misses:soft ? 0 : 1, added:t, last:t }); }
+}
+/* 11/4 복습 밀림: 정답률이 80%쯤이면 틀린 문제가 하루 복습량보다 빨리 쌓여 40~50개가 밀렸다(sim_skip).
+   ① 다시 맞힌 적이 있고(streak≥1) 3주 동안 안 틀린 것, 힌트 보고 맞힌 것(misses 0) 중 2주 지난 것은 뺀다
+   ② 그래도 받아쓰기 빼고 60개가 넘으면 적게 틀린 것·오래된 것부터 뺀다 (오답노트는 판 기록에서 모아서 그대로 남음) */
+/* 11/4 고침: 지우면 오답노트 "같이 풀기"가 원래 문제 모양을 몰라서(sim_note) → 지우지 않고 복습에서만 쉬게(w.rest). 다시 틀리면 깨어남.
+   전체가 150개를 넘으면 쉬는 것 중 오래된 것부터 지움 (기록 문서 1MB) */
+function pruneWrong(){
+  const t = todayKey(), d21 = addDays(t, -21), d14 = addDays(t, -14), at = w => w.last || w.added || t;
+  S.wrong.forEach(w => { if (w.subj !== 'dict' && !w.rest && ((w.streak >= 1 && at(w) < d21) || (!w.misses && at(w) < d14))) w.rest = true; });
+  const act = S.wrong.filter(w => w.subj !== 'dict' && !w.rest);
+  if (act.length > 60) [...act].sort((a, b) => (a.misses || 0) - (b.misses || 0) || String(at(a)).localeCompare(String(at(b)))).slice(0, act.length - 60).forEach(w => { w.rest = true; });
+  const rest = S.wrong.filter(w => w.rest);
+  if (S.wrong.length > 150) { const drop = new Set(rest.sort((a, b) => String(at(a)).localeCompare(String(at(b)))).slice(0, S.wrong.length - 150)); S.wrong = S.wrong.filter(w => !drop.has(w)); }
 }
 function reviewRight(q){
   const w = S.wrong.find(x => x.id === q.rev); if (!w) return;
@@ -605,7 +619,8 @@ VIEWS.home = () => {
       <button class="stage-btn tori-stage" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
       <div class="bubble left" id="heroBubble">${esc(greet)}</div>
     </div>
-    ${sugKidBanner()}
+    ${funEventHTML()}
+    ${sugKidBanner()}${kqKidBanner()}
     ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
     ${al && al.passed && !al.started && !d.done ? `<button class="alarm-banner" data-a="m2" style="width:100%;text-align:left"><span style="font-size:28px">⏰</span><span style="flex:1">공부할 시간이야! 엄마 목소리 들어 볼까?</span><span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span></button>` : ''}
     ${capsuleWaiting(d) ? `<button class="alarm-banner" data-a="go" data-v="capsule" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:30px">🎁</span><span style="flex:1">오늘의 캡슐이 기다려요! 열어 볼까?</span></button>` : ''}
@@ -620,6 +635,7 @@ VIEWS.home = () => {
     </div>
     <button class="gift-card ${giftAch() ? 'won' : ''}" data-a="go" data-v="gift">${giftBox(58, giftAch() ? 'hop' : '')}
       <span style="flex:1;display:grid;gap:6px">${giftAch() ? `<span class="disp" style="font-size:21px">오빠 선물 받는 날! 오빠한테 자랑하자!</span>` : `<span class="disp" style="font-size:19px">오빠 선물까지 <b style="color:var(--pink-deep);font-weight:400">${g.goal - gd}일</b> 남았어!</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span><span class="muted" style="font-size:14px">공부 다 한 날 ${gd} / ${g.goal}일</span>`}</span></button>
+    ${gardenTileHTML()}
     ${mapTileHTML()}
     ${nextItem ? `<div class="next-item"><div class="row"><span class="disp" style="font-size:18px">스티커 ${nextItem.need - total}개 더 모으면 '${esc(nextItem.name)}'!</span></div><div class="meter"><i style="width:${Math.round((total - prevNeed) / (nextItem.need - prevNeed) * 100)}%"></i></div></div>` : ''}
     <div class="home-nav">
@@ -630,6 +646,7 @@ VIEWS.home = () => {
     </div>
     ${isInstalled() ? '' : `<button class="install-tile" data-a="installkid"><span style="font-size:30px">📲</span><span style="flex:1">바탕화면에 공부방 놓기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">엄마랑 같이 해요</span></span></button>`}
     ${d.done && (S.praise && (S.praise.audio || S.praise.text)) ? `<button class="btn lav big" data-a="go" data-v="alldone">오빠 칭찬 다시 듣기</button>` : ''}
+    <button class="kq-tile" data-a="kq"><span class="ic">🎲</span><span>오빠에게 문제 내기<small>계산 문제 · 그림 퀴즈 · 수수께끼 (재윤이 ${kqScore().kid} : ${kqScore().op} 오빠)</small></span></button>
     <button class="sug-kid" data-a="sug" data-v="kid"><span class="ic">💌</span><span>오빠에게 말하기<small>이상한 거, 어려운 거, 바라는 거</small></span></button>
     ${kidSyncNote()}
     <button class="grown-up" data-a="go" data-v="pin">${ICON.lock}엄마 · 오빠 메뉴</button>
@@ -639,6 +656,7 @@ VIEWS.home = () => {
 /* ----- 판 시작 (엄마 목소리) ----- */
 let RUN = null;
 function makeBoard(k){
+  pruneWrong();
   const n = countFor(k);
   let qs;
   if (k === 'rev') { const lec = planLecture(day()); qs = genReview(lec ? Math.max(6, Math.round(n * .4)) : n); }
@@ -754,7 +772,8 @@ VIEWS.q = () => {
       <span class="disp" style="font-size:18px;white-space:nowrap">${b.idx + 1}/${b.qs.length}</span>
       <button class="sug-flag" data-a="sugq" aria-label="이 문제 이상해요 (오빠에게 말하기)">🙋<span> 이상해요</span></button>
     </div>
-    ${q.rev ? `<span class="pill" style="align-self:flex-start">전에 틀렸던 문제</span>` : ''}
+    ${funQHTML(b)}
+    ${q.rev ? `<span class="pill" style="align-self:flex-start">전에 틀렸던 문제</span>` : ''}${q.preview ? `<span class="pill preview-pill" style="align-self:flex-start">🔭 내일 배울 것 미리 맛보기 · 틀려도 괜찮아!</span>` : ''}
     <div class="q-card">
       <div class="q-head"><p class="q-prompt">${esc(q.prompt)}</p><button class="speak-btn" data-a="replay" aria-label="다시 듣기">${ICON.speak}</button></div>
       ${q.vis ? `<div class="q-visual">${visHTML(q)}</div>` : ''}
@@ -762,6 +781,7 @@ VIEWS.q = () => {
     </div>
     <div class="feedback" id="fb"></div>
   </section>`;
+  funAfterQ(b);
   sayQuestion(q);
 };
 async function sayQuestion(q){
@@ -795,12 +815,13 @@ function answer(val){
     if (b.cur && (q.lesson || q.unitTest) && !q.review11 && !q.rev) b.cur.items.push({ key:q.key, first:RUN.tries === 0 });
     logQ(b, q, RUN.tries === 0 ? 1 : 2);
     feedback(esc(pick(PRAISE_LINES)) + (q.eng ? ` <b>${esc(q.explain)}</b>` : ''), 'happy');
+    funRight(RUN.tries === 0);
     if (q.eng) speak(q.ans, 'en-US');
     setTimeout(() => { if (SCREEN === 'suggest') return; nextQ(); }, q.eng ? 1500 : 1100);   // 맞힌 뒤 바로 "🙋 이 문제 이상해요"를 누르면 건의 화면에서 기다렸다가 돌아올 때 다음 문제로
     return;
   }
   RUN.tries++; (RUN.wrongs = RUN.wrongs || []).push(String(val));
-  SFX.wrong();
+  SFX.wrong(); if (RUN.tries === 1) funWrong();
   if (q.input === 'choice') markOpt(val, 'wrong');
   if (RUN.tries === 1) {
     if (q.input === 'numpad') { RUN.typed = ''; rerenderInput(); }
@@ -910,6 +931,7 @@ function finishBoard(k){
     notify('mom', `🎉 재윤이가 오늘 공부를 모두 끝냈어요 (${totalMin}분)`);
     checkGift();
   }
+  try { const fx = funOnFinish(k, b, d, allDone), ev = funDay(); ev.fin = Object.assign({}, ev.fin, { [k]:fx }); } catch (e) { console.warn('fun', e); }
   save();
   go('reward', { k, st, allDone });
 }
@@ -917,19 +939,21 @@ VIEWS.reward = ({ k, st, allDone }) => {
   const d = day(), b = d.boards[k], total = S.stickers.length;
   const newItems = ITEMS.filter(i => i.need <= total && !S.seenItems.includes(i.id));
   newItems.forEach(i => S.seenItems.push(i.id)); save();
-  const qn = b.n || b.qs.length;
+  const qn = b.n || b.qs.length, cheer = cheerPick();   // 11/4: 오빠·엄마 깜짝 응원이 가끔 (그때는 엄마 #1 대신 그 목소리)
   app().innerHTML = `<section class="screen reward">
     <h1>${BNAME[k]} 끝!</h1>
     <div class="big-sticker">${st}</div>
     <p class="score-line">${qn}문제 중 <b style="color:var(--pink-deep)">${b.correct}개</b> 한 번에 맞았어!<br><span class="muted">재윤이 스티커북에 쏙!</span></p>
     ${b.cur && b.cur.result ? lessonResultHTML(b.cur.result) : ''}
+    ${funRewardHTML(k, b)}
     ${allDone ? `<p class="score-line" style="color:var(--mint-deep)">오늘 공부 다 끝! 보너스 스티커도 받았어 ${d.earned[d.earned.length - 1]}</p>` : ''}
     ${newItems.length ? `<div class="next-item" style="align-self:stretch;border-color:var(--pink);background:var(--pink-pale)"><span class="disp" style="font-size:20px">새 꾸미기 선물: ${newItems.map(i => esc(i.name)).join(', ')}!</span><button class="btn small" data-a="go" data-v="room" style="justify-self:center">지금 꾸미러 가기</button></div>` : ''}
+    ${cheerRewardHTML(cheer)}
     <div class="bubble" style="display:flex;align-items:center;gap:10px"><span style="font-size:28px">💗</span><span>${esc(MOM_LINES[0].text)}</span><button class="speak-btn" style="width:48px;height:48px" data-a="mom" data-v="m1" aria-label="엄마 목소리 다시 듣기">${ICON.speak}</button></div>
     <button class="btn big" data-a="go" data-v="${allDone ? 'alldone' : S.eyeBreak === false ? 'home' : 'eyebreak'}">${allDone ? '오빠 칭찬 들으러 가기' : '좋아!'}</button>
   </section>`;
   SFX.sticker(); confetti();
-  setTimeout(() => playMom('m1'), 900);
+  setTimeout(() => { if (cheer && cheer.audio) playClip(cheer.audio); else if (cheer) speak(cheer.text); else playMom('m1'); }, 900);
 };
 VIEWS.alldone = () => {
   const d = day(); const totalMin = Math.round(BOARDS.reduce((s, x) => s + bsecs(d.boards[x.k]), 0) / 60);
@@ -1156,7 +1180,10 @@ VIEWS.adult = () => {
         <button class="mq" data-a="momfold" data-v="report"><span class="ic">📊</span><b>주간 리포트</b><small>지난주 한눈에</small></button>
       </div>`
       + `<button class="install-tile sug-tile" data-a="sug" data-v="${role() === 'oppa' ? 'oppa' : 'mom'}"><span style="font-size:30px">💌</span><span style="flex:1">오빠에게 건의하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">불편한 점 · 이상한 문제 · 바라는 점 (캡처 사진도)</span></span></button>`
+      + (kqAll().some(x => !kqAns(x.id)) ? kqPanel() : '')
       + momFold('notes', '🔔 엄마 알림함', notesPanel('mom', '엄마 알림함'))
+      + momFold('cheer', `💌 깜짝 응원 녹음 <small>${cheerList().filter(c => c.who === 'mom').length}개</small>`, cheersPanel('mom'))
+      + (kqAll().some(x => !kqAns(x.id)) ? '' : momFold('kq', '🎲 재윤이가 낸 문제', kqPanel()))
       + momFold('report', '📊 주간 리포트', reportPanel())
       + momFold('curr', `📚 진도 · 강의 <small>${esc(currLabel('math').slice(0, 18))} …</small>`, currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel())
       + (gradeTodo ? '' : momFold('dict', '📝 받아쓰기 채점한 것', dictGradePanel(pend)))
@@ -1183,7 +1210,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = glancePanel() + suggestPanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
+    body = glancePanel() + suggestPanel() + kqPanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -1200,6 +1227,7 @@ VIEWS.adult = () => {
         <div class="field"><label for="ptext">글로 남기는 칭찬</label><input type="text" id="ptext" maxlength="60" value="${esc(pr.text || '')}" placeholder="재윤아, 오늘도 끝까지 해서 정말 멋져!"></div>
         <button class="btn sky small" data-a="savepraise" style="justify-self:start">칭찬 저장</button>
       </div>
+      ${cheersPanel('oppa')}
       <div class="panel"><h3>엄마 목소리 6개</h3><p class="muted" style="font-size:15px">엄마가 보내 준 녹음 6개가 들어 있어요. 새로 녹음하면 "바꾸기"로 올려요. 카톡 음성(amr)은 폰에서 재생이 안 되니, 녹음 앱에서 m4a나 mp3로 저장한 파일을 올려 주세요.</p>
         <div class="list">${MOM_LINES.map((l, i) => { const own = !!S.voices[l.id], def = typeof DEFAULT_VOICES !== 'undefined' && !!DEFAULT_VOICES[l.id];
           return `<div class="li" style="flex-wrap:wrap"><span class="grow"><b class="disp" style="font-weight:400">#${i + 1}</b> ${esc(l.text)}<br><span class="muted" style="font-size:13px">${l.when}</span></span>
@@ -1255,6 +1283,7 @@ async function startRec(target){
 function stopRec(){ try { REC && REC.stop(); } catch (e) {} RECORDING = null; }
 function blobToData(blob){ return new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }); }
 function setAudio(target, data){
+  if (String(target).startsWith('cheer:')) { cheerAdd(target.slice(6), data, ''); toast('깜짝 응원을 저장했어요. 재윤이가 판을 끝낼 때 가끔 나와요'); go('adult'); return; }
   if (target === 'praise') { S.praise = Object.assign(S.praise || {}, { audio:data, at:Date.now() }); toast('칭찬 녹음을 저장했어요'); }
   else { S.voices[target] = data; toast(`엄마 목소리 #${MOM_LINES.findIndex(l => l.id === target) + 1}을 저장했어요`); }
   save(); go('adult');

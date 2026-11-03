@@ -229,7 +229,7 @@ function boardSub(k){
     // 오늘 강의가 다른 과목이고 이 과목도 새 강의가 필요하면: 판을 열기 전에도 같은 말로
     // 11/3: 아직 아무 강의도 시작 안 했으면 이 과목을 먼저 열어도 강의를 볼 수 있다 (lecClaimable)
     const mine = lec && lec.s === k && !lec.done ? lec.n : !b && lecClaimable(k, d) ? dueLecture(k) : null;
-    if (!mine && ((b && b.waitLec) || (!b && lec && lec.s !== k && dueLecture(k)))) return lec && lec.s && lec.s !== k ? `지난 시간 다지기 · 오늘 강의는 ${SUBJ_NAME[lec.s]} 📺` : `지난 시간 다지기 · ${SUBJ_NAME[k]} 새 강의는 내일 📺`;
+    if (!mine && ((b && b.waitLec) || (!b && lec && lec.s !== k && dueLecture(k)))) return lec && lec.s && lec.s !== k ? `연습 + 미리 맛보기 🔭 · 오늘 영상은 ${SUBJ_NAME[lec.s]} 📺` : `연습 + 미리 맛보기 🔭 · ${SUBJ_NAME[k]} 새 강의는 내일 📺`;
     const tag = mine ? `📺 ${lectInfo(k, mine).no}강 보는 날 · ` : '';
     return `${tag}${currLabel(k)}${k === 'eng' ? ' + 받아쓰기' : ''}`; }
   if (k === 'eng') return `${levelLabel('eng')} · ${BOARD_SUB.eng[lv('eng')]} + 받아쓰기`;

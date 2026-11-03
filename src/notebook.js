@@ -9,6 +9,7 @@ const NOTE_SUBJ = [['all','전체'],['kor','국어'],['math','수학'],['eng','�
 function notebookItems(){
   const ks = Object.keys(S.days).sort(), map = new Map();
   ks.forEach(k => [...dayLogs(k), ...dictLogs(k), ...nbLogs(k)].forEach(x => {
+    if (String(x.t).startsWith('🔭')) return;   // 미리 맛보기는 오답노트에 안 넣음
     const subj = ['kor','math','eng','dict'].includes(x.subj) ? x.subj : 'etc';
     const id = subj + '|' + x.t + '|' + x.a; let it = map.get(id);
     if (x.r !== 1) {

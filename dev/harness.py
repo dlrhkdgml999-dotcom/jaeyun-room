@@ -17,7 +17,7 @@ def build_page():
 # 음성 엔진 흉내: 무엇을 읽었는지 기록하고, 0.35초 뒤 끝난 걸로 처리
 FAKE_TTS = """
 (() => {
-  window.__said = [];
+  window.__said = []; window.__ev = 'off';   // 11/4: 날짜마다 바뀌는 깜짝 이벤트(스티커 2배 등)는 끔 — 이벤트는 sim_fun·sim_kq에서 따로
   let cur = null, timer = null;
   const synth = {
     speaking:false,

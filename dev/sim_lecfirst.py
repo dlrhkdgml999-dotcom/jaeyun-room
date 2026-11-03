@@ -3,7 +3,8 @@
   예전 → 오늘 강의는 번갈아 순서로 수학에 미리 정해져 있어서 국어는 "지난 시간 다지기 · 새 강의는 내일"
   지금 → 먼저 연 국어가 오늘 강의를 가져감, 수학이 "지난 시간 다지기"(어느 과목 강의 날인지 글로 보임)
 - 하루 한 편은 그대로, 한 과목이 강의를 3일 연속 독차지하지 않음
-- 매일 국어부터 여는 재윤이 30일: 수학 진도도 멈추지 않고 나감"""
+- 매일 국어부터 여는 재윤이 30일: 수학 진도도 멈추지 않고 나감
+- 11/4: 최근 강의 날 6번 중 국어가 더 많으면 국어가 못 가져감(번갈아) → 국어·수학 강의 수 차이 작게, 강의 없는 과목은 "연습 + 미리 맛보기"(새 문제)"""
 import asyncio, sys, re
 sys.path.insert(0, '.')
 from harness import Sim
@@ -24,26 +25,26 @@ async def main():
             await s.ev(f"S.dayOffset = {d - days}; saveLocal(); go('home')")
             before = {k: await s.p.evaluate(f"({PROBE})('{k}')") for k in ('kor', 'math')}
             need = await s.ev("[!!dueLecture('kor'), !!dueLecture('math')]")
-            recent = await s.ev("recentLecSubjs(2)")
+            recent = await s.ev("recentLecSubjs(6)")
             await s.ev("window.__order = ['kor','math','eng','rev']")
             log = await s.p.evaluate(f"({DAY})(0.95)")
             if log['errs']: issues.append((d, log['errs'][:2]))
             lecs = [x for x in log['lecs'] if not x.startswith('opt:')]
             subj = lecs[0][:4].rstrip('0123456789') if lecs else '-'
-            if subj == 'kor': kor_lec += 1
-            if subj == 'math': math_lec += 1
-            streak.append(subj)
-            # 국어가 강의가 필요하고, 앞의 강의 날 두 번이 다 국어가 아니면 → 국어가 먼저 열었으니 국어 강의
-            if need[0] and not (len(recent) == 2 and all(x == 'kor' for x in recent)):
+            if subj == 'kor' and need[1]: kor_lec += 1
+            if subj == 'math' and need[0]: math_lec += 1   # 둘 다 강의가 필요했던 날만 세어 공평한지 봄
+            streak.append(subj + ('' if need[1] else '*'))   # *: 그날 수학은 볼 강의가 없었음(단원 평가 등) → 국어가 보는 게 맞음
+            # 국어가 강의가 필요하고, 최근 강의 날에 국어가 수학보다 많지 않으면 → 국어가 먼저 열었으니 국어 강의
+            if need[0] and recent.count('kor') < recent.count('math'):
                 if subj != 'kor': issues.append((d, f'국어 먼저 열었는데 국어 강의 아님: {lecs}, 첫 화면 {before["kor"]["sub"]}'))
-                if '지난 시간 다지기' in before['kor']['sub']: issues.append((d, '첫 화면 국어 칸이 "새 강의는 내일"'))
+                if '미리 맛보기' in before['kor']['sub']: issues.append((d, '첫 화면 국어 칸이 "새 강의는 내일"'))
             if len(lecs) > 1 or log['watched'] > 1: issues.append((d, f'강의 두 편 {lecs}'))
             print(f"D{d+1:02d} 필요(국,수)={need} 앞={recent} 국어칸='{before['kor']['sub'][:26]}' 수학칸='{before['math']['sub'][:26]}' → 강의 {lecs or '-'} | {log['prog'][0][:20]} / {log['prog'][1][:20]}")
-        runs = re.findall(r'(kor(?:,kor)+)', ','.join(x for x in streak if x != '-'))
+        runs = re.findall(r'(kor(?:,kor)+)', ','.join(x for x in streak if x != '-' and not x.endswith('*')))   # 수학도 강의가 필요했던 날만
         print('국어 강의', kor_lec, '수학 강의', math_lec, '| 연속:', max((r.count('kor') for r in runs), default=1))
         s.expect(not issues, f'문제 {issues[:4]}')
         s.expect(all(r.count('kor') <= 2 for r in runs), '국어 강의가 3일 연속')
-        s.expect(math_lec >= 5, f'국어부터 여는 재윤이 30일 동안 수학 강의가 너무 적음 ({math_lec})')
+        s.expect(abs(kor_lec - math_lec) <= 4, f'국어부터 여는 재윤이 30일 동안 수학·국어 강의 수 차이가 큼 ({kor_lec}/{math_lec})')
         math_end = await s.ev("currLabel('math')")
         s.expect(math_end != math_start, '수학 진도가 안 나감')
 
@@ -56,7 +57,8 @@ async def main():
         txt = await s.ev("document.querySelector('.lesson-card') ? document.querySelector('.lesson-card').innerText : ''")
         print('수학 판 안내:', txt.replace('\n', ' / '))
         if await s.ev("!!(RUN.b.waitLec)"):
-            s.expect('오늘 강의는 국어' in txt, '다지기 판에 오늘 강의 과목이 안 보임')
+            s.expect('오늘 강의는 국어' in txt and '미리 맛보기' in txt, '연습 판에 오늘 강의 과목·미리 맛보기 안내가 안 보임')
+            s.expect(await s.ev("RUN.b.qs.filter(q => q.preview).length") >= 3, '연습 판에 미리 맛보기 문제가 없음')
         await s.shot('math_wait')
 
 asyncio.run(main())

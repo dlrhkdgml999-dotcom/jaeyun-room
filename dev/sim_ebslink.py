@@ -17,7 +17,10 @@ async def main():
             u = await s.ev(f"ebsCourseUrl('math', CURRS.math.now.lectOff + {n})")
             s.expect(u == P.format(c=mc, n=lid), f'수학 {n}강 주소 다름: {u}')
         print('수학 01강:', await s.ev("ebsCourseUrl('math', CURRS.math.now.lectOff + 1)"))
-        s.expect(await s.ev("ebsLinkOf('math', CURRS.math.now.lectOff + 66)") is None, '66강은 없어야 함')
+        # 11/4: 1-2 66강 자리는 이제 2-1 수학 1강(주소 넣음) → 전체 강의 수보다 큰 번호만 없어야 함
+        s.expect(await s.ev("ebsLinkOf('math', EBS_LECT.math.length + 1)") is None, '없는 강의 번호에 주소가 생김')
+        s.expect(await s.ev("(ebsLinkOf('math', CURRS.math.courses[1].lectOff + 48) || {}).id") == 'LS00000000152381395', '수학 2-1 48강 주소가 다름')
+        s.expect(await s.ev("(ebsLinkOf('kor', CURRS.kor.courses[1].lectOff + 56) || {}).id") == 'LS00000000152381106', '국어 2-1 56강 주소가 다름')
         # 2) 짐작 규칙 · 주소 읽기
         g = await s.ev("""({
           two1: ebsGuess({1:'LS00000000152379081', 2:'LS00000000152379082'}, 5),
