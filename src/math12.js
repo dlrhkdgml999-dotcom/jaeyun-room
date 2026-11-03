@@ -44,7 +44,7 @@ Object.assign(LESSON_GEN, {
     if (v < 2) { const even = v === 0, s = new Set(); const ans = (n => even ? n * 2 : n * 2 + 1)(rnd(1, 24)); s.add(ans); while (s.size < 3) { const x = rnd(1, 49); if ((x % 2 === 0) !== even) s.add(x); }
       return cq(`c12:eo${even}${[...s]}`, 'evenodd', `${even ? '짝수' : '홀수'}를 골라요`, null, null, [...s], ans, '끝자리가 0, 2, 4, 6, 8이면 짝수, 1, 3, 5, 7, 9이면 홀수', `${numJosa(ans, '은', '는')} ${even ? '짝수' : '홀수'}`, { big:true }); }
     if (v === 2) { const n = rnd(4, 18), [e, name] = pick(COUNT_THINGS); return cq(`c12:eoc${e}${n}`, 'evenodd', `${name}의 수는 짝수일까요, 홀수일까요?`, `${josa(name, '을', '를')} 둘씩 짝 지어 봐요. 짝수일까 홀수일까?`, null, ['짝수', '홀수'], n % 2 ? '홀수' : '짝수', '둘씩 짝을 지어서 남는 것이 없으면 짝수예요', `${n}개 → ${n % 2 ? '홀수' : '짝수'}`, { cols:2, vis:{ k:'count', e, n } }); }
-    const st = pick([['2, 4, 6, 8, 10은 짝수예요.','O'],['1, 3, 5, 7, 9는 홀수예요.','O'],['둘씩 짝을 지을 때 하나가 남으면 짝수예요.','X'],['15는 짝수예요.','X'],['20은 짝수예요.','O'],['홀수는 둘씩 짝을 지으면 하나가 남아요.','O'],['13은 홀수예요.','O'],['짝수 바로 다음 수는 짝수예요.','X']]);
+    const st = pickOX([['2, 4, 6, 8, 10은 짝수예요.','O'],['1, 3, 5, 7, 9는 홀수예요.','O'],['둘씩 짝을 지을 때 하나가 남으면 짝수예요.','X'],['15는 짝수예요.','X'],['20은 짝수예요.','O'],['홀수는 둘씩 짝을 지으면 하나가 남아요.','O'],['13은 홀수예요.','O'],['짝수 바로 다음 수는 짝수예요.','X']]);
     return ox(`c12:oxeo${st[0]}`, st[0], st[1], '둘씩 짝 지어 남는 것이 없으면 짝수, 하나 남으면 홀수', `${st[0]} → ${st[1]}`); },
   'm1-5'(){ const v = rnd(0, 2);
     if (v === 0) { const ds = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 3), big = Math.random() < .6, s = [...ds].sort((a, b) => b - a), ans = big ? s[0] * 10 + s[1] : s[2] * 10 + s[1];
@@ -87,7 +87,7 @@ Object.assign(LESSON_GEN, {
       return cq(`c12:ft${p}`, 'shape3', p, null, null, Object.keys(SHAPE3), a, h, `${p} → ${a} 모양`, { pic:true, optHtml:shape3Opts() }); }
     if (v === 1) { const [sh, what, n] = pick([['△', '뾰족한 곳', 3], ['□', '뾰족한 곳', 4], ['△', '곧은 선', 3], ['□', '곧은 선', 4], ['○', '뾰족한 곳', 0], ['○', '곧은 선', 0]]);
       return nq(`c12:fc${sh}${what}`, 'shape3', `${sh} 모양에서 ${josa(what, '은', '는')} 몇 개일까요?`, `이 모양에서 ${what}은 몇 개일까?`, `<div style="width:150px;margin:auto">${shapeSVG(SHAPE3[sh], 150, { marks: what === '뾰족한 곳' && n > 0 })}</div>`, n, '손가락으로 짚으며 세어 봐요', `${sh} 모양: ${what} ${n}개`); }
-    const st = pick([['○ 모양에는 뾰족한 곳이 없어요.','O'],['△ 모양에는 곧은 선이 4개 있어요.','X'],['□ 모양에는 뾰족한 곳이 4군데 있어요.','O'],['○ 모양은 곧은 선으로 되어 있어요.','X'],['△ 모양에는 뾰족한 곳이 3군데 있어요.','O'],['□ 모양과 △ 모양에는 둥근 부분이 있어요.','X']]);
+    const st = pickOX([['○ 모양에는 뾰족한 곳이 없어요.','O'],['△ 모양에는 곧은 선이 4개 있어요.','X'],['□ 모양에는 뾰족한 곳이 4군데 있어요.','O'],['○ 모양은 곧은 선으로 되어 있어요.','X'],['△ 모양에는 뾰족한 곳이 3군데 있어요.','O'],['□ 모양과 △ 모양에는 둥근 부분이 있어요.','X']]);
     return ox(`c12:oxsh${st[0]}`, st[0], st[1], '○ 둥근 부분, △ 뾰족한 곳 3, □ 뾰족한 곳 4', `${st[0]} → ${st[1]}`); },
   'm3-3'(){ const items = classifySet(), counts = { '○':0, '△':0, '□':0 }; items.forEach(i => counts[{ circ:'○', tri1:'△', quad2:'□' }[i.s]]++);
     if (Math.random() < .55) { const sh = pick(Object.keys(counts)); return nq(`c12:cs${items.map(i => i.s[0]).join('')}${sh}`, 'shape3', `${sh} 모양은 몇 개일까요?`, `그림에서 ${sh === '○' ? '동그라미' : sh === '△' ? '세모' : '네모'} 모양은 몇 개일까?`, classifyHTML(items), counts[sh], '센 모양에 하나씩 표시하며 세어 봐요', `${sh} 모양 ${counts[sh]}개`); }

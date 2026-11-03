@@ -729,6 +729,37 @@ button.sd:active{transform:scale(.95)}
 .nb-ink{display:flex;justify-content:center}
 .nb-ink img{max-width:100%;max-height:150px;border:2.5px solid var(--mint);border-radius:12px;background:#fff}
 
+/* ===== 건의함 (11/3) ===== */
+.sug-kid{align-self:stretch;display:flex;align-items:center;gap:12px;background:#fff;border:2.5px dashed var(--pink);border-radius:var(--r-md);padding:10px 14px;text-align:left;font-family:var(--f-display);font-size:19px;color:var(--ink)}
+.sug-kid .ic{font-size:30px}.sug-kid small{display:block;font-family:var(--f-body);font-size:14px;color:var(--ink-soft)}
+.sug-kid:active{transform:translateY(2px)}
+.sug-flag{flex:none;font-size:14px;color:var(--ink-soft);background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:4px 10px;min-height:36px;white-space:nowrap}
+@media (max-width:480px){.sug-flag span{display:none}}
+.sug-tile{background:var(--pink-pale);border-color:var(--pink);box-shadow:0 4px 0 var(--pink)}
+.sug-kinds{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sug-kind{border:2.5px solid var(--line);background:#fff;border-radius:16px;padding:10px;display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-size:17px;text-align:left;min-height:56px;color:var(--ink)}
+.sug-kind .ic{font-size:26px}.sug-kind.on{border-color:var(--pink);background:var(--pink-pale);box-shadow:0 0 0 2px var(--pink) inset}
+.sug-rec{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.sug-rec .rec-btn{width:64px;height:64px;font-size:22px;flex:none}
+.sug-rec audio{max-width:100%;width:260px}
+.sug-thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.sug-thumb{position:relative;width:110px;height:110px;border-radius:12px;overflow:hidden;border:2px solid var(--line);background:#fff}
+.sug-thumb img{width:100%;height:100%;object-fit:cover}
+.sug-thumb button{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:15px;display:grid;place-items:center}
+.btn.off{opacity:.45}
+.sug-done{display:grid;justify-items:center;gap:10px;text-align:center;padding:10px 0}.sug-done .disp{font-size:22px}
+.sug-q{display:grid;gap:6px;background:#FAFAFF;border:2px solid var(--line);border-radius:14px;padding:10px;min-width:0}
+.sug-q-p{margin:0;font-family:var(--f-display);font-size:17px}
+.sug-q-vis{max-width:100%;overflow:auto;zoom:.7;pointer-events:none}
+.sug-q-opts{display:flex;flex-wrap:wrap;gap:6px}.sug-q-opts span{border:2px solid var(--line);border-radius:10px;padding:3px 8px;background:#fff;font-size:14px}
+.sug-q-opts .ok{border-color:var(--mint-deep);background:var(--mint-pale)}.sug-q-opts .no{border-color:var(--bad);text-decoration:line-through}
+.sug-item.new{outline:2.5px solid var(--pink);outline-offset:-2px}
+.sug-item .grow{display:grid;gap:6px}
+.sug-text{margin:0;white-space:pre-wrap;word-break:break-word;font-size:16px}
+.sug-media{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.sug-media img{max-width:100%;max-height:340px;border-radius:10px;border:2px solid var(--line)}
+.sug-media a{display:block;max-width:100%}
+.sug-reply{color:var(--mint-deep);font-size:14px}
+.sug-done-list summary{cursor:pointer;font-family:var(--f-display);font-size:16px;color:var(--ink-soft);padding:6px 0}
+
 </style>
 </head>
 <body>
@@ -749,7 +780,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261103143531";
+window.APP_VERSION = "20261103162756";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -1602,6 +1633,7 @@ VIEWS.home = () => {
       <button class="stage-btn tori-stage" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
       <div class="bubble left" id="heroBubble">${esc(greet)}</div>
     </div>
+    ${sugKidBanner()}
     ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
     ${al && al.passed && !al.started && !d.done ? `<button class="alarm-banner" data-a="m2" style="width:100%;text-align:left"><span style="font-size:28px">⏰</span><span style="flex:1">공부할 시간이야! 엄마 목소리 들어 볼까?</span><span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span></button>` : ''}
     ${capsuleWaiting(d) ? `<button class="alarm-banner" data-a="go" data-v="capsule" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:30px">🎁</span><span style="flex:1">오늘의 캡슐이 기다려요! 열어 볼까?</span></button>` : ''}
@@ -1626,6 +1658,7 @@ VIEWS.home = () => {
     </div>
     ${isInstalled() ? '' : `<button class="install-tile" data-a="installkid"><span style="font-size:30px">📲</span><span style="flex:1">바탕화면에 공부방 놓기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">엄마랑 같이 해요</span></span></button>`}
     ${d.done && (S.praise && (S.praise.audio || S.praise.text)) ? `<button class="btn lav big" data-a="go" data-v="alldone">오빠 칭찬 다시 듣기</button>` : ''}
+    <button class="sug-kid" data-a="sug" data-v="kid"><span class="ic">💌</span><span>오빠에게 말하기<small>이상한 거, 어려운 거, 바라는 거</small></span></button>
     ${kidSyncNote()}
     <button class="grown-up" data-a="go" data-v="pin">${ICON.lock}엄마 · 오빠 메뉴</button>
   </section>`;
@@ -1747,6 +1780,7 @@ VIEWS.q = () => {
       <button class="icon-btn" data-a="home" aria-label="그만하고 나가기">${ICON.close}</button>
       <div class="track" aria-label="${b.idx + 1}번째 문제 / ${b.qs.length}"><span class="rail"></span><span class="fill" style="width:${pct}%"></span><span class="runner" style="left:${pct}%">${bunnySVG({ size:36, eq:{} })}</span><span class="goal">🥕</span></div>
       <span class="disp" style="font-size:18px;white-space:nowrap">${b.idx + 1}/${b.qs.length}</span>
+      <button class="sug-flag" data-a="sugq" aria-label="이 문제 이상해요 (오빠에게 말하기)">🙋<span> 이상해요</span></button>
     </div>
     ${q.rev ? `<span class="pill" style="align-self:flex-start">전에 틀렸던 문제</span>` : ''}
     <div class="q-card">
@@ -1790,7 +1824,7 @@ function answer(val){
     logQ(b, q, RUN.tries === 0 ? 1 : 2);
     feedback(esc(pick(PRAISE_LINES)) + (q.eng ? ` <b>${esc(q.explain)}</b>` : ''), 'happy');
     if (q.eng) speak(q.ans, 'en-US');
-    setTimeout(() => nextQ(), q.eng ? 1500 : 1100);
+    setTimeout(() => { if (SCREEN === 'suggest') return; nextQ(); }, q.eng ? 1500 : 1100);   // 맞힌 뒤 바로 "🙋 이 문제 이상해요"를 누르면 건의 화면에서 기다렸다가 돌아올 때 다음 문제로
     return;
   }
   RUN.tries++; (RUN.wrongs = RUN.wrongs || []).push(String(val));
@@ -2149,6 +2183,7 @@ VIEWS.adult = () => {
         <button class="mq" data-a="momfold" data-v="notes"><span class="ic">🔔</span><b>알림함</b><small>${newNotes ? `오늘 ${newNotes}개` : '새 알림 없음'}</small></button>
         <button class="mq" data-a="momfold" data-v="report"><span class="ic">📊</span><b>주간 리포트</b><small>지난주 한눈에</small></button>
       </div>`
+      + `<button class="install-tile sug-tile" data-a="sug" data-v="${role() === 'oppa' ? 'oppa' : 'mom'}"><span style="font-size:30px">💌</span><span style="flex:1">오빠에게 건의하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">불편한 점 · 이상한 문제 · 바라는 점 (캡처 사진도)</span></span></button>`
       + momFold('notes', '🔔 엄마 알림함', notesPanel('mom', '엄마 알림함'))
       + momFold('report', '📊 주간 리포트', reportPanel())
       + momFold('curr', `📚 진도 · 강의 <small>${esc(currLabel('math').slice(0, 18))} …</small>`, currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel())
@@ -2176,7 +2211,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
+    body = glancePanel() + suggestPanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
@@ -2903,7 +2938,7 @@ const LESSON_GEN = {
     if (v === 1) { const fake = new Set(); const tries = [numKo(h * 100 + o * 10 + t), numKo(n).replace('백', '백영'), numKo(h * 100 + t * 10) + (o ? '' : '영'), numKo(n + 10 > 999 ? n - 10 : n + 10)];
       for (const f of tries) { if (f !== numKo(n) && fake.size < 2) fake.add(f); }
       return cq(`c:read${n}`, 'read3', `${n}을 바르게 읽은 것은?`, '수를 바르게 읽은 것을 골라 봐요', eqH(`${n}`), [numKo(n), ...fake], numKo(n), '0인 자리는 읽지 않아요', `${n}은 ${numKo(n)}`, { cols:1 }); }
-    return nq(`c:ko${n}`, 'write3', `'${numKo(n)}'을 수로 쓰면?`, `${numKo(n)}을 수로 써 봐요`, `<div class="sent text-q"><span class="big-word">${numKo(n)}</span></div>`, n, '읽지 않은 자리에는 0을 써요', `${numKo(n)} = ${n}`); },
+    return nq(`c:ko${n}`, 'write3', `'${numKo(n)}'${hasBatchim(numKo(n)) ? '을' : '를'} 수로 쓰면?`, `${josa(numKo(n), '을', '를')} 수로 써 봐요`, `<div class="sent text-q"><span class="big-word">${numKo(n)}</span></div>`, n, '읽지 않은 자리에는 0을 써요', `${numKo(n)} = ${n}`); },
   '1-4'(){ const v = rnd(0, 2), n = distinctDigits(), d = String(n).split('').map(Number);
     if (v === 0) { const i = rnd(0, 2), val = d[i] * [100, 10, 1][i]; const cand = [d[i] * 100, d[i] * 10, d[i]];
       return cq(`c:pv${n}-${i}`, 'placevalue', `${n}에서 숫자 ${d[i]}는 얼마를 나타내나요?`, null, eqH(String(n).split('').map((c, j) => j === i ? `<span style="color:#EE5F8D">${c}</span>` : c).join('')), [...new Set(cand)], val, `${d[i]}가 ${['백','십','일'][i]}의 자리에 있어요`, `${['백','십','일'][i]}의 자리 숫자 ${d[i]}는 ${val}`); }
@@ -2926,19 +2961,19 @@ const LESSON_GEN = {
       return cq(`c:pickT${right}${wrong}`, 'pickshape', '삼각형을 골라요', null, null, [right, ...wrong], right, '곧은 선 3개로 둘러싸인 모양이에요. 열린 곳이 없어야 해요', '곧은 선 3개로 둘러싸인 도형이 삼각형', { pic:true, optHtml:shapeOpts([right, ...wrong]) }); }
     if (v === 1) { const id = pick(['tri1','tri2','tri3']), what = pick(['변','꼭짓점']);
       return nq(`c:cnt${id}${what}`, 'count', `삼각형의 ${what}은 몇 개일까요?`, null, shapeSVG(id, 150, { marks: what === '꼭짓점' }), 3, what === '변' ? '곧은 선을 하나씩 세어 봐요' : '두 선이 만나는 뾰족한 점을 세어 봐요', `삼각형은 ${what}이 3개`); }
-    const st = pick([['삼각형은 곧은 선 3개로 둘러싸여 있어요.','O'],['삼각형의 꼭짓점은 4개예요.','X'],['삼각형에는 굽은 선이 있어요.','X'],['삼각형의 변은 3개예요.','O']]);
+    const st = pickOX([['삼각형은 곧은 선 3개로 둘러싸여 있어요.','O'],['삼각형의 꼭짓점은 4개예요.','X'],['삼각형에는 굽은 선이 있어요.','X'],['삼각형의 변은 3개예요.','O']]);
     return ox(`c:oxT${st[0]}`, st[0], st[1], '삼각형: 변 3개, 꼭짓점 3개, 곧은 선만', `${st[0]} → ${st[1]}`); },
   '2-2'(){ const v = rnd(0, 2);
     if (v === 0) { const right = pick(['quad1','quad2','quad3']), wrong = shuffle(['tri1','circ','open4','pent','tri3']).slice(0, 2);
       return cq(`c:pickQ${right}${wrong}`, 'pickshape', '사각형을 골라요', null, null, [right, ...wrong], right, '곧은 선 4개로 둘러싸인 모양이에요', '곧은 선 4개로 둘러싸인 도형이 사각형', { pic:true, optHtml:shapeOpts([right, ...wrong]) }); }
     if (v === 1) { const id = pick(['quad1','quad2','quad3']), what = pick(['변','꼭짓점']);
       return nq(`c:cnt${id}${what}`, 'count', `사각형의 ${what}은 몇 개일까요?`, null, shapeSVG(id, 150, { marks: what === '꼭짓점' }), 4, '하나씩 짚으며 세어 봐요', `사각형은 ${what}이 4개`); }
-    const st = pick([['사각형은 변이 4개예요.','O'],['사각형은 꼭짓점이 3개예요.','X'],['사각형은 곧은 선 4개로 둘러싸여 있어요.','O'],['네모난 모양은 모두 변이 4개예요.','O']]);
+    const st = pickOX([['사각형은 변이 4개예요.','O'],['사각형은 꼭짓점이 3개예요.','X'],['사각형은 곧은 선 4개로 둘러싸여 있어요.','O'],['네모난 모양은 모두 변이 4개예요.','O'],['사각형은 굽은 선으로 둘러싸여 있어요.','X'],['사각형의 변은 5개예요.','X'],['사각형은 꼭짓점이 4개예요.','O'],['동그라미도 사각형이에요.','X']]);
     return ox(`c:oxQ${st[0]}`, st[0], st[1], '사각형: 변 4개, 꼭짓점 4개', `${st[0]} → ${st[1]}`); },
   '2-3'(){ const v = rnd(0, 1);
     if (v === 0) { const wrong = shuffle(['oval','quad2','tri1','hex']).slice(0, 2);
       return cq(`c:pickC${wrong}`, 'pickshape', '원을 골라요', null, null, ['circ', ...wrong], 'circ', '어느 쪽에서 보아도 똑같이 동그란 모양이에요. 길쭉하면 원이 아니에요', '똑같이 동그란 모양이 원', { pic:true, optHtml:shapeOpts(['circ', ...wrong]) }); }
-    const st = pick([['원에는 꼭짓점이 없어요.','O'],['원에는 변이 4개 있어요.','X'],['원은 뾰족한 곳이 없어요.','O'],['원은 곧은 선으로 둘러싸여 있어요.','X'],['원은 어느 쪽에서 보아도 똑같이 동그래요.','O']]);
+    const st = pickOX([['원에는 꼭짓점이 없어요.','O'],['원에는 변이 4개 있어요.','X'],['원은 뾰족한 곳이 없어요.','O'],['원은 곧은 선으로 둘러싸여 있어요.','X'],['원은 어느 쪽에서 보아도 똑같이 동그래요.','O']]);
     return ox(`c:oxC${st[0]}`, st[0], st[1], '원은 굽은 선 하나로 동그랗게 둘러싸여 있어요', `${st[0]} → ${st[1]}`); },
   '2-4'(){ const v = rnd(0, 5);
     if (v === 0) return nq('c:tgTri', 'tangram', '칠교판 조각 중에서 삼각형은 몇 개일까요?', null, tangramSVG({ nums:true }), 5, '곧은 선 3개로 둘러싸인 조각을 하나씩 세어 봐요', '삼각형 조각은 ①②③⑤⑦ 5개');
@@ -2948,7 +2983,7 @@ const LESSON_GEN = {
     if (v === 3) return nq('c:tg7', 'tangram', '칠교판은 모두 몇 조각일까요?', null, tangramSVG({ nums:true }), 7, '번호를 하나씩 세어 봐요', '칠교판은 일곱 조각 (칠 = 7)');
     if (v === 4) { const k = pick(['square','tri']); const nm = k === 'square' ? '사각형' : '삼각형';
       return cq(`c:tg2${k}`, 'tangram', '작은 삼각형 두 조각을 붙여서 만든 모양은?', '작은 삼각형 두 조각을 붙여서 만든 모양은 무엇일까?', twoTriSVG(k, 110), ['삼각형','사각형','원'], nm, '바깥 테두리의 변을 세어 봐요', `바깥 변이 ${k === 'square' ? 4 : 3}개라서 ${nm}`, { cols:3 }); }
-    const st = pick([['칠교판 조각에는 원 모양이 없어요.','O'],['칠교판은 일곱 조각으로 되어 있어요.','O'],['칠교판 조각은 모두 삼각형이에요.','X'],['칠교판 조각은 모두 곧은 선으로 둘러싸여 있어요.','O'],['칠교판에서 가장 큰 조각은 사각형이에요.','X'],['칠교판 조각 두 개를 붙이면 원을 만들 수 있어요.','X']]);
+    const st = pickOX([['칠교판 조각에는 원 모양이 없어요.','O'],['칠교판은 일곱 조각으로 되어 있어요.','O'],['칠교판 조각은 모두 삼각형이에요.','X'],['칠교판 조각은 모두 곧은 선으로 둘러싸여 있어요.','O'],['칠교판에서 가장 큰 조각은 사각형이에요.','X'],['칠교판 조각 두 개를 붙이면 원을 만들 수 있어요.','X']]);
     return ox(`c:oxTg${st[0]}`, st[0], st[1], '칠교판: 삼각형 5조각 + 사각형 2조각, 모두 곧은 선', `${st[0]} → ${st[1]}`); },
   '2-5'(){ const v = rnd(0, 2);
     if (v === 0) { const cols = rnd(2, 4), h = Array.from({ length:cols }, () => rnd(1, 3)), n = h.reduce((a, b) => a + b, 0);
@@ -2991,7 +3026,7 @@ const LESSON_GEN = {
   /* ---------- 4단원 길이 재기 ---------- */
   '4-1'(){ const v = rnd(0, 1);
     if (v === 0) { const n = rnd(3, 8), obj = pick(['연필','크레파스','리본','색연필']); return nq(`c:clip${n}${obj}`, 'clips', `${obj}의 길이는 클립 몇 개만큼일까요?`, null, clipsSVG(n, obj), n, '클립을 하나씩 세어 봐요', `클립 ${n}개만큼`); }
-    const st = pick([['같은 연필을 클립과 지우개로 재면, 더 작은 클립으로 잰 수가 더 커요.','O'],['재는 단위가 달라도 잰 수는 항상 같아요.','X'],['뼘으로 재면 사람마다 잰 길이가 다를 수 있어요.','O']]);
+    const st = pickOX([['같은 연필을 클립과 지우개로 재면, 더 작은 클립으로 잰 수가 더 커요.','O'],['재는 단위가 달라도 잰 수는 항상 같아요.','X'],['뼘으로 재면 사람마다 잰 길이가 다를 수 있어요.','O']]);
     return ox(`c:oxL${st[0]}`, st[0], st[1], '작은 단위로 재면 여러 번 재야 해요', `${st[0]} → ${st[1]}`); },
   '4-2'(){ const n = rnd(2, 15), v = rnd(0, 1);
     if (v === 0) return nq(`c:cm${n}`, 'cm', `1 cm가 ${n}번이면 몇 cm일까요?`, `1센티미터가 ${n}번이면 몇 센티미터일까?`, eqH(`1 cm × ${n}번 = ${QB} cm`, true), n, '1 cm씩 더해 가요', `${n} cm`);
@@ -3168,11 +3203,11 @@ const K1_SPEAK_OX = [
   ['궁금한 것은 친구의 발표가 끝난 뒤에 물어봐요.','O'],['친구가 발표하는 중에 큰 소리로 끼어들어요.','X'],
 ];
 const K1_SPEAK_CH = [
-  ['발표를 잘하는 방법으로 알맞은 것은?','듣는 사람을 바라보며 또박또박 말해요','고개를 숙이고 작게 말해요','친구들에게 등을 돌리고 말해요'],
-  ['친구의 발표를 잘 듣는 자세는?','발표하는 친구를 바라보며 들어요','책상에 엎드려 있어요','다른 책을 읽어요'],
-  ['발표할 때 목소리는 어떻게 하면 좋을까요?','모두 잘 들리게 알맞은 크기로','속삭이듯 아주 작게','귀가 아플 만큼 크게'],
-  ['발표가 끝난 친구에게 할 일로 알맞은 것은?','손뼉을 치며 칭찬해요','못했다고 놀려요','못 들은 척해요'],
-  ['발표하기 전에 하면 좋은 일은?','말할 내용을 미리 생각해 봐요','친구와 장난을 쳐요','눈을 감고 기다려요'],
+  ['발표를 잘하는 방법으로 알맞은 것은?','듣는 사람을 바라보며 또박또박 말해요','고개를 숙이고 작게 말해요','칠판을 보고 친구들에게 등을 돌려 말해요'],
+  ['친구의 발표를 잘 듣는 자세는?','발표하는 친구를 바라보며 들어요','책상에 엎드려서 눈을 감고 있어요','다른 책을 읽어요'],
+  ['발표할 때 목소리는 어떻게 하면 좋을까요?','모두 잘 들리게 알맞은 크기로','속삭이듯 아주 작게','귀가 아플 만큼 아주 크게 소리쳐서'],
+  ['발표가 끝난 친구에게 할 일로 알맞은 것은?','손뼉을 치며 칭찬해요','틀린 곳을 크게 말하며 놀려요','못 들은 척해요'],
+  ['발표하기 전에 하면 좋은 일은?','말할 내용을 미리 생각해 봐요','친구와 장난을 쳐요','아무 생각 없이 눈을 감고 기다려요'],
 ];
 const K1_TURN_OX = [
   ['말할 때는 차례를 지켜 한 사람씩 말해요.','O'],['다른 사람의 말이 끝나면 내 말을 해요.','O'],['하고 싶은 말이 있으면 손을 들고 기다려요.','O'],
@@ -3180,12 +3215,12 @@ const K1_TURN_OX = [
   ['내 차례가 오면 하고 싶은 말을 또박또박 해요.','O'],['친구의 말이 길면 중간에 잘라도 돼요.','X'],['말차례를 기다리는 동안 친구의 말을 잘 들어요.','O'],
 ];
 const K1_TURN_CH = [
-  ['친구가 말하는 중에 하고 싶은 말이 생기면?','친구의 말이 끝날 때까지 기다려요','바로 끼어들어 말해요','더 큰 목소리로 말해요'],
+  ['친구가 말하는 중에 하고 싶은 말이 생기면?','친구의 말이 끝날 때까지 기다려요','친구 말을 자르고 바로 끼어들어 말해요','더 큰 목소리로 말해요'],
   ['"말차례"는 무슨 뜻일까요?','말하는 차례','말을 타는 차례','말을 그리는 순서'],
-  ['모둠에서 이야기할 때 말차례를 지키는 방법은?','한 사람씩 돌아가며 말해요','모두 한꺼번에 말해요','목소리 큰 사람만 말해요'],
+  ['모둠에서 이야기할 때 말차례를 지키는 방법은?','한 사람씩 돌아가며 말해요','하고 싶은 사람이 모두 한꺼번에 말해요','목소리 큰 사람만 말해요'],
   ['나를 소개할 때 말하기에 알맞지 않은 것은?','친구의 비밀','내 이름','내가 좋아하는 것','나를 소개할 때는 나에 대한 것을 말해요'],
-  ['나를 소개하는 말로 알맞은 것은?','저는 그림 그리기를 좋아해요','너는 키가 작구나','어제 비가 왔어요','나에 대한 말을 골라요'],
-  ['선생님이 질문하셨을 때 말차례를 지키는 방법은?','손을 들고 이름이 불리면 말해요','자리에서 일어나 바로 소리쳐요','옆 친구 대신 대답해요'],['두 친구가 동시에 말을 시작했어요. 어떻게 하면 좋을까요?','한 사람이 먼저 말하고 다른 사람은 기다려요','더 큰 소리로 끝까지 말해요','둘 다 말을 멈추고 화를 내요'],['나를 소개하는 글에 쓰기 알맞은 것은?','내가 잘하는 것','친구가 싫어하는 것','어제 먹은 반찬 개수','나에 대한 것을 골라요'],
+  ['나를 소개하는 말로 알맞은 것은?','저는 그림 그리기를 좋아해요','너는 키가 작고 달리기가 느리구나','어제 비가 왔어요','나에 대한 말을 골라요'],
+  ['선생님이 질문하셨을 때 말차례를 지키는 방법은?','손을 들고 이름이 불리면 말해요','자리에서 벌떡 일어나 바로 소리쳐요','옆 친구 대신 대답해요'],['두 친구가 동시에 말을 시작했어요. 어떻게 하면 좋을까요?','한 사람이 먼저 말하고 다른 사람은 기다려요','누가 먼저인지 다투며 둘 다 끝까지 말해요','둘 다 말을 멈추고 서로에게 화를 내요'],['나를 소개하는 글에 쓰기 알맞은 것은?','내가 잘하는 것','친구가 싫어하는 것','어제 먹은 반찬 개수','나에 대한 것을 골라요'],
 ];
 const K1_KIDS = [
   { n:'하늘', like:'그림 그리기', good:'고양이 그리기', dream:'화가', food:'떡볶이' },
@@ -3246,11 +3281,11 @@ const K3_FIND = [
   ['눈이 펑펑 내려요.','내려요','펑펑','눈이','겨울에'],['바람이 살랑살랑 불어요.','불어요','살랑살랑','바람이','봄에'],
 ];
 const K3_DIARY_CH = [
-  ['일기에 쓸 글감을 고를 때 가장 좋은 것은?','오늘 겪은 일 중 가장 기억에 남는 일','매일 똑같이 하는 일','다른 사람의 비밀'],
-  ['다음 중 일기 글감으로 가장 알맞은 것은?','동생과 처음으로 김밥을 만든 일','아침에 눈을 뜬 일','저녁에 잠을 잔 일'],
-  ['일기는 무엇을 쓰는 글일까요?','하루 동안 겪은 일과 생각이나 느낌','다른 사람에게 보내는 초대장','물건을 사는 방법'],
-  ['일기를 쓰면 좋은 점은?','겪은 일을 오래 기억할 수 있어요','키가 쑥쑥 커요','숙제가 없어져요'],
-  ['오늘 있었던 일 중 일기 글감으로 가장 알맞은 것은?','처음으로 혼자 머리를 묶은 일','학교 가는 길에 신호등을 본 일','밥 먹을 때 숟가락을 든 일'],['일기 글감으로 알맞지 않은 것은?','친구가 부탁한 비밀','할머니 댁에 간 일','동생과 눈싸움한 일'],['일기에 꼭 들어가야 하는 것은?','겪은 일과 생각이나 느낌','좋아하는 노래 가사','친구들의 전화번호'],['같은 일을 겪어도 일기가 저마다 다른 까닭은?','생각이나 느낌이 사람마다 달라서','날씨가 매일 같아서','공책 색깔이 달라서'],
+  ['일기에 쓸 글감을 고를 때 가장 좋은 것은?','오늘 겪은 일 중 가장 기억에 남는 일','매일 아침 똑같이 하는 이 닦기와 세수','친구가 몰래 알려 준 다른 사람의 비밀'],
+  ['다음 중 일기 글감으로 가장 알맞은 것은?','동생과 처음으로 김밥을 만든 일','아침에 눈을 뜨고 이불 밖으로 나온 일','저녁에 평소처럼 잠자리에 누운 일'],
+  ['일기는 무엇을 쓰는 글일까요?','하루 동안 겪은 일과 생각이나 느낌','생일잔치에 오라고 친구에게 보내는 초대장','가게에서 물건을 사고 돈을 내는 방법'],
+  ['일기를 쓰면 좋은 점은?','겪은 일을 오래 기억할 수 있어요','일기를 쓸 때마다 키가 쑥쑥 자라요','다음 날 학교 숙제가 모두 없어져요'],
+  ['오늘 있었던 일 중 일기 글감으로 가장 알맞은 것은?','처음으로 혼자 머리를 묶은 일','학교 가는 길에 신호등을 본 일','밥 먹을 때 숟가락을 든 일'],['일기 글감으로 알맞지 않은 것은?','친구가 부탁한 비밀','할머니 댁에 간 일','동생과 눈싸움한 일'],['일기에 꼭 들어가야 하는 것은?','겪은 일과 생각이나 느낌','내가 좋아하는 노래 가사 전부','우리 반 친구들의 전화번호'],['같은 일을 겪어도 일기가 저마다 다른 까닭은?','생각이나 느낌이 사람마다 달라서','날씨가 날마다 똑같이 맑아서','사람마다 공책 색깔이 달라서'],
 ];
 const K3_DIARY_OX = [
   ['일기에는 겪은 일과 그때의 생각이나 느낌을 써요.','O'],['일기에는 날짜와 날씨를 써요.','O'],['일기는 다른 사람이 겪은 일만 써요.','X'],
@@ -3347,54 +3382,54 @@ const K6_DIAL = [
   { t:'지호: 학급 문고에 만화책을 놓자. 친구들이 재미있게 읽을 수 있어.\n서윤: 나는 동화책이 좋아. 이야기를 읽으면 생각이 커지거든.', qs:[['서윤이의 생각은?','학급 문고에 동화책을 놓자','만화책을 놓자','책을 모두 치우자'],['지호가 만화책을 놓자고 한 까닭은?','친구들이 재미있게 읽을 수 있어서','생각이 커져서','책이 가벼워서']] },
 ];
 const K6_REASON = [
-  ['나는 강아지를 키우고 싶어요.','강아지와 함께 산책하면 즐겁기 때문이에요.','어제는 비가 왔기 때문이에요.','연필이 길기 때문이에요.'],
-  ['교실에서 뛰면 안 돼요.','친구와 부딪혀 다칠 수 있기 때문이에요.','교실 창문이 크기 때문이에요.','점심이 맛있기 때문이에요.'],
-  ['물을 아껴 써야 해요.','물은 소중한 자원이기 때문이에요.','물은 투명하기 때문이에요.','물고기가 귀엽기 때문이에요.'],
-  ['책을 많이 읽고 싶어요.','재미있는 이야기를 많이 알 수 있기 때문이에요.','책이 무겁기 때문이에요.','책상이 갈색이기 때문이에요.'],
+  ['나는 강아지를 키우고 싶어요.','강아지와 함께 산책하면 즐겁기 때문이에요.','어제 저녁에 비가 많이 왔기 때문이에요.','내 필통 속 연필이 아주 길기 때문이에요.'],
+  ['교실에서 뛰면 안 돼요.','친구와 부딪혀 다칠 수 있기 때문이에요.','교실 창문이 크고 햇빛이 잘 들어오기 때문이에요.','오늘 점심 반찬이 아주 맛있기 때문이에요.'],
+  ['물을 아껴 써야 해요.','물은 소중한 자원이기 때문이에요.','물은 색깔이 없고 투명하기 때문이에요.','어항 속 물고기가 아주 귀엽기 때문이에요.'],
+  ['책을 많이 읽고 싶어요.','재미있는 이야기를 많이 알 수 있기 때문이에요.','책가방에 넣은 책이 너무너무 무겁기 때문이에요.','우리 집 책상이 갈색이기 때문이에요.'],
   ['채소도 골고루 먹어야 해요.','몸이 튼튼해지기 때문이에요.','채소는 초록색이기 때문이에요.','숟가락이 둥글기 때문이에요.'],
-  ['횡단보도에서는 손을 들고 건너요.','운전하는 사람이 나를 잘 볼 수 있기 때문이에요.','손이 시리기 때문이에요.','하늘이 파랗기 때문이에요.'],
-  ['밤에는 일찍 자야 해요.','다음 날 피곤하지 않기 때문이에요.','달이 동그랗기 때문이에요.','이불이 꽃무늬이기 때문이에요.'],
-  ['쓰레기는 쓰레기통에 버려야 해요.','길이 깨끗해지고 모두가 기분 좋기 때문이에요.','쓰레기통이 초록색이기 때문이에요.','오늘이 월요일이기 때문이에요.'],
-  ['도서관에서는 조용히 해야 해요.','다른 사람이 책 읽는 것을 방해하지 않기 위해서예요.','도서관 의자가 푹신하기 때문이에요.','책이 많기 때문이에요.'],
-  ['나는 겨울이 좋아요.','눈사람을 만들 수 있기 때문이에요.','여름에는 수박을 먹기 때문이에요.','연필은 길기 때문이에요.'],
-  ['친구와 사이좋게 지내야 해요.','함께 놀면 더 즐겁기 때문이에요.','친구 가방이 크기 때문이에요.','교실 창문이 크기 때문이에요.'],
+  ['횡단보도에서는 손을 들고 건너요.','운전하는 사람이 나를 잘 볼 수 있기 때문이에요.','주머니에 넣어 둔 손이 너무 시리기 때문이에요.','손을 들면 하늘에 더 가까워지기 때문이에요.'],
+  ['밤에는 일찍 자야 해요.','다음 날 피곤하지 않기 때문이에요.','밤하늘에 뜬 달이 동그랗기 때문이에요.','내 이불이 예쁜 꽃무늬이기 때문이에요.'],
+  ['쓰레기는 쓰레기통에 버려야 해요.','길이 깨끗해지고 모두가 기분 좋기 때문이에요.','길가에 있는 쓰레기통이 초록색이기 때문이에요.','오늘이 일주일 중 첫날인 월요일이기 때문이에요.'],
+  ['도서관에서는 조용히 해야 해요.','다른 사람이 책 읽는 것을 방해하지 않기 위해서예요.','도서관에 있는 의자가 아주 푹신푹신하기 때문이에요.','도서관에는 재미있는 책이 아주 많기 때문이에요.'],
+  ['나는 겨울이 좋아요.','눈사람을 만들 수 있기 때문이에요.','여름에는 시원한 수박을 먹을 수 있기 때문이에요.','필통 속에 있는 연필이 길기 때문이에요.'],
+  ['친구와 사이좋게 지내야 해요.','함께 놀면 더 즐겁기 때문이에요.','친구가 메고 온 가방이 크기 때문이에요.','우리 교실 창문이 아주 크기 때문이에요.'],
 ];
 const K6_OX = [['내 생각을 말할 때는 까닭도 함께 말하면 좋아요.','O'],['다른 사람의 생각이 나와 다르면 무시해요.','X'],['친구의 생각을 끝까지 듣고 내 생각을 말해요.','O']];
 const K6_GOLD = { t:'옛날에 사이좋은 형제가 길을 가다 금덩이 두 개를 주웠어요. 형제는 하나씩 나누어 가졌어요. 그런데 강을 건너는 배에서 형제는 서로 금덩이를 더 갖고 싶은 마음이 들었어요. 형제는 금덩이 때문에 사이가 나빠질까 봐 금덩이를 강물에 던져 버렸어요.',
-  qs:[['형제가 금덩이를 강물에 던진 까닭은?','금덩이 때문에 사이가 나빠질까 봐','금덩이가 너무 무거워서','물고기에게 주려고'],['이 이야기를 읽고 든 생각으로 알맞은 것은?','형제의 우애가 금보다 소중해요','금을 버리면 안 돼요','강은 위험해요']] };
+  qs:[['형제가 금덩이를 강물에 던진 까닭은?','금덩이 때문에 사이가 나빠질까 봐','금덩이가 너무 무거워서 들고 가기 힘들어서','강물 속 물고기에게 선물로 주려고'],['이 이야기를 읽고 든 생각으로 알맞은 것은?','형제의 우애가 금보다 소중해요','금은 아무 데나 버리면 절대 안 돼요','강가에는 혼자 가면 위험해요']] };
 
 /* ---------- 7단원 마음을 담아서 말해요 ---------- */
 const K7_KIND = [
-  ['친구가 연필을 빌려 달라고 해요.','응, 여기 있어. 다 쓰면 돌려줘.','싫어, 네 거 써.','왜 맨날 빌려 가?'],
-  ['실수로 친구 발을 밟았어요.','미안해, 많이 아프니?','네가 거기 있었잖아.','그냥 지나가요.'],
-  ['친구가 내 그림을 칭찬해 주었어요.','고마워! 너도 그림 잘 그리잖아.','당연하지, 내가 최고야.','흥, 별로라며.'],
-  ['동생이 블록 탑을 무너뜨렸어요.','괜찮아, 같이 다시 쌓자.','저리 가! 다 망쳤잖아.','엄마한테 이를 거야.'],
-  ['친구가 받아쓰기를 틀려서 속상해해요.','괜찮아, 다음에는 더 잘할 수 있어.','그것도 못 맞혀?','나는 백 점인데.'],
-  ['선생님께서 숙제를 도와주셨어요.','도와주셔서 감사합니다.','이제 됐어요.','몰라요.'],
+  ['친구가 연필을 빌려 달라고 해요.','응, 여기 있어. 다 쓰면 돌려줘.','싫어, 네 연필은 어디 두고 또 빌려?','왜 맨날 내 것만 빌려 가? 귀찮게.'],
+  ['실수로 친구 발을 밟았어요.','미안해, 많이 아프니?','네가 거기 서 있어서 그런 거잖아.','아무 말 없이 그냥 지나가요.'],
+  ['친구가 내 그림을 칭찬해 주었어요.','고마워! 너도 그림 잘 그리잖아.','당연하지, 우리 반에서 내가 제일 잘 그려.','흥, 지난번엔 별로라고 했잖아.'],
+  ['동생이 블록 탑을 무너뜨렸어요.','괜찮아, 같이 다시 쌓자.','저리 가! 너 때문에 다 망쳤잖아.','너 엄마한테 다 이를 거야.'],
+  ['친구가 받아쓰기를 틀려서 속상해해요.','괜찮아, 다음에는 더 잘할 수 있어.','그렇게 쉬운 것도 못 맞혔어?','나는 하나도 안 틀리고 백 점 받았는데.'],
+  ['선생님께서 숙제를 도와주셨어요.','도와주셔서 감사합니다.','이제 됐으니까 저리 가세요.','몰라요, 그냥 혼자 할래요.'],
   ['친구가 놀이에 끼워 달라고 해요.','좋아, 같이 하자!','안 돼, 우리끼리 할 거야.','너는 못하잖아.'],
   ['내가 늦어서 친구가 오래 기다렸어요.','기다리게 해서 미안해.','뭐 어때, 조금 늦었는데.','네가 일찍 왔잖아.'],
-  ['친구가 넘어져서 무릎을 다쳤어요.','괜찮아? 보건실에 같이 가자.','조심 좀 하지 그랬어.','하하, 넘어졌다!'],
-  ['짝꿍이 지우개를 빌려주었어요.','고마워, 잘 쓸게.','이거 별로네.','그냥 가져갈게.'],
-  ['친구가 내 말을 잘못 알아들었어요.','내가 다시 천천히 말해 줄게.','그것도 못 알아들어?','됐어, 말 안 해.'],
-  ['엄마가 맛있는 간식을 만들어 주셨어요.','엄마, 정말 맛있어요. 고맙습니다.','이것밖에 없어요?','배 안 고파요.'],
+  ['친구가 넘어져서 무릎을 다쳤어요.','괜찮아? 보건실에 같이 가자.','그러니까 뛰지 말라고 했잖아, 조심 좀 하지.','하하, 넘어졌다! 다들 이것 좀 봐!'],
+  ['짝꿍이 지우개를 빌려주었어요.','고마워, 잘 쓸게.','이거 별로네, 더 좋은 거 없어?','이거 내가 그냥 가져갈게.'],
+  ['친구가 내 말을 잘못 알아들었어요.','내가 다시 천천히 말해 줄게.','그렇게 쉬운 말도 못 알아들어?','됐어, 이제 너한테 말 안 할래.'],
+  ['엄마가 맛있는 간식을 만들어 주셨어요.','엄마, 정말 맛있어요. 고맙습니다.','엄마, 이것밖에 없어요? 더 주세요.','지금은 배 안 고파서 안 먹을래요.'],
 ];
 const K7_OX = [['고운 말을 쓰면 듣는 사람의 기분이 좋아져요.','O'],['화가 나면 친구에게 나쁜 말을 해도 돼요.','X'],['고마울 때는 "고마워"라고 말해요.','O'],['잘못했을 때는 "미안해"라고 말해요.','O'],['친구가 말할 때 얼굴을 찡그리며 들어요.','X'],['나쁜 말을 들으면 마음이 아파요.','O'],['친구의 실수를 놀리는 것은 재미있는 장난이에요.','X']];
 const K7_CARE = [
-  ['친구가 키우던 화분이 시들어서 슬퍼해요.','많이 속상하겠다. 내가 같이 돌봐 줄까?','화분은 또 사면 되지.','그러니까 물을 잘 줬어야지.'],
-  ['친구가 전학 간다고 해요.','보고 싶을 거야. 편지 자주 쓸게.','잘 가.','상관없어.'],
-  ['짝꿍이 발표를 하다가 실수해서 부끄러워해요.','괜찮아, 끝까지 발표해서 멋졌어.','하하, 틀렸다!','다음엔 하지 마.'],
-  ['동생이 무서운 꿈을 꿔서 울어요.','많이 무서웠구나. 언니가 옆에 있을게.','꿈인데 왜 울어?','시끄러워, 얼른 자.'],
-  ['할머니께서 맛있는 반찬을 만들어 주셨어요.','할머니, 정말 맛있어요. 감사합니다.','이거 말고 다른 거 주세요.','맛없어요.'],
-  ['친구가 새 머리핀을 하고 왔어요.','와, 머리핀이 정말 잘 어울린다!','그거 이상해.','나도 있어, 내 게 더 예뻐.'],
-  ['친구가 줄넘기를 열 번이나 넘었다고 자랑해요.','우아, 열심히 연습했구나! 멋지다.','그게 뭐 대단해?','나는 백 번 넘어.'],
-  ['동생이 아끼던 장난감이 부서져서 울어요.','많이 속상하지? 같이 고쳐 보자.','울지 마, 시끄러워.','네가 망가뜨렸잖아.'],
-  ['친구가 내일 이사를 가서 걱정된다고 해요.','새 동네에서도 좋은 친구를 만날 거야.','걱정하지 마, 나는 상관없어.','왜 이사를 가?'],
-  ['친구가 그림 대회에서 상을 못 받아 실망했어요.','열심히 그린 거 다 알아. 나는 네 그림이 좋아.','상 못 받았네.','다음에도 못 받을걸.'],
-  ['짝꿍이 오늘 몸이 아파서 힘이 없어 보여요.','많이 아파? 선생님께 말씀드릴까?','왜 그렇게 힘이 없어?','같이 뛰어놀자!'],
-  ['엄마가 일하고 와서 피곤해 보여요.','엄마, 오늘 많이 힘드셨죠? 제가 어깨 주물러 드릴게요.','엄마, 놀아 주세요!','배고파요, 밥 주세요.'],
+  ['친구가 키우던 화분이 시들어서 슬퍼해요.','많이 속상하겠다. 내가 같이 돌봐 줄까?','그까짓 화분은 가게에서 또 사면 되잖아.','그러니까 내가 물을 잘 주라고 했잖아.'],
+  ['친구가 전학 간다고 해요.','보고 싶을 거야. 편지 자주 쓸게.','응, 잘 가. 나는 다른 친구랑 놀면 돼.','너 전학 가도 나는 하나도 상관없어.'],
+  ['짝꿍이 발표를 하다가 실수해서 부끄러워해요.','괜찮아, 끝까지 발표해서 멋졌어.','하하, 틀렸다! 얼굴이 빨개졌네!','부끄러우니까 다음엔 발표하지 마.'],
+  ['동생이 무서운 꿈을 꿔서 울어요.','많이 무서웠구나. 언니가 옆에 있을게.','그냥 꿈인데 왜 울어? 아기처럼.','시끄러워, 나 깨우지 말고 얼른 자.'],
+  ['할머니께서 맛있는 반찬을 만들어 주셨어요.','할머니, 정말 맛있어요. 감사합니다.','할머니, 이거 말고 다른 반찬 주세요.','저는 이 반찬 맛없어서 안 먹을래요.'],
+  ['친구가 새 머리핀을 하고 왔어요.','와, 머리핀이 정말 잘 어울린다!','그 머리핀 너한테 하나도 안 어울려.','나도 그거 있어, 근데 내 것이 더 예뻐.'],
+  ['친구가 줄넘기를 열 번이나 넘었다고 자랑해요.','우아, 열심히 연습했구나! 멋지다.','열 번이 뭐 대단하다고 자랑해?','겨우 열 번? 나는 백 번도 넘게 넘어.'],
+  ['동생이 아끼던 장난감이 부서져서 울어요.','많이 속상하지? 같이 고쳐 보자.','울지 마, 시끄러워서 텔레비전이 안 들려.','네가 함부로 갖고 놀다가 망가뜨렸잖아.'],
+  ['친구가 내일 이사를 가서 걱정된다고 해요.','새 동네에서도 좋은 친구를 만날 거야.','네가 이사를 가든 말든 나는 상관없어.','왜 이사를 가? 여기가 더 좋은데.'],
+  ['친구가 그림 대회에서 상을 못 받아 실망했어요.','열심히 그린 거 다 알아. 나는 네 그림이 좋아.','상 못 받았네? 내 그림은 상 받았는데.','네 그림은 다음 대회에서도 못 받을 것 같아.'],
+  ['짝꿍이 오늘 몸이 아파서 힘이 없어 보여요.','많이 아파? 선생님께 말씀드릴까?','왜 그렇게 힘이 없어? 빨리 일어나 봐.','아파도 괜찮아, 운동장에서 같이 뛰어놀자!'],
+  ['엄마가 일하고 와서 피곤해 보여요.','엄마, 오늘 많이 힘드셨죠? 제가 어깨 주물러 드릴게요.','엄마, 피곤해도 지금 저랑 놀이터에 가서 놀아 주세요!','엄마, 저 너무 배고파요. 얼른 맛있는 저녁밥 주세요.'],
 ];
 const K7_STORY = { t:'하린이는 친구 다은이의 도토리 머리핀을 빌렸어요. 그런데 놀이터에서 놀다가 머리핀을 잃어버렸어요. 하린이는 다은이에게 사실대로 말하고 사과했어요. 다은이는 "괜찮아, 솔직하게 말해 줘서 고마워."라고 말했어요.',
-  qs:[['하린이가 다은이에게 한 말로 알맞은 것은?','머리핀을 잃어버려서 정말 미안해.','몰라, 나는 안 그랬어.','네가 빌려준 게 잘못이야.'],['다은이의 말을 들은 하린이의 마음은?','고맙고 마음이 놓였어요','화가 났어요','심심했어요'],['다은이는 어떤 말을 했나요?','솔직하게 말해 줘서 고맙다고 했어요','머리핀을 물어내라고 했어요','다시는 안 논다고 했어요']] };
+  qs:[['하린이가 다은이에게 한 말로 알맞은 것은?','머리핀을 잃어버려서 정말 미안해.','몰라, 나는 머리핀 잃어버린 적 없어.','네가 이런 걸 빌려준 게 잘못이야.'],['다은이의 말을 들은 하린이의 마음은?','고맙고 마음이 놓였어요','화가 났어요','심심했어요'],['다은이는 어떤 말을 했나요?','솔직하게 말해 줘서 고맙다고 했어요','머리핀을 물어내라고 했어요','다시는 안 논다고 했어요']] };
 const K7_STORY2 = { t:'민재는 연못에 사는 메기에게 날마다 밥을 주었어요. 어느 날 민재가 연못에 빠뜨린 장난감 배를 메기가 입으로 밀어 꺼내 주었어요. 민재는 "메기야, 정말 고마워!" 하고 활짝 웃었어요.',
   qs:[['메기는 민재에게 어떤 도움을 주었나요?','장난감 배를 꺼내 주었어요','밥을 주었어요','노래를 불러 주었어요'],['민재가 메기에게 한 말은?','메기야, 정말 고마워!','저리 가!','배고파?'],['민재가 메기에게 고마운 마음을 전한 방법으로 알맞은 것은?','고운 말로 고맙다고 말했어요','아무 말도 하지 않았어요','큰 소리로 화를 냈어요']] };
 
@@ -3419,15 +3454,17 @@ const K8_PUPPET = [
   ['인형극을 할 때 필요한 것이 아닌 것은?','수영복','인형','무대','인형극에 쓰는 물건을 떠올려 봐요'],
   ['사자 인형으로 "어흥! 누가 나를 깨웠어?"라고 말할 때 어울리는 목소리는?','크고 화난 목소리','작고 졸린 목소리','깔깔 웃는 목소리'],
   ['생쥐 인형으로 "살려 주세요, 꼭 은혜를 갚을게요."라고 말할 때 어울리는 목소리는?','작고 떨리는 목소리','크고 씩씩한 목소리','깔깔 웃는 목소리'],
-  ['인형극을 보고 느낌을 나누는 말로 알맞은 것은?','생쥐가 사자를 구하는 장면이 감동적이었어','인형이 몇 개인지 몰라','아무 생각 없어','인상 깊은 장면과 느낌을 말해요'],
+  ['인형극을 보고 느낌을 나누는 말로 알맞은 것은?','생쥐가 사자를 구하는 장면이 감동적이었어','인형극에 나온 인형이 모두 몇 개인지 나는 몰라','아무 생각 없어','인상 깊은 장면과 느낌을 말해요'],
   ['인형극에서 인형을 움직이는 사람은 어디에 숨어 있을까요?','무대 뒤','관객석 맨 앞','무대 위 한가운데','보는 사람에게 몸이 보이지 않게 해요'],
-  ['인형극을 보는 바른 자세는?','조용히 보고 끝나면 손뼉을 쳐요','무대에 올라가요','인형을 잡아당겨요','공연을 볼 때 지킬 예절을 떠올려요'],
+  ['인형극을 보는 바른 자세는?','조용히 보고 끝나면 손뼉을 쳐요','재미있으면 무대에 올라가서 같이 놀아요','인형을 잡아당겨요','공연을 볼 때 지킬 예절을 떠올려요'],
   ['막대 인형을 만들 때 필요한 것은?','종이와 막대','수박과 칼','물과 비누','이름에 답이 있어요. 막대 인형!'],
-  ['인형극에서 이야기를 소개하며 장면을 설명하는 사람은?','해설하는 사람','관객','매표소 직원','장면을 풀어서 설명해 주는 사람이에요'],
+  ['인형극에서 이야기를 소개하며 장면을 설명하는 사람은?','해설하는 사람','인형을 파는 사람','매표소 직원','장면을 풀어서 설명해 주는 사람이에요'],
 ];
 
 /* ---------- 문제 만들기 ---------- */
-const oxOf = (key, list, hint) => { const [st, a] = pick(list); return kox(key + st, st, a, hint); };
+/* O·X가 반반 나오게: 맞는 말이 더 많은 목록에서도 O만 고르면 맞히지 못하게 (11/3 점검) */
+const pickOX = list => { const want = Math.random() < .5 ? 'O' : 'X', sub = list.filter(x => x[1] === want); return pick(sub.length ? sub : list); };
+const oxOf = (key, list, hint) => { const [st, a] = pickOX(list); return kox(key + st, st, a, hint); };
 Object.assign(LESSON_GEN, {
   'k1-1'(){ return Math.random() < .55 ? oxOf('k11', K1_SPEAK_OX, '발표하는 사람은 바라보며 또박또박, 듣는 사람은 바라보며 끝까지!') : kpick('k11', 'speak', K1_SPEAK_CH, '듣는 사람을 생각하면 답이 보여요'); },
   'k1-2'(){ return Math.random() < .5 ? oxOf('k12', K1_TURN_OX, '말차례는 말하는 차례. 한 사람씩 차례대로!') : kpick('k12', 'turn', K1_TURN_CH, '한 사람씩 차례를 지켜 말해요'); },
@@ -3439,14 +3476,14 @@ Object.assign(LESSON_GEN, {
   'k2-1'(){ const v = Math.random();
     if (v < .5) { const cands = K2_WORDS.filter(w => K2_WORDS.some(x => x !== w && x[0] === w[w.length - 1])); const w = pick(cands), last = w[w.length - 1];
       const right = pick(K2_WORDS.filter(x => x !== w && x[0] === last)), wrong = shuffle(K2_WORDS.filter(x => x[0] !== last && x !== w)).slice(0, 2);
-      return kc(`k21chain${w}`, 'chain', `끝말잇기! '${w}' 다음에 이어 말할 낱말은?`, { say:`끝말잇기! ${w}. 다음에 이어 말할 낱말은?`, read:w, vis:{ k:'html', html:`<span class="big-word">${esc(w)}</span>` }, opts:[right, ...wrong], ans:right, cols:3, hint:`'${w}'의 끝 글자 '${last}'${ro(last).slice(1)} 시작하는 낱말을 찾아요`, explain:`${w} → ${right}` }); }
-    if (v < .8) { const w = pick(K2_LEN); return Object.assign(kc(`k21len${w}`, 'count', `'${w}'는 몇 글자일까요?`, { read:w, vis:{ k:'html', html:`<span class="big-word">${esc(w)}</span>` }, opts:[], ans:0 }), { input:'numpad', opts:undefined, ans:w.length, hint:'한 글자씩 손가락으로 짚으며 세어 봐요', explain:`${w}: ${w.length}글자` }); }
+      return kc(`k21chain${w}>${right}`, 'chain', `끝말잇기! '${w}' 다음에 이어 말할 낱말은?`, { say:`끝말잇기! ${w}. 다음에 이어 말할 낱말은?`, read:w, vis:{ k:'html', html:`<span class="big-word">${esc(w)}</span>` }, opts:[right, ...wrong], ans:right, cols:3, hint:`'${w}'의 끝 글자 '${last}'${ro(last).slice(1)} 시작하는 낱말을 찾아요`, explain:`${w} → ${right}` }); }
+    if (v < .8) { const w = pick(K2_LEN); return Object.assign(kc(`k21len${w}`, 'count', `'${w}'${hasBatchim(w) ? '은' : '는'} 몇 글자일까요?`, { read:w, vis:{ k:'html', html:`<span class="big-word">${esc(w)}</span>` }, opts:[], ans:0 }), { input:'numpad', opts:undefined, ans:w.length, hint:'한 글자씩 손가락으로 짚으며 세어 봐요', explain:`${w}: ${w.length}글자` }); }
     if (v < .9) { const five = pick(K2_LEN.filter(w => w.length === 5)), others = shuffle(K2_LEN.filter(w => w.length !== 5)).slice(0, 2);
       return kc(`k21five${five}${others}`, 'count', '다섯 글자로 된 낱말은?', { opts:[five, ...others], ans:five, cols:1, hint:'글자를 하나씩 세어 봐요', explain:`${five}: 다섯 글자` }); }
     return oxOf('k21', K2_OX, '말놀이 규칙을 떠올려 봐요'); },
   'k2-2'(){ const v = Math.random();
     if (v < .5) { const ch = pick(K2_TAIL), i = rnd(0, ch.length - 2), right = ch[i + 1], wrong = shuffle(ch.filter((x, j) => j !== i + 1 && j !== i)).slice(0, 2);
-      return kc(`k22tail${ch[i]}`, 'tail', '꼬리따기 말놀이! 다음에 올 말은?', { say:`꼬리따기 말놀이! ${ch[i]}. 다음에 올 말은?`, read:ch[i], vis:{ k:'html', html:`<div class="sent text-q">"${esc(ch[i])}"</div>` }, opts:[right, ...wrong], ans:right, hint:`앞말의 끝 '${ch[i].split(' ').pop()}'를 이어받아요`, explain:`${ch[i]} → ${right}` }); }
+      return kc(`k22tail${ch[i]}`, 'tail', '꼬리따기 말놀이! 다음에 올 말은?', { say:`꼬리따기 말놀이! ${ch[i]}. 다음에 올 말은?`, read:ch[i], vis:{ k:'html', html:`<div class="sent text-q">"${esc(ch[i])}"</div>` }, opts:[right, ...wrong], ans:right, hint:`앞말의 끝 '${ch[i].split(' ').pop()}'${hasBatchim(ch[i].split(' ').pop()) ? '을' : '를'} 이어받아요`, explain:`${ch[i]} → ${right}` }); }
     if (v < .85) { const it = shuffle(K2_MARKET).slice(0, 3); const said = `시장에 가면 ${it[0]}도 있고, ${it[1]}도 있고`;
       const right = `${said}, ${it[2]}도 있고`;
       return kc(`k22mk${it}`, 'addon', '말 덧붙이기 놀이! 다음 사람이 할 말은?', { say:`${said}. 다음 사람이 할 말은?`, read:said, vis:{ k:'html', html:`<div class="sent text-q">"${esc(said)}"</div>` }, opts:[right, `시장에 가면 ${it[2]}도 있고`, `시장에 가면 ${it[0]}도 있고, ${it[2]}도 있고`], ans:right, hint:'앞사람이 말한 것을 모두 말하고 하나를 덧붙여요', explain:right }); }
@@ -3502,10 +3539,10 @@ Object.assign(LESSON_GEN, {
   'k7-1'(){ if (Math.random() < .3) return oxOf('k71', K7_OX, '듣는 사람의 마음을 생각해요');
     const [s, a, ...w] = pick(K7_KIND); return kc(`k71${s}`, 'kind', '고운 말로 알맞은 것은?', { say:s + ' 어떻게 말하면 좋을까?', read:s, vis:{ k:'html', html:`<div class="sent text-q">${esc(s)}</div>` }, opts:[a, ...w], ans:a, sayOpts:true, lang:'ko-KR', hint:'듣는 친구의 기분이 좋아지는 말을 골라요', explain:a }); },
   'k7-2'(){ const [s, a, ...w] = pick(K7_CARE); return kc(`k72${s}`, 'care', '친구의 마음을 생각하며 한 말은?', { say:s + ' 어떻게 말하면 좋을까?', read:s, vis:{ k:'html', html:`<div class="sent text-q">${esc(s)}</div>` }, opts:[a, ...w], ans:a, sayOpts:true, lang:'ko-KR', hint:'상대의 마음을 먼저 알아주는 말을 골라요', explain:a }); },
-  'k7-3'(){ if (Math.random() < .35) return kpick('k73', 'share', [['고운 말로 생각과 느낌을 나누는 방법으로 알맞은 것은?','상대의 마음을 생각하며 말해요','내 말만 계속해요','큰 소리로 화를 내요'],['고마운 마음을 전하는 말은?','도와줘서 고마워','왜 이제 와?','몰라'],['미안한 마음을 전하는 말은?','내가 잘못했어. 미안해.','네가 먼저 그랬잖아.','어쩌라고.'],['친구의 이야기를 듣고 내 느낌을 말하는 방법으로 알맞은 것은?','"그 이야기를 들으니 나도 기뻐."','"그래서 뭐?"','"내 얘기나 들어."'],['기쁜 일을 겪은 친구에게 할 말로 알맞은 것은?','정말 축하해! 나도 기뻐.','그게 뭐 대단해?','나도 그 정도는 해.'],['생각과 느낌을 나눌 때 듣는 사람의 자세는?','친구를 바라보며 끝까지 들어요','딴 곳을 보며 들어요','중간에 자리를 떠나요']], '듣는 사람의 마음을 생각해요');
+  'k7-3'(){ if (Math.random() < .35) return kpick('k73', 'share', [['고운 말로 생각과 느낌을 나누는 방법으로 알맞은 것은?','상대의 마음을 생각하며 말해요','친구 말은 듣지 않고 내 말만 계속해요','마음에 안 들면 큰 소리로 화를 내요'],['고마운 마음을 전하는 말은?','도와줘서 고마워','왜 이제야 도와주러 와?','됐어, 나 혼자 할 수 있었어.'],['미안한 마음을 전하는 말은?','내가 잘못했어. 미안해.','네가 먼저 그랬으니까 나는 잘못 없어.','그게 뭐 어쨌다고, 어쩌라고.'],['친구의 이야기를 듣고 내 느낌을 말하는 방법으로 알맞은 것은?','"그 이야기를 들으니 나도 기뻐."','"그래서 뭐? 나는 하나도 재미없어."','"그 얘기 말고 내 얘기나 들어."'],['기쁜 일을 겪은 친구에게 할 말로 알맞은 것은?','정말 축하해! 나도 기뻐.','그게 뭐 대단하다고 그렇게 좋아해?','나도 그 정도는 얼마든지 할 수 있어.'],['생각과 느낌을 나눌 때 듣는 사람의 자세는?','친구를 바라보며 끝까지 들어요','창밖 딴 곳을 보며 대충 들어요','이야기가 길면 중간에 자리를 떠나요']], '듣는 사람의 마음을 생각해요');
     const st = pick([K7_STORY, K7_STORY2]), [q, a, ...w] = pick(st.qs); return kc(`k73${q}`, 'share', q, { read:st.t, vis:{ k:'html', html:passHTML(st.t) }, opts:[a, ...w], ans:a, hint:'이야기를 다시 읽어 봐요', explain:a }); },
   'k8-1'(){ if (Math.random() < .2) return oxOf('k81', K8_OX.slice(4), '시는 장면을 떠올리며 읽어요');
-    const p = pick(K8_POEMS), [q, a, ...w] = pick(p.qs); return kc(`k81${q}`, 'poem', q, { read:p.t.replace(/\n/g, ', '), vis:{ k:'html', html:passHTML(p.t) }, opts:[a, ...w], ans:a, cols:3, hint:'시를 소리 내어 다시 읽어 봐요', explain:a }); },
+    const p = pick(K8_POEMS), [q, a, ...w] = pick(p.qs); return kc(`k81${p.t.slice(0, 12)}|${q}`, 'poem', q, { read:p.t.replace(/\n/g, ', '), vis:{ k:'html', html:passHTML(p.t) }, opts:[a, ...w], ans:a, cols:3, hint:'시를 소리 내어 다시 읽어 봐요', explain:a }); },
   'k8-2'(){ const t = pick(K8_TALES), [q, a, ...w] = pick(t.qs);
     return kc(`k82${q}`, 'story', q, { say:`${t.name}. ${q}`, read:t.t, vis:{ k:'html', html:`<span class="eyebrow">${esc(t.name)}</span>` + passHTML(t.t) }, opts:[a, ...w], ans:a, hint:'이야기에서 그 장면을 찾아봐요', explain:a }); },
   'k8-3'(){ return Math.random() < .5 ? oxOf('k83', K8_OX.slice(0, 4), '인형극: 인형 · 무대 · 대사') : kpick('k83', 'puppet', K8_PUPPET, '인물의 마음에 어울리는 목소리를 떠올려 봐요'); },
@@ -4021,7 +4058,7 @@ Object.assign(LESSON_GEN, {
     if (v < 2) { const even = v === 0, s = new Set(); const ans = (n => even ? n * 2 : n * 2 + 1)(rnd(1, 24)); s.add(ans); while (s.size < 3) { const x = rnd(1, 49); if ((x % 2 === 0) !== even) s.add(x); }
       return cq(`c12:eo${even}${[...s]}`, 'evenodd', `${even ? '짝수' : '홀수'}를 골라요`, null, null, [...s], ans, '끝자리가 0, 2, 4, 6, 8이면 짝수, 1, 3, 5, 7, 9이면 홀수', `${numJosa(ans, '은', '는')} ${even ? '짝수' : '홀수'}`, { big:true }); }
     if (v === 2) { const n = rnd(4, 18), [e, name] = pick(COUNT_THINGS); return cq(`c12:eoc${e}${n}`, 'evenodd', `${name}의 수는 짝수일까요, 홀수일까요?`, `${josa(name, '을', '를')} 둘씩 짝 지어 봐요. 짝수일까 홀수일까?`, null, ['짝수', '홀수'], n % 2 ? '홀수' : '짝수', '둘씩 짝을 지어서 남는 것이 없으면 짝수예요', `${n}개 → ${n % 2 ? '홀수' : '짝수'}`, { cols:2, vis:{ k:'count', e, n } }); }
-    const st = pick([['2, 4, 6, 8, 10은 짝수예요.','O'],['1, 3, 5, 7, 9는 홀수예요.','O'],['둘씩 짝을 지을 때 하나가 남으면 짝수예요.','X'],['15는 짝수예요.','X'],['20은 짝수예요.','O'],['홀수는 둘씩 짝을 지으면 하나가 남아요.','O'],['13은 홀수예요.','O'],['짝수 바로 다음 수는 짝수예요.','X']]);
+    const st = pickOX([['2, 4, 6, 8, 10은 짝수예요.','O'],['1, 3, 5, 7, 9는 홀수예요.','O'],['둘씩 짝을 지을 때 하나가 남으면 짝수예요.','X'],['15는 짝수예요.','X'],['20은 짝수예요.','O'],['홀수는 둘씩 짝을 지으면 하나가 남아요.','O'],['13은 홀수예요.','O'],['짝수 바로 다음 수는 짝수예요.','X']]);
     return ox(`c12:oxeo${st[0]}`, st[0], st[1], '둘씩 짝 지어 남는 것이 없으면 짝수, 하나 남으면 홀수', `${st[0]} → ${st[1]}`); },
   'm1-5'(){ const v = rnd(0, 2);
     if (v === 0) { const ds = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 3), big = Math.random() < .6, s = [...ds].sort((a, b) => b - a), ans = big ? s[0] * 10 + s[1] : s[2] * 10 + s[1];
@@ -4064,7 +4101,7 @@ Object.assign(LESSON_GEN, {
       return cq(`c12:ft${p}`, 'shape3', p, null, null, Object.keys(SHAPE3), a, h, `${p} → ${a} 모양`, { pic:true, optHtml:shape3Opts() }); }
     if (v === 1) { const [sh, what, n] = pick([['△', '뾰족한 곳', 3], ['□', '뾰족한 곳', 4], ['△', '곧은 선', 3], ['□', '곧은 선', 4], ['○', '뾰족한 곳', 0], ['○', '곧은 선', 0]]);
       return nq(`c12:fc${sh}${what}`, 'shape3', `${sh} 모양에서 ${josa(what, '은', '는')} 몇 개일까요?`, `이 모양에서 ${what}은 몇 개일까?`, `<div style="width:150px;margin:auto">${shapeSVG(SHAPE3[sh], 150, { marks: what === '뾰족한 곳' && n > 0 })}</div>`, n, '손가락으로 짚으며 세어 봐요', `${sh} 모양: ${what} ${n}개`); }
-    const st = pick([['○ 모양에는 뾰족한 곳이 없어요.','O'],['△ 모양에는 곧은 선이 4개 있어요.','X'],['□ 모양에는 뾰족한 곳이 4군데 있어요.','O'],['○ 모양은 곧은 선으로 되어 있어요.','X'],['△ 모양에는 뾰족한 곳이 3군데 있어요.','O'],['□ 모양과 △ 모양에는 둥근 부분이 있어요.','X']]);
+    const st = pickOX([['○ 모양에는 뾰족한 곳이 없어요.','O'],['△ 모양에는 곧은 선이 4개 있어요.','X'],['□ 모양에는 뾰족한 곳이 4군데 있어요.','O'],['○ 모양은 곧은 선으로 되어 있어요.','X'],['△ 모양에는 뾰족한 곳이 3군데 있어요.','O'],['□ 모양과 △ 모양에는 둥근 부분이 있어요.','X']]);
     return ox(`c12:oxsh${st[0]}`, st[0], st[1], '○ 둥근 부분, △ 뾰족한 곳 3, □ 뾰족한 곳 4', `${st[0]} → ${st[1]}`); },
   'm3-3'(){ const items = classifySet(), counts = { '○':0, '△':0, '□':0 }; items.forEach(i => counts[{ circ:'○', tri1:'△', quad2:'□' }[i.s]]++);
     if (Math.random() < .55) { const sh = pick(Object.keys(counts)); return nq(`c12:cs${items.map(i => i.s[0]).join('')}${sh}`, 'shape3', `${sh} 모양은 몇 개일까요?`, `그림에서 ${sh === '○' ? '동그라미' : sh === '△' ? '세모' : '네모'} 모양은 몇 개일까?`, classifyHTML(items), counts[sh], '센 모양에 하나씩 표시하며 세어 봐요', `${sh} 모양 ${counts[sh]}개`); }
@@ -4329,31 +4366,31 @@ const N2_OX = [['"닭"은 받침이 두 개예요.','O'],['"나무"에는 받침
 
 /* ---------- 3단원 그림일기를 써요 ---------- */
 const N3_END = [
-  ['선생님께 겪은 일을 말할 때 알맞은 말은?','어제 공원에 갔어요.','어제 공원에 갔어.','어제 공원 갔다.'],['할머니께 말할 때 알맞은 말은?','할머니, 저 받아쓰기 백 점 받았어요.','할머니, 나 백 점 받았어.','백 점이다.'],
+  ['선생님께 겪은 일을 말할 때 알맞은 말은?','어제 공원에 갔어요.','어제 공원에 갔어.','어제 공원 갔다.'],['할머니께 말할 때 알맞은 말은?','할머니, 저 받아쓰기 백 점 받았어요.','할머니, 나 받아쓰기 백 점 받았어.','할머니, 나 오늘 받아쓰기에서 백 점 받았다!'],
   ['친구에게 말할 때 알맞은 말은?','나 어제 바다에 갔어.','나 어제 바다에 갔사옵니다.','바다.'],['어른께 말할 때 문장 끝에 붙이면 좋은 말은?','-요','-야','-니?'],
-  ['겪은 일을 말할 때 넣으면 좋은 것은?','언제, 어디에서, 무슨 일이 있었는지','친구의 비밀','내일 할 일만'],['듣는 사람이 선생님이면 어떻게 말할까요?','높임말로 공손하게','반말로 크게','속삭이듯 작게'],
+  ['겪은 일을 말할 때 넣으면 좋은 것은?','언제, 어디에서, 무슨 일이 있었는지','친구가 몰래 알려 준 친구의 비밀','오늘 일 말고 내일 할 일만'],['듣는 사람이 선생님이면 어떻게 말할까요?','높임말로 공손하게','반말로 친구에게 하듯 크게','속삭이듯 작게'],
   ['동생에게 말할 때 알맞은 말은?','지우야, 같이 놀자.','지우님, 같이 노시지요.','지우, 놀아라.'],
   ['선생님께 여쭈어볼 때 알맞은 말은?','선생님, 이건 어떻게 해요?','선생님, 이거 어떻게 해?','야, 이거 뭐야?'],['할아버지께 겪은 일을 말할 때 알맞은 말은?','할아버지, 오늘 학교에서 칭찬받았어요.','할아버지, 나 오늘 칭찬받았다.','칭찬받았음.'],
-  ['이웃 어른께 인사할 때 알맞은 말은?','안녕하세요?','안녕?','잘 가.'],['친구에게 주말에 한 일을 말할 때 알맞은 말은?','나 주말에 할머니 댁에 갔어.','저는 주말에 할머니 댁에 갔사옵니다.','할머니 댁.'],
-  ['겪은 일을 말하는 차례로 알맞은 것은?','언제 → 어디에서 → 무슨 일 → 마음','마음 → 끝 → 처음','아무 순서나 마구'],['친구가 겪은 일을 말할 때 듣는 자세는?','친구를 바라보며 끝까지 들어요','다른 친구와 떠들어요','하품하며 딴 곳을 봐요'],
+  ['이웃 어른께 인사할 때 알맞은 말은?','안녕하세요?','안녕?','안녕? 어디 가?'],['친구에게 주말에 한 일을 말할 때 알맞은 말은?','나 주말에 할머니 댁에 갔어.','저는 주말에 할머니 댁에 갔사옵니다.','할머니 댁.'],
+  ['겪은 일을 말하는 차례로 알맞은 것은?','언제 → 어디에서 → 무슨 일 → 마음','마음 → 무슨 일 → 어디에서 → 언제','아무 순서나 마구'],['친구가 겪은 일을 말할 때 듣는 자세는?','친구를 바라보며 끝까지 들어요','옆에 앉은 다른 친구와 떠들어요','하품하며 딴 곳을 봐요'],
 ];
 const N3_POSE_OX = [
   ['발표할 때는 허리를 펴고 바르게 서요.','O'],['발표할 때는 듣는 사람을 바라봐요.','O'],['발표할 때는 또박또박 말해요.','O'],['발표할 때는 손으로 얼굴을 가리고 말해요.','X'],
   ['발표할 때는 아주 작은 목소리로 빨리 말해요.','X'],['친구가 발표할 때는 바라보며 끝까지 들어요.','O'],['친구가 발표할 때 장난을 쳐요.','X'],['발표할 때는 다리를 흔들며 말해요.','X'],
 ];
 const N3_POSE_CH = [
-  ['발표하는 바른 자세는?','허리를 펴고 듣는 사람을 바라봐요','고개를 숙이고 바닥을 봐요','몸을 이리저리 흔들어요'],['발표할 때 알맞은 목소리는?','모두에게 잘 들리는 목소리','혼잣말하는 목소리','소리 지르는 목소리'],
-  ['경험을 발표하기 전에 할 일은?','말할 내용을 차례대로 떠올려요','친구와 장난쳐요','눈을 감고 기다려요'],['"또박또박"의 뜻으로 알맞은 것은?','말이나 글씨가 흐리지 않고 분명한 모양','아주 빠르게 말하는 모양','작게 속삭이는 모양'],
+  ['발표하는 바른 자세는?','허리를 펴고 듣는 사람을 바라봐요','고개를 푹 숙이고 바닥만 내려다봐요','몸을 이리저리 흔들며 장난스럽게 서요'],['발표할 때 알맞은 목소리는?','모두에게 잘 들리는 목소리','나만 들리게 혼잣말하는 목소리','귀가 아프게 소리 지르는 목소리'],
+  ['경험을 발표하기 전에 할 일은?','말할 내용을 차례대로 떠올려요','옆에 앉은 친구와 장난쳐요','아무 생각 없이 눈을 감고 기다려요'],['"또박또박"의 뜻으로 알맞은 것은?','말이나 글씨가 흐리지 않고 분명한 모양','숨도 안 쉬고 아주 빠르게 말하는 모양','남이 못 듣게 작게 속삭이는 모양'],
 ];
 const N3_DIARY = [
   { t:'10월 5일 토요일 · 날씨: 해가 쨍쨍\n오빠와 공원에서 자전거를 탔다. 처음에는 자꾸 넘어졌지만 오빠가 뒤에서 잡아 주었다. 혼자 끝까지 달렸을 때 정말 뿌듯했다.', qs:[['언제 있었던 일인가요?','10월 5일 토요일','10월 15일 일요일','11월 5일 토요일'],['날씨는 어땠나요?','해가 쨍쨍','비가 주룩주룩','눈이 펑펑'],['글쓴이의 느낌을 나타낸 말은?','뿌듯했다','자전거','공원'],['무슨 일이 있었나요?','오빠와 자전거를 탔다','엄마와 시장에 갔다','친구와 그림을 그렸다']] },
-  { t:'11월 2일 일요일 · 날씨: 바람이 쌩쌩\n엄마와 김밥을 만들었다. 김 위에 밥을 펴고 단무지와 달걀을 올려 돌돌 말았다. 내가 만든 김밥이 제일 맛있었다.', qs:[['누구와 무엇을 했나요?','엄마와 김밥을 만들었다','아빠와 축구를 했다','혼자 책을 읽었다'],['날씨는 어땠나요?','바람이 쌩쌩','비가 주룩주룩','해가 쨍쨍'],['글쓴이의 생각이나 느낌이 드러난 문장은?','내가 만든 김밥이 제일 맛있었다.','엄마와 김밥을 만들었다.','김 위에 밥을 폈다.']] },
+  { t:'11월 2일 일요일 · 날씨: 바람이 쌩쌩\n엄마와 김밥을 만들었다. 김 위에 밥을 펴고 단무지와 달걀을 올려 돌돌 말았다. 내가 만든 김밥이 제일 맛있었다.', qs:[['누구와 무엇을 했나요?','엄마와 김밥을 만들었다','아빠와 축구를 했다','혼자 책을 읽었다'],['날씨는 어땠나요?','바람이 쌩쌩','비가 주룩주룩','해가 쨍쨍'],['글쓴이의 생각이나 느낌이 드러난 문장은?','내가 만든 김밥이 제일 맛있었다.','엄마와 김밥을 만들었다.','김 위에 밥을 펴고 햄과 단무지를 올렸다.']] },
   { t:'9월 20일 금요일 · 날씨: 비가 주룩주룩\n학교에서 돌아오는 길에 비가 와서 신발이 다 젖었다. 집에 오니 할머니가 따뜻한 코코아를 주셨다. 몸도 마음도 따뜻해졌다.', qs:[['날씨는 어땠나요?','비가 주룩주룩','해가 쨍쨍','눈이 펑펑'],['할머니가 주신 것은?','따뜻한 코코아','차가운 우유','사탕'],['글쓴이의 마음은 어떻게 되었나요?','따뜻해졌다','무서워졌다','화가 났다']] },
-  { t:'12월 1일 월요일 · 날씨: 눈이 펑펑\n아침에 일어나니 온 세상이 하얬다. 동생과 마당에서 눈사람을 만들었다. 눈사람에게 내 목도리를 둘러 주었다. 내일까지 녹지 않았으면 좋겠다.', qs:[['무엇을 만들었나요?','눈사람','모래성','종이배'],['눈사람에게 둘러 준 것은?','목도리','모자','장갑'],['글쓴이가 바라는 것은?','눈사람이 녹지 않는 것','눈이 그치는 것','학교에 가지 않는 것']] },
+  { t:'12월 1일 월요일 · 날씨: 눈이 펑펑\n아침에 일어나니 온 세상이 하얬다. 동생과 마당에서 눈사람을 만들었다. 눈사람에게 내 목도리를 둘러 주었다. 내일까지 녹지 않았으면 좋겠다.', qs:[['무엇을 만들었나요?','눈사람','모래성','종이배'],['눈사람에게 둘러 준 것은?','목도리','모자','장갑'],['글쓴이가 바라는 것은?','눈사람이 녹지 않는 것','눈이 그치고 해가 쨍쨍 나는 것','학교에 가지 않는 것']] },
 ];
 const N3_PART = [
-  ['그림일기에 쓰는 것이 아닌 것은?','친구의 전화번호','날짜와 요일','날씨'],['그림일기의 글에 쓰는 것은?','겪은 일과 생각이나 느낌','내일 할 숙제 목록','좋아하는 노래 가사'],
-  ['그림일기의 그림에는 무엇을 그릴까요?','가장 기억에 남는 장면','아무 그림이나','글자만 크게'],['그림일기의 글감으로 알맞은 것은?','오늘 가장 기억에 남는 일','일 년 전에 들은 이야기','아직 하지 않은 일'],
+  ['그림일기에 쓰는 것이 아닌 것은?','친구의 전화번호','날짜와 요일','날씨'],['그림일기의 글에 쓰는 것은?','겪은 일과 생각이나 느낌','내일 해야 할 숙제 목록','내가 좋아하는 노래 가사 전부'],
+  ['그림일기의 그림에는 무엇을 그릴까요?','가장 기억에 남는 장면','생각나는 아무 그림이나','그림 없이 글자만 크게'],['그림일기의 글감으로 알맞은 것은?','오늘 가장 기억에 남는 일','일 년 전에 친구에게 들은 이야기','내일 하려고 하는 아직 안 한 일'],
   ['그림일기에 날씨를 쓰는 방법으로 알맞은 것은?','해가 쨍쨍','오늘','재윤'],['그림일기를 쓸 때 가장 먼저 쓰는 것은?','날짜와 요일','느낌','그림 색칠'],
 ];
 
@@ -4372,10 +4409,10 @@ const N4_TIME = [
   ['일이 일어난 차례를 나타내는 말이 아닌 것은?','빨갛게','먼저','그다음에'],['"먼저 - ( ) - 마지막으로"에서 ( )에 알맞은 말은?','그다음에','어제','빨리'],
 ];
 const N4_STORY = [
-  { name:'토끼와 거북', t:'토끼와 거북이 달리기 시합을 했어요. 토끼는 거북을 놀리며 앞서 달리다가 나무 아래에서 낮잠을 잤어요. 거북은 쉬지 않고 엉금엉금 기어갔어요. 토끼가 깼을 때 거북은 이미 결승선에 도착해 있었어요.', qs:[['이야기에 나오는 인물은?','토끼와 거북','토끼와 사자','거북과 개미'],['토끼는 시합 중에 무엇을 했나요?','낮잠을 잤어요','물을 마셨어요','노래를 불렀어요'],['시합에서 이긴 것은?','거북','토끼','아무도 못 이겼어요'],['거북에게 해 줄 말로 알맞은 것은?','쉬지 않고 끝까지 가다니 멋져!','너는 느려서 안 돼.','왜 낮잠을 안 잤어?']] },
-  { name:'개미와 베짱이', t:'여름 내내 개미는 땀을 흘리며 먹이를 날랐어요. 베짱이는 나무 그늘에서 노래만 불렀어요. 추운 겨울이 오자 베짱이는 먹을 것이 없었어요. 개미는 배고픈 베짱이에게 먹이를 나누어 주었어요.', qs:[['여름에 개미가 한 일은?','먹이를 날랐어요','노래를 불렀어요','잠만 잤어요'],['겨울에 베짱이는 어땠나요?','먹을 것이 없었어요','먹을 것이 많았어요','여행을 갔어요'],['개미가 베짱이에게 한 일은?','먹이를 나누어 주었어요','문을 닫았어요','놀렸어요'],['가장 감동적인 장면으로 알맞은 것은?','개미가 베짱이에게 먹이를 나누어 준 장면','베짱이가 노래한 장면','겨울이 온 장면']] },
-  { name:'사자와 생쥐', t:'잠자던 사자가 생쥐를 잡았어요. 생쥐는 "살려 주시면 꼭 은혜를 갚을게요." 하고 빌었어요. 사자는 웃으며 놓아주었어요. 며칠 뒤 사자가 그물에 걸리자 생쥐가 와서 그물을 갉아 사자를 구해 주었어요.', qs:[['생쥐가 사자에게 한 약속은?','은혜를 갚겠다','먹이를 주겠다','노래를 불러 주겠다'],['사자가 그물에 걸렸을 때 생쥐는 어떻게 했나요?','그물을 갉아 구해 주었어요','도망갔어요','다른 동물을 불렀어요'],['일이 일어난 차례로 알맞은 것은?','생쥐를 놓아줌 → 사자가 그물에 걸림 → 생쥐가 구해 줌','사자가 그물에 걸림 → 생쥐를 놓아줌 → 생쥐가 구해 줌','생쥐가 구해 줌 → 생쥐를 놓아줌 → 사자가 그물에 걸림']] },
-  { name:'눈 오는 날의 꼬마 곰', t:'꼬마 곰은 눈길에서 길을 잃은 아기 토끼를 만났어요. 꼬마 곰은 자기 목도리를 풀어 아기 토끼에게 둘러 주었어요. 그리고 아기 토끼의 손을 잡고 토끼네 집까지 데려다주었어요. 엄마 토끼는 꼬마 곰을 꼭 안아 주었어요.', qs:[['꼬마 곰이 만난 인물은?','길을 잃은 아기 토끼','배고픈 다람쥐','엄마 곰'],['꼬마 곰이 아기 토끼에게 한 일은?','목도리를 둘러 주고 집까지 데려다주었어요','눈싸움을 했어요','모른 척했어요'],['꼬마 곰은 어떤 마음을 가진 인물일까요?','친구를 아끼는 따뜻한 마음','욕심 많은 마음','심술궂은 마음']] },
+  { name:'토끼와 거북', t:'토끼와 거북이 달리기 시합을 했어요. 토끼는 거북을 놀리며 앞서 달리다가 나무 아래에서 낮잠을 잤어요. 거북은 쉬지 않고 엉금엉금 기어갔어요. 토끼가 깼을 때 거북은 이미 결승선에 도착해 있었어요.', qs:[['이야기에 나오는 인물은?','토끼와 거북','토끼와 사자','거북과 개미'],['토끼는 시합 중에 무엇을 했나요?','낮잠을 잤어요','물을 마셨어요','노래를 불렀어요'],['시합에서 이긴 것은?','거북','토끼','아무도 못 이겼어요'],['거북에게 해 줄 말로 알맞은 것은?','쉬지 않고 끝까지 가다니 멋져!','너는 느리니까 다음엔 경주하지 마.','왜 낮잠을 안 잤어?']] },
+  { name:'개미와 베짱이', t:'여름 내내 개미는 땀을 흘리며 먹이를 날랐어요. 베짱이는 나무 그늘에서 노래만 불렀어요. 추운 겨울이 오자 베짱이는 먹을 것이 없었어요. 개미는 배고픈 베짱이에게 먹이를 나누어 주었어요.', qs:[['여름에 개미가 한 일은?','먹이를 날랐어요','노래를 불렀어요','잠만 잤어요'],['겨울에 베짱이는 어땠나요?','먹을 것이 없었어요','먹을 것이 많았어요','여행을 갔어요'],['개미가 베짱이에게 한 일은?','먹이를 나누어 주었어요','문을 꼭 닫고 들어오지 못하게 했어요','놀렸어요'],['가장 감동적인 장면으로 알맞은 것은?','개미가 베짱이에게 먹이를 나누어 준 장면','여름 내내 베짱이가 신나게 노래한 장면','겨울이 온 장면']] },
+  { name:'사자와 생쥐', t:'잠자던 사자가 생쥐를 잡았어요. 생쥐는 "살려 주시면 꼭 은혜를 갚을게요." 하고 빌었어요. 사자는 웃으며 놓아주었어요. 며칠 뒤 사자가 그물에 걸리자 생쥐가 와서 그물을 갉아 사자를 구해 주었어요.', qs:[['생쥐가 사자에게 한 약속은?','은혜를 갚겠다','먹이를 주겠다','노래를 불러 주겠다'],['사자가 그물에 걸렸을 때 생쥐는 어떻게 했나요?','그물을 갉아 구해 주었어요','도망갔어요','숲속의 다른 동물들을 데리러 갔어요'],['일이 일어난 차례로 알맞은 것은?','생쥐를 놓아줌 → 사자가 그물에 걸림 → 생쥐가 구해 줌','사자가 그물에 걸림 → 생쥐를 놓아줌 → 생쥐가 구해 줌','생쥐가 구해 줌 → 생쥐를 놓아줌 → 사자가 그물에 걸림']] },
+  { name:'눈 오는 날의 꼬마 곰', t:'꼬마 곰은 눈길에서 길을 잃은 아기 토끼를 만났어요. 꼬마 곰은 자기 목도리를 풀어 아기 토끼에게 둘러 주었어요. 그리고 아기 토끼의 손을 잡고 토끼네 집까지 데려다주었어요. 엄마 토끼는 꼬마 곰을 꼭 안아 주었어요.', qs:[['꼬마 곰이 만난 인물은?','길을 잃은 아기 토끼','배고픈 다람쥐','엄마 곰'],['꼬마 곰이 아기 토끼에게 한 일은?','목도리를 둘러 주고 집까지 데려다주었어요','아기 토끼와 신나게 눈싸움을 하고 놀았어요','모른 척했어요'],['꼬마 곰은 어떤 마음을 가진 인물일까요?','친구를 아끼는 따뜻한 마음','무엇이든 혼자 가지려는 욕심 많은 마음','심술궂은 마음']] },
 ];
 const N4_QUOTE = [
   ['소리 내어 한 말에 쓰는 문장 부호는?','큰따옴표 (" ")','작은따옴표 (\' \')','물음표 (?)'],['마음속으로 한 생각에 쓰는 문장 부호는?','작은따옴표 (\' \')','큰따옴표 (" ")','쉼표 (,)'],
@@ -4422,13 +4459,13 @@ const N6_SPACE = [
   ['바르게 띄어 쓴 문장은?','우리 반 친구들은 모두 착해요.','우리반 친구들은 모두 착해요.','우리 반 친구들은모두 착해요.'],['바르게 띄어 쓴 문장은?','아빠가 책을 읽어 주셨어요.','아빠가책을 읽어 주셨어요.','아빠가 책을읽어 주셨어요.'],
 ];
 const N6_PAUSE = [
-  ['쉼표(,) 뒤에서는 어떻게 읽을까요?','조금 쉬어 읽어요','아주 오래 쉬어요','쉬지 않고 이어 읽어요'],['마침표(.) 뒤에서는 어떻게 읽을까요?','쉼표보다 조금 더 쉬어 읽어요','쉬지 않아요','다시 처음부터 읽어요'],
+  ['쉼표(,) 뒤에서는 어떻게 읽을까요?','조금 쉬어 읽어요','아주 오래 쉬어요','쉬지 않고 이어 읽어요'],['마침표(.) 뒤에서는 어떻게 읽을까요?','쉼표보다 조금 더 쉬어 읽어요','쉬지 않고 바로 다음 문장을 읽어요','다시 처음부터 읽어요'],
   ['알맞게 띄어 읽은 것은? (∨ 조금 쉬기)','토끼야,∨ 같이 놀자.','토끼야, 같이∨ 놀자.','토∨끼야, 같이 놀자.'],['알맞게 띄어 읽은 것은? (∨ 조금 쉬기)','봄이 오면,∨ 꽃이 피어요.','봄이 오∨면, 꽃이 피어요.','봄이∨ 오면, 꽃이 피∨어요.'],
-  ['시를 읽을 때 좋은 방법은?','장면을 떠올리며 알맞게 띄어 읽어요','글자마다 끊어 읽어요','숨도 쉬지 않고 빨리 읽어요'],
+  ['시를 읽을 때 좋은 방법은?','장면을 떠올리며 알맞게 띄어 읽어요','한 글자씩 또박또박 끊어서 읽어요','숨도 쉬지 않고 처음부터 끝까지 빨리 읽어요'],
   ['알맞게 띄어 읽은 것은? (∨ 조금 쉬기)','엄마,∨ 사랑해요.','엄∨마, 사랑해요.','엄마, 사랑∨해요.'],['알맞게 띄어 읽은 것은? (∨ 조금 쉬기)','비가 오는 날,∨ 우산을 썼어요.','비가 오∨는 날, 우산을 썼어요.','비가 오는 날, 우산을 썼∨어요.'],
-  ['알맞게 띄어 읽은 것은? (∨ 조금 쉬기)','친구야,∨ 고마워.','친∨구야, 고마워.','친구야, 고∨마워.'],['띄어 읽기를 하면 좋은 점은?','듣는 사람이 뜻을 잘 알 수 있어요','글자를 빨리 잊어요','목소리가 작아져요'],
-  ['느낌표(!)가 있는 문장은 어떻게 읽을까요?','느낌을 살려 힘 있게 읽어요','아주 작게 읽어요','읽지 않고 넘어가요'],['알맞게 띄어 읽은 것은? (∨ 조금 쉬기)','아침에 일어나서,∨ 세수를 했어요.','아침에 일어∨나서, 세수를 했어요.','아침에 일어나서, 세∨수를 했어요.'],
-  ['물음표(?)가 있는 문장은 어떻게 읽을까요?','끝을 살짝 올려 묻듯이 읽어요','끝을 크게 소리쳐요','속삭이듯 읽어요'],
+  ['알맞게 띄어 읽은 것은? (∨ 조금 쉬기)','친구야,∨ 고마워.','친∨구야, 고마워.','친구야, 고∨마워.'],['띄어 읽기를 하면 좋은 점은?','듣는 사람이 뜻을 잘 알 수 있어요','읽은 글자를 금방 다 잊어버려요','띄어 읽을수록 목소리가 점점 작아져요'],
+  ['느낌표(!)가 있는 문장은 어떻게 읽을까요?','느낌을 살려 힘 있게 읽어요','모기 소리처럼 아주 작게 읽어요','읽지 않고 넘어가요'],['알맞게 띄어 읽은 것은? (∨ 조금 쉬기)','아침에 일어나서,∨ 세수를 했어요.','아침에 일어∨나서, 세수를 했어요.','아침에 일어나서, 세∨수를 했어요.'],
+  ['물음표(?)가 있는 문장은 어떻게 읽을까요?','끝을 살짝 올려 묻듯이 읽어요','끝에서 화난 것처럼 크게 소리쳐요','속삭이듯 읽어요'],
 ];
 const N6_WORD = [
   ['새가 ___ 날아올라요.','포르르','쿵쿵','엉금엉금'],['두더지가 땅속에서 머리를 ___ 내밀어요.','쏘옥','펑펑','쨍그랑'],['바람에 나뭇가지가 ___ 움직여요.','흔들흔들','쨍그랑','꿀꿀'],
@@ -4439,7 +4476,7 @@ const N6_WORD = [
 ];
 const N6_FULL = [
   ['완성된 문장을 골라요','고양이가 우유를 마셔요.','고양이가 우유를.','우유를 마셔요 고양이가 우유'],['완성된 문장을 골라요','나는 그림을 그려요.','나는 그림을.','그림 그려 나는요 그림'],
-  ['완성된 문장을 골라요','동생이 노래를 불러요.','동생이 노래를.','노래 동생 불러'],['문장의 끝에 찍는 문장 부호로 알맞은 것은? (묻는 문장)','물음표 (?)','마침표 (.)','쉼표 (,)'],
+  ['완성된 문장을 골라요','동생이 노래를 불러요.','동생이 노래를.','노래를 동생이 불러 노래'],['문장의 끝에 찍는 문장 부호로 알맞은 것은? (묻는 문장)','물음표 (?)','마침표 (.)','쉼표 (,)'],
   ['문장의 끝에 찍는 문장 부호로 알맞은 것은? (설명하는 문장)','마침표 (.)','물음표 (?)','쉼표 (,)'],['문장의 끝에 찍는 문장 부호로 알맞은 것은? (놀라는 문장)','느낌표 (!)','쉼표 (,)','마침표 (.)'],
 ];
 
@@ -4459,8 +4496,8 @@ const N7_INFO = [
 ];
 const N7_EXP = [
   { t:'지난 일요일에 가족과 바닷가에 갔어요. 모래로 커다란 성을 쌓았는데 파도가 와서 무너졌어요. 처음에는 속상했지만 아빠와 다시 더 튼튼한 성을 쌓았어요. 해가 질 때까지 놀아서 정말 즐거웠어요.', qs:[['언제 있었던 일인가요?','지난 일요일','오늘 아침','내일'],['어디에서 있었던 일인가요?','바닷가','놀이터','도서관'],['성이 무너졌을 때 마음은?','속상했어요','신났어요','편했어요'],['겪은 일을 쓴 글에 들어가지 않아도 되는 것은?','친구의 전화번호','언제','있었던 일과 마음']] },
-  { t:'어제 처음으로 혼자 심부름을 했어요. 엄마가 적어 주신 쪽지를 들고 가게에 가서 두부와 콩나물을 샀어요. 거스름돈도 잘 받아 왔어요. 엄마가 칭찬해 주셔서 어깨가 으쓱했어요.', qs:[['무슨 일이 있었나요?','혼자 심부름을 했어요','친구와 싸웠어요','그림을 그렸어요'],['가게에서 산 것은?','두부와 콩나물','우유와 빵','사과와 배'],['"어깨가 으쓱했어요"는 어떤 마음일까요?','자랑스럽고 뿌듯한 마음','무서운 마음','슬픈 마음']] },
-  { t:'토요일 아침에 할머니 댁 텃밭에서 고구마를 캤어요. 호미로 흙을 살살 파니 커다란 고구마가 줄줄이 나왔어요. 손이 흙투성이가 되었지만 너무 신기하고 재미있었어요.', qs:[['어디에서 있었던 일인가요?','할머니 댁 텃밭','학교 운동장','바닷가'],['무엇을 캤나요?','고구마','감자','당근'],['글쓴이의 마음은?','신기하고 재미있었어요','슬펐어요','무서웠어요']] },
+  { t:'어제 처음으로 혼자 심부름을 했어요. 엄마가 적어 주신 쪽지를 들고 가게에 가서 두부와 콩나물을 샀어요. 거스름돈도 잘 받아 왔어요. 엄마가 칭찬해 주셔서 어깨가 으쓱했어요.', qs:[['무슨 일이 있었나요?','혼자 심부름을 했어요','놀이터에서 친구와 크게 싸웠어요','그림을 그렸어요'],['가게에서 산 것은?','두부와 콩나물','우유와 빵과 과자','사과와 배'],['"어깨가 으쓱했어요"는 어떤 마음일까요?','자랑스럽고 뿌듯한 마음','무섭고 겁이 나는 마음','슬프고 속상한 마음']] },
+  { t:'토요일 아침에 할머니 댁 텃밭에서 고구마를 캤어요. 호미로 흙을 살살 파니 커다란 고구마가 줄줄이 나왔어요. 손이 흙투성이가 되었지만 너무 신기하고 재미있었어요.', qs:[['어디에서 있었던 일인가요?','할머니 댁 텃밭','학교 운동장','바닷가'],['무엇을 캤나요?','고구마','감자','당근'],['글쓴이의 마음은?','신기하고 재미있었어요','슬프고 속상했어요','무섭고 겁이 났어요']] },
   { t:'오늘 반 친구 하준이가 다리를 다쳐서 목발을 짚고 왔어요. 하준이는 "꼭 다시 축구할 거야."라고 말했어요. 나는 하준이 말을 철석같이 믿어요. 하준이가 빨리 나아서 같이 공을 찼으면 좋겠어요.', qs:[['"철석같이 믿어요"는 어떤 뜻일까요?','아주 굳게 믿어요','조금도 믿지 않아요','잊어버렸어요'],['하준이에게 무슨 일이 있었나요?','다리를 다쳤어요','생일이었어요','이사를 갔어요'],['글쓴이가 바라는 것은?','하준이와 같이 공을 차는 것','하준이가 축구를 그만두는 것','학교에 가지 않는 것']] },
 ];
 const N7_MAIN = [
@@ -4501,7 +4538,7 @@ const N8_PLAY = [
   { name:'극본: 커다란 순무', t:'할아버지: 영차영차! 순무가 안 뽑히네.\n할머니: 제가 도와줄게요. 영차영차!\n손녀: 저도요! 영차영차!\n강아지: 멍멍, 나도!\n(모두 힘을 모으자 순무가 쑥 뽑힌다.)\n모두: 와, 뽑혔다!', qs:[['순무가 뽑힌 까닭은?','모두 힘을 모아서','할아버지 혼자 힘이 세서','비가 와서'],['힘을 쓸 때 내는 말은?','영차영차','쿨쿨','야옹'],['이 극을 보고 알 수 있는 것은?','힘을 모으면 어려운 일도 할 수 있어요','혼자 하는 게 제일 좋아요','순무는 맛이 없어요']] },
 ];
 
-const N_OX_OF = (key, list, hint) => { const [st, a] = pick(list); return kox(key + st, st, a, hint); };
+const N_OX_OF = (key, list, hint) => { const [st, a] = pickOX(list); return kox(key + st, st, a, hint); };
 const orderQ = (key, list, how = '일어난') => { const o = pick(list), v = rnd(0, 2);
   if (v === 0) return kc(`${key}f${o.name}`, 'order', `"${o.name}"에서 가장 먼저 ${how} 일은?`, { read:o.name, vis:{ k:'html', html:`<span class="eyebrow">${esc(o.name)}</span>` }, opts:[o.s[0], ...shuffle(o.s.slice(1)).slice(0, 2)], ans:o.s[0], hint:'처음에 하는 일을 떠올려 봐요', explain:o.s.join(' → ') });
   if (v === 1) return kc(`${key}l${o.name}`, 'order', `"${o.name}"에서 마지막에 ${how} 일은?`, { read:o.name, vis:{ k:'html', html:`<span class="eyebrow">${esc(o.name)}</span>` }, opts:[o.s[3], ...shuffle(o.s.slice(0, 3)).slice(0, 2)], ans:o.s[3], hint:'맨 끝에 하는 일을 떠올려 봐요', explain:o.s.join(' → ') });
@@ -4525,7 +4562,7 @@ Object.assign(LESSON_GEN, {
     if (v === 2) { const yes = pick(N2_GYEOP), no = [pick(N2_PLAIN), pick(N2_SSANG)]; return kc(`n21g${yes}${no}`, 'jamo', '받침이 서로 다른 두 자음자로 된 낱말(겹받침)은?', { say:'서로 다른 자음자 두 개가 받침인 낱말을 골라 봐요', opts:[yes, ...no], ans:yes, cols:3, hint:'닭(ㄺ), 앉다(ㄵ)처럼 다른 자음자 두 개가 받침에 있어요', explain:yes }); }
     return N_OX_OF('n21', N2_OX, '받침은 글자의 아래에 있는 자음자예요'); },
   'n2-2'(){ if (Math.random() < .35) return qOf('n22p', 'gyeop', pick(N2_SOUND), { hint:'받침 두 개 중 하나만 소리 나요' });
-    const [a, ...w] = pick(N2_SPELL); return kc(`n22${a}`, 'gyeop', '잘 듣고 바르게 쓴 것을 골라요', { say:'잘 듣고 바르게 쓴 것을 골라 봐요', listen:a, vis:{ k:'listen' }, opts:[a, ...w], ans:a, cols:3, hint:'소리 나는 대로 쓰지 않아요. 받침을 살려 써요', explain:`[${w[0]}]처럼 들려도 "${a}"로 써요` }); },
+    const [a, ...w] = pick(N2_SPELL); return kc(`n22${a}`, 'gyeop', '잘 듣고 바르게 쓴 것을 골라요', { say:'잘 듣고 바르게 쓴 것을 골라 봐요', listen:a, vis:{ k:'listen' }, opts:[a, ...w], ans:a, cols:3, hint:'소리 나는 대로 쓰지 않아요. 받침을 살려 써요', explain:`[${w[0]}]처럼 들려도 "${a}"${ro(a).slice(a.length)} 써요` }); },
   'n2-3'(){ return passQ('n23', 'letter', N2_LETTERS, '편지를 다시 읽어 봐요. 고마워, 미안해, 축하해 같은 말을 찾아요'); },
   'n2-4'(){ return Math.random() < .2 ? N_OX_OF('n24', N2_OX, '겹받침은 살려서 써요') : blankQ('n24', 'gyeop', N2_READ, '소리 나는 대로 쓰지 않아요. 받침을 살려 써요'); },
 
@@ -4700,13 +4737,13 @@ N3_END.push(
   ['듣는 사람을 생각하며 말하는 방법은?','듣는 사람에 따라 높임말과 반말을 알맞게 써요','누구에게나 반말을 써요','누구에게나 아주 크게 말해요'],['어른께 말할 때 "밥"을 높여 부르는 말은?','진지','밥밥','식사해'],['어른께 "자요"를 높여 말하면?','주무세요','자라','자자'],
 );
 N3_POSE_OX.push(['발표할 때는 주머니에 손을 넣고 말해요.','X'],['발표할 때는 처음부터 끝까지 또박또박 말해요.','O'],['발표가 끝나면 "들어 주셔서 고맙습니다."라고 말할 수 있어요.','O'],['발표를 들을 때 궁금한 것은 발표가 끝난 뒤에 물어봐요.','O'],['친구가 발표를 틀리면 크게 웃어요.','X'],['발표할 때는 칠판만 보고 말해요.','X'],['발표하기 전에 할 말을 미리 생각해요.','O']);
-N3_POSE_CH.push(['발표를 잘 듣는 자세는?','발표하는 친구를 바라봐요','옆 친구와 이야기해요','책상에 엎드려요'],['발표를 마치고 할 말로 알맞은 것은?','들어 주셔서 고맙습니다.','끝! 저리 가.','몰라요.'],['경험을 발표할 때 들어갈 내용으로 알맞은 것은?','언제, 어디에서, 무슨 일, 마음','친구의 비밀','내일 먹을 반찬'],['발표할 때 손은 어떻게 하면 좋을까요?','자연스럽게 내려요','머리를 계속 긁어요','주머니에 넣어요'],['발표 중에 말이 막혔을 때 좋은 방법은?','숨을 한 번 쉬고 천천히 다시 말해요','울면서 나가요','아무 말이나 크게 외쳐요']);
+N3_POSE_CH.push(['발표를 잘 듣는 자세는?','발표하는 친구를 바라봐요','옆 친구와 소곤소곤 이야기해요','책상에 엎드려서 쉬어요'],['발표를 마치고 할 말로 알맞은 것은?','들어 주셔서 고맙습니다.','끝났으니까 이제 다들 저리 가.','몰라요, 이제 그만할래요.'],['경험을 발표할 때 들어갈 내용으로 알맞은 것은?','언제, 어디에서, 무슨 일, 마음','친구가 나한테만 말해 준 비밀','내일 점심에 먹고 싶은 반찬'],['발표할 때 손은 어떻게 하면 좋을까요?','자연스럽게 내려요','머리를 계속 긁어요','주머니에 넣어요'],['발표 중에 말이 막혔을 때 좋은 방법은?','숨을 한 번 쉬고 천천히 다시 말해요','울면서 교실 밖으로 뛰어나가요','생각나는 아무 말이나 크게 외쳐요']);
 N3_DIARY.push(
   { t:'10월 18일 토요일 · 날씨: 구름이 둥실\n가족과 함께 사과 따기 체험을 갔다. 빨갛게 익은 사과를 내 손으로 땄다. 집에 와서 먹어 보니 아주 달콤했다. 다음에 또 가고 싶다.', qs:[['어디에 갔나요?','사과 따기 체험','바닷가','도서관'],['사과의 맛은 어땠나요?','달콤했다','썼다','짰다'],['글쓴이의 생각이 드러난 문장은?','다음에 또 가고 싶다.','가족과 함께 사과 따기 체험을 갔다.','빨갛게 익은 사과를 땄다.']] },
   { t:'11월 9일 일요일 · 날씨: 해가 반짝\n동생과 처음으로 종이접기를 했다. 내가 개구리를 접어 주니 동생이 깔깔 웃었다. 동생이 좋아해서 나도 기분이 좋았다.', qs:[['누구와 무엇을 했나요?','동생과 종이접기를 했다','친구와 공놀이를 했다','엄마와 요리를 했다'],['무엇을 접었나요?','개구리','비행기','배'],['글쓴이의 느낌은?','기분이 좋았다','무서웠다','슬펐다']] },
   { t:'9월 30일 화요일 · 날씨: 비가 보슬보슬\n받아쓰기에서 두 개를 틀렸다. 조금 속상했지만 틀린 낱말을 공책에 세 번씩 써 보았다. 다음에는 꼭 다 맞히고 싶다.', qs:[['무슨 일이 있었나요?','받아쓰기에서 두 개를 틀렸다','받아쓰기에서 다 맞았다','받아쓰기를 하지 않았다'],['틀린 낱말을 어떻게 했나요?','공책에 세 번씩 써 보았다','지우개로 지웠다','그냥 두었다'],['날씨는 어땠나요?','비가 보슬보슬','눈이 펑펑','해가 쨍쨍']] },
 );
-N3_PART.push(['그림일기의 제목으로 알맞은 것은?','동생과 종이접기','오늘','일기'],['그림일기를 쓰면 좋은 점은?','겪은 일과 마음을 오래 기억할 수 있어요','숙제가 없어져요','글씨가 작아져요'],['그림일기에 날짜를 쓰는 까닭은?','언제 있었던 일인지 알 수 있어서','그림이 예뻐져서','글자 수를 채우려고'],['그림일기의 그림과 글은 어때야 할까요?','같은 일을 나타내야 해요','서로 다른 이야기여야 해요','그림만 있으면 돼요']);
+N3_PART.push(['그림일기의 제목으로 알맞은 것은?','동생과 종이접기','오늘','일기'],['그림일기를 쓰면 좋은 점은?','겪은 일과 마음을 오래 기억할 수 있어요','다음 날 해야 할 숙제가 모두 없어져요','쓰면 쓸수록 글씨가 점점 작아져요'],['그림일기에 날짜를 쓰는 까닭은?','언제 있었던 일인지 알 수 있어서','날짜를 쓰면 그림이 더 예뻐져서','공책의 빈칸과 글자 수를 채우려고'],['그림일기의 그림과 글은 어때야 할까요?','같은 일을 나타내야 해요','서로 다른 이야기여야 해요','그림만 있으면 돼요']);
 N4_ORDER.push(
   { name:'라면 끓이기를 본 날', s:['냄비에 물을 부었어요.','물이 보글보글 끓었어요.','면과 수프를 넣었어요.','그릇에 담아 먹었어요.'] },
   { name:'눈사람 만들기', s:['작은 눈덩이를 만들었어요.','눈덩이를 굴려 크게 만들었어요.','큰 눈덩이 위에 작은 눈덩이를 올렸어요.','눈과 코를 붙였어요.'] },
@@ -4719,9 +4756,9 @@ const N4_TIME2 = [
   ['이야기에 나오는 사람이나 동물을 무엇이라고 할까요?','인물','장소','제목'],['"오늘"보다 하루 전을 뜻하는 말은?','어제','내일','모레'],['"오늘"보다 하루 뒤를 뜻하는 말은?','내일','어제','아까'],
 ];
 N4_STORY.push(
-  { name:'황금알을 낳는 거위', t:'농부에게는 날마다 황금알을 하나씩 낳는 거위가 있었어요. 욕심이 난 농부는 "배 속에 황금알이 가득하겠지?" 하고 거위의 배를 갈랐어요. 하지만 배 속에는 아무것도 없었어요. 농부는 거위도 황금알도 모두 잃고 말았어요.', qs:[['거위는 날마다 무엇을 낳았나요?','황금알','은 구슬','보통 달걀'],['농부가 거위의 배를 가른 까닭은?','황금알을 한꺼번에 많이 갖고 싶어서','거위가 아파서','거위가 시끄러워서'],['이 이야기에서 알 수 있는 것은?','욕심을 부리면 가진 것도 잃을 수 있어요','거위는 하늘을 날아요','황금은 먹을 수 있어요']] },
-  { name:'시골 쥐와 서울 쥐', t:'시골 쥐가 서울 쥐의 집에 놀러 갔어요. 서울 쥐의 집에는 맛있는 음식이 가득했어요. 그런데 먹으려고 할 때마다 고양이가 나타나 둘은 숨어야 했어요. 시골 쥐는 "음식은 소박해도 마음 편한 시골이 좋아." 하고 집으로 돌아갔어요.', qs:[['서울 쥐의 집에는 무엇이 가득했나요?','맛있는 음식','장난감','책'],['먹으려고 할 때마다 나타난 것은?','고양이','강아지','사람'],['시골 쥐가 시골로 돌아간 까닭은?','마음 편한 곳이 좋아서','음식이 맛없어서','서울 쥐와 싸워서']] },
-  { name:'아기 오리의 첫 수영', t:'아기 오리 꽥꽥이는 물이 무서웠어요. 형들은 첨벙첨벙 헤엄쳤지만 꽥꽥이는 물가에서 발만 동동 굴렀어요. 엄마 오리가 "엄마가 옆에 있을게." 하고 말해 주자, 꽥꽥이는 용기를 내어 물에 들어갔어요. 꽥꽥이는 처음으로 둥둥 떠서 헤엄쳤어요.', qs:[['꽥꽥이가 무서워한 것은?','물','하늘','바람'],['꽥꽥이가 용기를 낸 까닭은?','엄마 오리가 옆에 있겠다고 해서','배가 고파서','형들이 놀려서'],['가장 감동적인 장면으로 알맞은 것은?','꽥꽥이가 처음으로 헤엄친 장면','형들이 헤엄친 장면','물가에 서 있던 장면']] },
+  { name:'황금알을 낳는 거위', t:'농부에게는 날마다 황금알을 하나씩 낳는 거위가 있었어요. 욕심이 난 농부는 "배 속에 황금알이 가득하겠지?" 하고 거위의 배를 갈랐어요. 하지만 배 속에는 아무것도 없었어요. 농부는 거위도 황금알도 모두 잃고 말았어요.', qs:[['거위는 날마다 무엇을 낳았나요?','황금알','은 구슬','보통 달걀'],['농부가 거위의 배를 가른 까닭은?','황금알을 한꺼번에 많이 갖고 싶어서','거위가 배가 아파서 고쳐 주려고','거위가 시끄러워서'],['이 이야기에서 알 수 있는 것은?','욕심을 부리면 가진 것도 잃을 수 있어요','거위는 날마다 황금알을 두 개씩 낳아요','황금은 먹을 수 있어요']] },
+  { name:'시골 쥐와 서울 쥐', t:'시골 쥐가 서울 쥐의 집에 놀러 갔어요. 서울 쥐의 집에는 맛있는 음식이 가득했어요. 그런데 먹으려고 할 때마다 고양이가 나타나 둘은 숨어야 했어요. 시골 쥐는 "음식은 소박해도 마음 편한 시골이 좋아." 하고 집으로 돌아갔어요.', qs:[['서울 쥐의 집에는 무엇이 가득했나요?','맛있는 음식','장난감','책'],['먹으려고 할 때마다 나타난 것은?','고양이','강아지','사람'],['시골 쥐가 시골로 돌아간 까닭은?','마음 편한 곳이 좋아서','서울 음식이 입에 하나도 안 맞아서','서울 쥐와 싸워서']] },
+  { name:'아기 오리의 첫 수영', t:'아기 오리 꽥꽥이는 물이 무서웠어요. 형들은 첨벙첨벙 헤엄쳤지만 꽥꽥이는 물가에서 발만 동동 굴렀어요. 엄마 오리가 "엄마가 옆에 있을게." 하고 말해 주자, 꽥꽥이는 용기를 내어 물에 들어갔어요. 꽥꽥이는 처음으로 둥둥 떠서 헤엄쳤어요.', qs:[['꽥꽥이가 무서워한 것은?','물','하늘','바람'],['꽥꽥이가 용기를 낸 까닭은?','엄마 오리가 옆에 있겠다고 해서','배가 고파서','형들이 겁쟁이라고 자꾸 놀려서'],['가장 감동적인 장면으로 알맞은 것은?','꽥꽥이가 처음으로 헤엄친 장면','형들이 먼저 연못에서 헤엄친 장면','물가에 서 있던 장면']] },
 );
 const N4_QSAY = [['토끼','같이 놀자!','말'],['엄마','밥 먹자.','말'],['곰','배가 고프다.','생각'],['다람쥐','도토리를 숨겨야지.','생각'],['선생님','모두 잘했어요.','말'],['동생','언니, 나도 할래!','말'],['거북','끝까지 가야지.','생각'],['아빠','오늘은 공원에 가자.','말'],['재윤','내일은 일찍 일어나야지.','생각'],['친구','생일 축하해!','말'],['여우','저 포도는 시겠지.','생각'],['할머니','우리 강아지 왔구나.','말']];
 N5_PASS.push(
@@ -4756,9 +4793,9 @@ N7_INFO.push(
   { name:'무지개', t:'무지개는 비가 그친 뒤 해가 비칠 때 하늘에 나타나요. 무지개는 여러 가지 색깔이 둥글게 늘어서 있어요. 무지개를 보려면 해를 등지고 서야 해요.', qs:[['무엇을 설명하는 글일까요?','무지개','구름','번개'],['무지개는 언제 나타나나요?','비가 그친 뒤 해가 비칠 때','한밤중에','눈이 올 때'],['무지개를 보려면 어떻게 서야 하나요?','해를 등지고','해를 바라보고','눈을 감고']] },
 );
 N7_EXP.push(
-  { t:'지난 금요일에 학교에서 처음으로 연극을 했어요. 나는 토끼 역할을 맡았어요. 무대에 올라가기 전에는 가슴이 콩닥콩닥 뛰었어요. 연극이 끝나고 친구들이 손뼉을 쳐 주어서 정말 기뻤어요.', qs:[['언제 있었던 일인가요?','지난 금요일','어제 아침','다음 주'],['글쓴이가 맡은 역할은?','토끼','거북','사자'],['무대에 오르기 전의 마음을 나타낸 말은?','가슴이 콩닥콩닥 뛰었어요','정말 기뻤어요','졸렸어요']] },
-  { t:'오늘 아침에 엄마와 함께 화분에 해바라기 씨앗을 심었어요. 흙을 손으로 꾹꾹 눌러 주고 물을 주었어요. 빨리 싹이 났으면 좋겠어요. 날마다 물을 주며 지켜볼 거예요.', qs:[['무엇을 심었나요?','해바라기 씨앗','감자','장미'],['글쓴이가 바라는 것은?','빨리 싹이 나는 것','비가 오는 것','화분이 깨지는 것'],['앞으로 하겠다고 한 일은?','날마다 물을 주며 지켜보기','씨앗을 다시 꺼내기','화분을 버리기']] },
-  { t:'어제 저녁에 우리 가족은 보드게임을 했어요. 처음에는 내가 계속 져서 속상했어요. 그런데 마지막 판에서 내가 이겨서 모두 손뼉을 쳐 주었어요. 진 것도 이긴 것도 다 재미있었어요.', qs:[['어제 저녁에 한 일은?','가족과 보드게임','친구와 축구','혼자 독서'],['처음에 속상했던 까닭은?','계속 져서','배가 아파서','게임이 없어서'],['마지막 문장에 담긴 생각은?','지고 이기는 것 모두 재미있었다','게임은 재미없다','이기는 것만 좋다']] },
+  { t:'지난 금요일에 학교에서 처음으로 연극을 했어요. 나는 토끼 역할을 맡았어요. 무대에 올라가기 전에는 가슴이 콩닥콩닥 뛰었어요. 연극이 끝나고 친구들이 손뼉을 쳐 주어서 정말 기뻤어요.', qs:[['언제 있었던 일인가요?','지난 금요일','어제 아침','다음 주'],['글쓴이가 맡은 역할은?','토끼','거북','사자'],['무대에 오르기 전의 마음을 나타낸 말은?','가슴이 콩닥콩닥 뛰었어요','하나도 안 떨리고 편안했어요','하품이 나고 졸렸어요']] },
+  { t:'오늘 아침에 엄마와 함께 화분에 해바라기 씨앗을 심었어요. 흙을 손으로 꾹꾹 눌러 주고 물을 주었어요. 빨리 싹이 났으면 좋겠어요. 날마다 물을 주며 지켜볼 거예요.', qs:[['무엇을 심었나요?','해바라기 씨앗','감자','장미'],['글쓴이가 바라는 것은?','빨리 싹이 나는 것','비가 오는 것','바람이 불어 화분이 깨지는 것'],['앞으로 하겠다고 한 일은?','날마다 물을 주며 지켜보기','흙을 파서 씨앗을 다시 꺼내 보기','화분을 베란다 밖에 내다 버리기']] },
+  { t:'어제 저녁에 우리 가족은 보드게임을 했어요. 처음에는 내가 계속 져서 속상했어요. 그런데 마지막 판에서 내가 이겨서 모두 손뼉을 쳐 주었어요. 진 것도 이긴 것도 다 재미있었어요.', qs:[['어제 저녁에 한 일은?','가족과 보드게임','친구들과 운동장에서 축구','혼자 독서'],['처음에 속상했던 까닭은?','계속 져서','배가 아파서','게임이 없어서'],['마지막 문장에 담긴 생각은?','지고 이기는 것 모두 재미있었다','보드게임은 하나도 재미없다','이길 때만 재미있고 지면 싫다']] },
 );
 N7_MAIN.push(
   { t:'손을 깨끗이 씻으면 병을 막을 수 있어요. 손에는 눈에 보이지 않는 세균이 많아요. 비누로 씻으면 세균이 없어져요.', main:'손을 깨끗이 씻으면 병을 막을 수 있어요.' },
@@ -4811,7 +4848,9 @@ Object.assign(LESSON_GEN, {
   'n6-4'(){ const r = Math.random();
     if (r < .4) return qOf('n64f', 'sentence', pick(N6_FULL), { hint:'"누가 + 무엇을 + 어찌해요"가 다 있어야 해요' });
     const s = pick(N6_GOOD), sp = [...s].map((c, i) => c === ' ' ? i : -1).filter(i => i > 0), ins = [...s].map((c, i) => i > 0 && c !== ' ' && c !== '.' && s[i - 1] !== ' ' ? i : -1).filter(i => i > 0);
-    const cut = [...shuffle(sp).map(i => s.slice(0, i) + s.slice(i + 1)), ...shuffle(ins).map(i => s.slice(0, i) + ' ' + s.slice(i))].filter((x, j, arr) => arr.indexOf(x) === j).slice(0, 2);
+    // 틀린 보기 하나는 띄어쓰기를 빼고(짧아짐), 하나는 붙여 쓸 곳을 띄움(길어짐) → 길이로 정답을 알 수 없게 (11/3 점검: 예전엔 정답이 늘 가장 길었음)
+    const del = shuffle(sp).map(i => s.slice(0, i) + s.slice(i + 1)), add = shuffle(ins).map(i => s.slice(0, i) + ' ' + s.slice(i));
+    const cut = [del[0], add[0], ...del.slice(1), ...add.slice(1)].filter((x, j, arr) => x && arr.indexOf(x) === j).slice(0, 2);
     return kc(`n64g${s}${cut}`, 'sentence', '바르게 띄어 쓴 문장은?', { opts:[s, ...cut], ans:s, cols:1, hint:'낱말과 낱말 사이를 띄어 써요. "을/를, 이/가, 에"는 앞말에 붙여요', explain:s }); },
   'n7-4'(){ const p = pick(N7_MAIN), sents = p.t.split(/(?<=\.)\s/), detail = pick(sents.filter(x => x !== p.main && x !== sents[0] || sents.length < 2).slice(-2)), other = pick(N7_MAIN.filter(x => x !== p)).main;
     return kc(`n74${p.main}${detail}${other}`, 'mainidea', '이 글의 중심 내용으로 알맞은 것은?', { say:'글을 읽고 중심 내용을 골라 봐요', read:p.t, vis:{ k:'html', html:passHTML(p.t) }, opts:[p.main, detail, other], ans:p.main, hint:'다른 문장들이 모두 설명하고 있는 내용을 찾아요', explain:p.main }); },
@@ -4819,18 +4858,18 @@ Object.assign(LESSON_GEN, {
 
 /* ---------- 더 넣기 (2) ---------- */
 N3_END.push(
-  ['이모께 전화로 말할 때 알맞은 말은?','이모, 저 받아쓰기 다 맞았어요.','이모, 나 다 맞았다.','다 맞음.'],['식당에서 주인 아주머니께 할 말로 알맞은 것은?','잘 먹었습니다.','잘 먹었다.','배불러.'],['선생님께 숙제를 냈다고 말할 때 알맞은 말은?','선생님, 숙제 다 했어요.','선생님, 숙제 다 했어.','숙제 끝.'],
+  ['이모께 전화로 말할 때 알맞은 말은?','이모, 저 받아쓰기 다 맞았어요.','이모, 나 다 맞았다.','이모, 나 받아쓰기 하나도 안 틀리고 다 맞았다!'],['식당에서 주인 아주머니께 할 말로 알맞은 것은?','잘 먹었습니다.','잘 먹었다.','아, 배부르다. 잘 먹었다.'],['선생님께 숙제를 냈다고 말할 때 알맞은 말은?','선생님, 숙제 다 했어요.','선생님, 숙제 다 했어.','숙제 끝.'],
   ['친구에게 고마움을 전할 때 알맞은 말은?','도와줘서 고마워.','도와줘서 고맙사옵니다.','도와줌.'],['어른께 "있어?"를 높여 말하면?','계세요?','있냐?','있어라.'],['어른께 "먹어"를 높여 말하면?','드세요','먹어라','먹자'],
   ['겪은 일을 말할 때 "무슨 일"에 해당하는 말은?','눈사람을 만들었어요','어제','마당에서'],['겪은 일을 들려줄 때 좋은 방법은?','일이 일어난 차례대로 말해요','생각나는 대로 마구 말해요','끝부분만 말해요'],
 );
 N3_POSE_OX.push(['발표할 때는 바닥을 보며 중얼거려요.','X'],['발표하는 친구의 눈을 바라보며 들어요.','O'],['발표할 때는 의자에 기대어 비스듬히 서요.','X']);
-N3_POSE_CH.push(['발표할 때 두 발은 어떻게 하면 좋을까요?','어깨너비로 벌리고 바르게 서요','한 발로 서요','계속 발을 굴러요'],['친구의 발표가 끝났을 때 알맞은 행동은?','손뼉을 쳐 줘요','하품을 해요','모른 척해요'],['발표하는 사람이 듣는 사람을 바라보는 까닭은?','내 말이 잘 전해지게 하려고','눈싸움을 하려고','시간을 끌려고']);
+N3_POSE_CH.push(['발표할 때 두 발은 어떻게 하면 좋을까요?','어깨너비로 벌리고 바르게 서요','한 발을 들고 한 발로만 서요','발표하는 동안 계속 발을 굴러요'],['친구의 발표가 끝났을 때 알맞은 행동은?','손뼉을 쳐 줘요','크게 하품을 해요','못 본 척 모른 척해요'],['발표하는 사람이 듣는 사람을 바라보는 까닭은?','내 말이 잘 전해지게 하려고','친구들과 눈싸움을 해서 이기려고','발표 시간을 길게 끌려고']);
 const N3_FEELS = ['정말 뿌듯했다.','다음에 또 하고 싶다.','조금 무서웠지만 재미있었다.','마음이 따뜻해졌다.','너무 속상했다.','빨리 내일이 왔으면 좋겠다.','동생이 고마웠다.','가슴이 콩닥콩닥 뛰었다.','앞으로 더 열심히 해야겠다.','기분이 정말 좋았다.'];
 const N3_FACTS = ['아빠와 공원에 갔다.','점심에 김밥을 먹었다.','버스를 타고 할머니 댁에 갔다.','동생과 블록을 쌓았다.','아침 아홉 시에 일어났다.','엄마와 시장에 갔다.','운동장에서 줄넘기를 했다.','도서관에서 책을 빌렸다.','저녁에 숙제를 했다.','강아지와 산책을 했다.'];
 N4_QSAY.push(['사자','나를 살려 주다니 고맙구나.','말'],['생쥐','꼭 은혜를 갚아야지.','생각'],['개미','겨울을 준비해야지.','생각'],['베짱이','노래나 불러야지.','생각'],['오빠','재윤아, 잘했어!','말'],['짝꿍','이 연필 빌려줄게.','말'],['토리','오늘도 열심히 해야지.','생각'],['할아버지','어서 오너라.','말']);
 N4_STORY.push(
-  { name:'욕심 많은 개', t:'개 한 마리가 고기를 물고 다리를 건너고 있었어요. 물에 비친 자기 모습을 보고 개는 "저 개의 고기가 더 크네!" 하고 짖었어요. 그 순간 물고 있던 고기가 물속으로 풍덩 빠져 버렸어요.', qs:[['개는 무엇을 물고 있었나요?','고기','뼈다귀','공'],['개가 짖은 까닭은?','물에 비친 개의 고기를 빼앗고 싶어서','다리가 무서워서','배가 불러서'],['개에게 해 줄 말로 알맞은 것은?','욕심을 부리면 가진 것도 잃을 수 있어','더 크게 짖어 봐','다른 다리로 가 봐']] },
-  { name:'해님과 꽃씨', t:'땅속의 작은 꽃씨는 밖에 나가기가 무서웠어요. 해님이 날마다 따뜻하게 비추며 "괜찮아, 나와 봐." 하고 속삭였어요. 어느 날 꽃씨는 용기를 내어 쏙 고개를 내밀었어요. 그리고 노란 꽃을 활짝 피웠어요.', qs:[['꽃씨가 처음에 무서워한 것은?','밖에 나가는 것','물을 먹는 것','잠자는 것'],['해님이 꽃씨에게 해 준 말은?','괜찮아, 나와 봐.','들어가!','시끄러워.'],['이야기의 마지막 장면은?','꽃씨가 노란 꽃을 피웠어요','꽃씨가 땅속에 숨었어요','해님이 사라졌어요']] },
+  { name:'욕심 많은 개', t:'개 한 마리가 고기를 물고 다리를 건너고 있었어요. 물에 비친 자기 모습을 보고 개는 "저 개의 고기가 더 크네!" 하고 짖었어요. 그 순간 물고 있던 고기가 물속으로 풍덩 빠져 버렸어요.', qs:[['개는 무엇을 물고 있었나요?','고기','뼈다귀','공'],['개가 짖은 까닭은?','물에 비친 개의 고기를 빼앗고 싶어서','다리가 흔들려서 너무 무서워서','배가 불러서'],['개에게 해 줄 말로 알맞은 것은?','욕심을 부리면 가진 것도 잃을 수 있어','다음에는 물속의 개한테 더 크게 짖어 봐','다른 다리로 가 봐']] },
+  { name:'해님과 꽃씨', t:'땅속의 작은 꽃씨는 밖에 나가기가 무서웠어요. 해님이 날마다 따뜻하게 비추며 "괜찮아, 나와 봐." 하고 속삭였어요. 어느 날 꽃씨는 용기를 내어 쏙 고개를 내밀었어요. 그리고 노란 꽃을 활짝 피웠어요.', qs:[['꽃씨가 처음에 무서워한 것은?','밖에 나가는 것','물을 먹는 것','깜깜한 땅속에서 혼자 잠자는 것'],['해님이 꽃씨에게 해 준 말은?','괜찮아, 나와 봐.','들어가!','시끄러우니까 그냥 땅속에 있어.'],['이야기의 마지막 장면은?','꽃씨가 노란 꽃을 피웠어요','꽃씨가 무서워서 다시 땅속 깊이 숨었어요','해님이 사라졌어요']] },
 );
 N5_PASS.push(
   { name:'비 오는 날의 우산', t:'학교가 끝났는데 비가 쏟아졌어요. 우산이 없어서 걱정하고 있는데 할아버지께서 커다란 우산을 들고 오셨어요. 할아버지와 우산을 같이 쓰고 걸으니 빗소리도 노래처럼 들렸어요.', qs:[['학교가 끝났을 때 날씨는?','비가 쏟아졌어요','눈이 왔어요','해가 쨍쨍했어요'],['누가 우산을 들고 오셨나요?','할아버지','엄마','선생님'],['"빗소리도 노래처럼 들렸어요"에 담긴 마음은?','기쁘고 편안한 마음','무서운 마음','화난 마음']] },
@@ -4849,8 +4888,8 @@ N7_INFO.push(
   { name:'소방관', t:'소방관은 불이 난 곳에 달려가 불을 꺼요. 소방관은 위험에 빠진 사람도 구해요. 소방관은 불이 나지 않도록 안전 교육도 해요. 소방관 덕분에 우리는 안전하게 지낼 수 있어요.', qs:[['무엇을 설명하는 글일까요?','소방관','경찰관','의사'],['소방관이 하는 일이 아닌 것은?','물건을 팔아요','불을 꺼요','사람을 구해요'],['이 글에서 여러 번 나오는 낱말은?','소방관','안전','교육']] },
 );
 N7_EXP.push(
-  { t:'일요일 오후에 할머니 댁 마당에서 강아지 복실이와 공놀이를 했어요. 내가 공을 던지면 복실이가 꼬리를 흔들며 물어 왔어요. 너무 재미있어서 해가 지는 줄도 몰랐어요.', qs:[['어디에서 있었던 일인가요?','할머니 댁 마당','학교 운동장','바닷가'],['복실이는 공을 어떻게 했나요?','물어 왔어요','숨겼어요','찢었어요'],['"해가 지는 줄도 몰랐어요"에 담긴 마음은?','아주 재미있었던 마음','무서웠던 마음','심심했던 마음']] },
-  { t:'오늘 아침 학교 가는 길에 길 잃은 아기 고양이를 보았어요. 엄마께 말씀드려서 동물 보호소에 연락했어요. 아기 고양이가 따뜻한 곳으로 가게 되어 마음이 놓였어요.', qs:[['무엇을 보았나요?','길 잃은 아기 고양이','떨어진 지갑','큰 무지개'],['어디에 연락했나요?','동물 보호소','소방서','도서관'],['마지막의 마음을 나타낸 말은?','마음이 놓였어요','화가 났어요','부끄러웠어요']] },
+  { t:'일요일 오후에 할머니 댁 마당에서 강아지 복실이와 공놀이를 했어요. 내가 공을 던지면 복실이가 꼬리를 흔들며 물어 왔어요. 너무 재미있어서 해가 지는 줄도 몰랐어요.', qs:[['어디에서 있었던 일인가요?','할머니 댁 마당','학교 운동장','바닷가'],['복실이는 공을 어떻게 했나요?','물어 왔어요','숨겼어요','찢었어요'],['"해가 지는 줄도 몰랐어요"에 담긴 마음은?','아주 재미있었던 마음','무섭고 겁이 났던 마음','너무 심심하고 지루했던 마음']] },
+  { t:'오늘 아침 학교 가는 길에 길 잃은 아기 고양이를 보았어요. 엄마께 말씀드려서 동물 보호소에 연락했어요. 아기 고양이가 따뜻한 곳으로 가게 되어 마음이 놓였어요.', qs:[['무엇을 보았나요?','길 잃은 아기 고양이','떨어진 지갑','큰 무지개'],['어디에 연락했나요?','동물 보호소','소방서','도서관'],['마지막의 마음을 나타낸 말은?','마음이 놓였어요','화가 났어요','부끄러워서 얼굴이 빨개졌어요']] },
 );
 N8_POEMS.push(
   { t:'눈사람\n눈사람아 춥지?\n내 목도리 줄게\n당근 코가\n빨개졌네\n후후 불어 줄게', qs:[['시에서 말하는 이가 눈사람에게 주려는 것은?','목도리','장갑','모자'],['눈사람의 코는 무엇으로 만들었나요?','당근','돌멩이','나뭇가지'],['이 시에 담긴 마음은?','눈사람을 아끼는 따뜻한 마음','눈사람이 싫은 마음','무서운 마음']] },
@@ -5488,7 +5527,7 @@ function fsVal(v){
 function fsFields(o){ const f = {}; for (const k in o) if (o[k] !== undefined && typeof o[k] !== 'function') f[k] = fsVal(o[k]); return f; }
 const SEND_WAIT = 40000;
 /* ---------- 역할이 잘못된 기기 찾기 (2026-10-29 사고: 재윤이 태블릿이 "오빠 폰"으로 연결돼 5일 동안 공부가 미리보기로만 남음) ---------- */
-const BOARD_SCREENS = ['intro','q','cards','write','dict','photo','reward','lecwait','leccheck','eyebreak'];
+const BOARD_SCREENS = ['intro','q','suggest','cards','write','dict','photo','reward','lecwait','leccheck','eyebreak'];
 function devId(){ try { let d = localStorage.getItem('jaeyun-dev'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); localStorage.setItem('jaeyun-dev', d); } return d; } catch (e) { return 'dx'; } }
 function isTabletDev(){ return window.__forceTablet || Math.min(screen.width, screen.height) >= 600; }
 /* 최근 3일 동안 이 기기에서 판을 끝낸 날 수 */
@@ -5575,7 +5614,7 @@ const Sync = {
       this.ready = true; this.status = 'on';
       // 태블릿: 아직 서버에 없는 사진(예전에 올리다 실패한 것)도 다시 올린다
       if (kid) Object.entries(this.blobCache).forEach(([h, d]) => this.putBlob(h, d));
-      this.schedule(); this.beat(); this.devBeat(true); this.flushNotes();
+      this.schedule(); this.beat(); this.devBeat(true); this.flushNotes(); Suggest.flush();
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.start(), 30000); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
@@ -5590,6 +5629,9 @@ const Sync = {
     this.unsub.push(this.db.collection(`${b}/s`).onSnapshot({ includeMetadataChanges:true }, snap => this.onState(snap)));
     this.unsub.push(this.db.collection(`${b}/days`).onSnapshot({ includeMetadataChanges:true }, snap => this.onDays(snap)));
     this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(120).onSnapshot(snap => this.onNotes(snap)));
+    // 건의함 (11/3): 글만 받는다. 사진·목소리(fbm)는 오빠가 "보기"를 누를 때만
+    try { this.unsub.push(this.db.collection(`${b}/fb`).orderBy('at', 'desc').limit(80).onSnapshot(snap => Suggest.onList(snap)));
+      this.unsub.push(this.db.collection(`${b}/fbst`).onSnapshot(snap => Suggest.onSt(snap))); } catch (e) {}
     // 재윤이 태블릿이 마지막으로 연결된 때 (엄마·오빠 폰에서 보여 줌)
     // 기기들 상태(meta/dev-…): 엄마·오빠 역할로 연결된 태블릿에서 재윤이가 공부하고 있으면 폰에서 알려 준다
     try { this.unsub.push(this.db.collection(`${b}/meta`).onSnapshot(snap => { const devs = {}; let k = null;
@@ -7006,6 +7048,308 @@ Object.assign(ACT, {
 });
 /* 엄마 탭 바로가기 → 접힌 칸 펼치기 (ACT는 app.js 맨 아래에서 만들어져서 여기서 붙인다) */
 ACT.momfold = el => { const k = el.dataset.v; MOM_OPEN.add(k); const d = document.querySelector(`details.mom-fold[data-k="${k}"]`); if (d) { d.open = true; d.scrollIntoView({ behavior:'smooth', block:'start' }); } };
+
+/* ===================== 건의함 (2026-11-03 오빠 요청) =====================
+   재윤이나 엄마가 "이상해요 · 어려워요 · 이런 거 있으면 좋겠어요"를 오빠에게 보낸다. 캡처한 화면(사진첩)·목소리도 같이.
+   - 재윤이: 첫 화면 "💌 오빠에게 말하기", 문제 화면 "🙋 이 문제 이상해요"(그 문제·보기·정답·고른 답·그림이 저절로 같이 감)
+   - 엄마: 엄마 탭 "💌 오빠에게 건의하기"  ·  오빠: 오빠 탭 맨 위 "💌 건의함"(봤어요 · 고쳤어요 + 한마디 · 내용 복사)
+   서버(Firestore 규칙 그대로):
+   - families/{fid}/fb/{id}        건의 한 건 (글·문제·몇 장인지만, 작게) → 모든 기기가 목록으로 받음
+   - families/{fid}/fbm/{id}_{i0|a} 사진 한 장 · 목소리 (문서 하나 1MB 아래로 줄여서) → 오빠가 "보기"를 누를 때만 받음
+   - families/{fid}/fbst/{id}      오빠가 남긴 상태(seen · done)와 한마디
+   보내기 전에는 기기에 모아 둠(localStorage jaeyun-fbq) → 인터넷·연결되면 보냄. 가족 연결 안 된 체험판은 이 기기에만 */
+const SUG_KINDS = {
+  kid:[['bug','🐞','이상해요'],['hard','😣','어려워요'],['idea','💡','이런 거 있으면 좋겠어요'],['like','😊','이거 좋아요']],
+  adult:[['bug','🐞','고장 · 이상한 점'],['content','📚','문제 · 내용'],['idea','💡','바라는 점'],['etc','💬','그 밖에']],
+};
+const SUG_WHO = { kid:['🐰','재윤이'], mom:['💗','엄마'], oppa:['🎁','오빠'] };
+const SUG_MAX_IMG = 4, SUG_MAX_REC = 90, SUG_DOC_MAX = 900000;
+let SUG = null;   // 쓰는 중인 건의 (화면을 다시 그려도 남음)
+let SUG_REC = null, SUG_BACK = null;   // SUG_BACK: 문제 화면에서 왔을 때 그 문제에서 틀린 횟수 (돌아가면 그대로)
+const SUG_VIEW = { more:0, open:{}, keep:{} };
+function sugKind(who, k){ const list = SUG_KINDS[who === 'kid' ? 'kid' : 'adult']; return list.find(x => x[0] === k) || SUG_KINDS.adult.find(x => x[0] === k) || ['etc','💬','그 밖에']; }
+function sugNew(who, from, q){ SUG = { who, from, q:q || null, kind: q ? 'bug' : '', text:'', imgs:[], aud:null, audSec:0, sent:null }; }
+
+const Suggest = {
+  list:{}, st:{}, media:{}, mem:{}, loading:{}, flushing:false, retryT:null,
+  /* 보낼 것 모음: [{ id, doc, media:{i0:…, a:…}, sent:[] }] */
+  queue(){ try { return JSON.parse(localStorage.getItem('jaeyun-fbq') || '[]'); } catch (e) { return []; } },
+  setQueue(q){
+    try { q.length ? localStorage.setItem('jaeyun-fbq', JSON.stringify(q)) : localStorage.removeItem('jaeyun-fbq'); return true; }
+    catch (e) {   // 기기 저장 공간이 모자라면 사진·목소리는 메모리에만 두고 글만 저장
+      q.forEach(it => { if (it.media && Object.keys(it.media).length) { this.mem[it.id] = it.media; it.media = {}; it.memOnly = true; } });
+      try { localStorage.setItem('jaeyun-fbq', JSON.stringify(q)); } catch (e2) {}
+      return false;
+    }
+  },
+  localSt(){ try { return JSON.parse(localStorage.getItem('jaeyun-fbst') || '{}'); } catch (e) { return {}; } },
+  /* 모든 건의 (서버 + 아직 못 보낸 것), 새것부터 */
+  all(){
+    const m = Object.assign({}, this.list);
+    this.queue().forEach(it => { if (!m[it.id]) m[it.id] = Object.assign({}, it.doc, { id:it.id, pending:true }); });
+    return Object.values(m).sort((a, b) => b.at - a.at);
+  },
+  status(id){ return this.st[id] || this.localSt()[id] || null; },
+  add(doc, media){
+    const id = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const q = this.queue(); q.push({ id, doc, media, sent:[] });
+    const ok = this.setQueue(q);
+    this.flush();
+    return { id, ok };
+  },
+  async flush(){
+    if (!linked() || !Sync.ready || this.flushing || navigator.onLine === false) return;
+    this.flushing = true; clearTimeout(this.retryT);
+    try {
+      for (const it of this.queue()) {
+        const media = Object.assign({}, it.media || {}, this.mem[it.id] || {});
+        if (it.memOnly && !this.mem[it.id]) it.doc.lost = true;   // 앱을 다시 켜서 메모리에 있던 사진이 사라짐
+        for (const [mk, d] of Object.entries(media)) {
+          if ((it.sent || []).includes(mk)) continue;
+          await Sync.write(`${Sync.base()}/fbm/${it.id}_${mk}`, { d, at:it.doc.at });
+          const q = this.queue(), x = q.find(y => y.id === it.id); if (x) { x.sent = [...(x.sent || []), mk]; this.setQueue(q); }
+        }
+        await Sync.write(`${Sync.base()}/fb/${it.id}`, it.doc);
+        this.list[it.id] = Object.assign({ id:it.id }, it.doc);
+        Object.entries(media).forEach(([mk, d]) => { (this.media[it.id] = this.media[it.id] || {})[mk] = d; });
+        this.setQueue(this.queue().filter(y => y.id !== it.id)); delete this.mem[it.id];
+      }
+    } catch (e) { console.warn('suggest', e); this.retryT = setTimeout(() => this.flush(), 60000); }
+    finally { this.flushing = false; }
+    if (SCREEN === 'suggest') sugRefresh();
+  },
+  onList(snap){ let ch = false; snap.docs.forEach(d => { const x = Object.assign({ id:d.id }, d.data()); if (JSON.stringify(this.list[d.id]) !== JSON.stringify(x)) { this.list[d.id] = x; ch = true; } }); if (ch) sugAfterRemote(); },
+  onSt(snap){ let ch = false; snap.docs.forEach(d => { const x = d.data(); if (JSON.stringify(this.st[d.id]) !== JSON.stringify(x)) { this.st[d.id] = x; ch = true; } }); if (ch) sugAfterRemote(); },
+  async setSt(id, st, reply){
+    const v = { st, reply:reply || '', at:Date.now(), by:role() };
+    this.st[id] = v;
+    if (!linked() || this.all().find(x => x.id === id && x.pending)) { const l = this.localSt(); l[id] = v; try { localStorage.setItem('jaeyun-fbst', JSON.stringify(l)); } catch (e) {} return true; }
+    try { await Sync.write(`${Sync.base()}/fbst/${id}`, v); return true; } catch (e) { return false; }
+  },
+  /* 사진·목소리 받아 오기 (오빠가 "보기"를 눌렀을 때만) */
+  async loadMedia(x){
+    const id = x.id, want = sugMediaKeys(x), have = this.media[id] || {};
+    const q = this.queue().find(y => y.id === id); if (q) { Object.assign(have, q.media || {}, this.mem[id] || {}); this.media[id] = have; }
+    const miss = want.filter(k => !have[k]); if (!miss.length || !linked() || !Sync.db || this.loading[id]) return;
+    this.loading[id] = true;
+    try { for (const k of miss) { const s = await Sync.db.doc(`${Sync.base()}/fbm/${id}_${k}`).get(); if (s.exists) (this.media[id] = this.media[id] || {})[k] = s.data().d; } }
+    catch (e) { toast('사진을 받아 오지 못했어요. 인터넷을 확인해 주세요'); }
+    this.loading[id] = false; sugAfterRemote(true);
+  },
+};
+function sugMediaKeys(x){ const k = []; for (let i = 0; i < (x.imgs || 0); i++) k.push('i' + i); if (x.aud) k.push('a'); return k; }
+function sugAfterRemote(force){
+  if (SCREEN === 'suggest') { if (!SUG_REC) sugRefresh(); return; }
+  if (SCREEN === 'adult' || SCREEN === 'home') { if (force) { const y = scrollY; VIEWS[SCREEN](); scrollTo(0, y); } else refreshIfIdle(); }
+}
+function sugRefresh(){ const y = scrollY; VIEWS.suggest(); scrollTo(0, y); }
+
+/* 사진 줄이기: 글씨가 읽히게 긴 쪽 1600px부터, 문서 하나(1MB)에 들어갈 때까지 */
+function shrinkShot(file){
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => { const img = new Image(); img.onload = () => {
+      let side = 1600, qy = .78, out = '';
+      for (let t = 0; t < 8; t++) {
+        const sc = Math.min(1, side / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        out = c.toDataURL('image/jpeg', qy);
+        if (out.length <= SUG_DOC_MAX - 2000) break;
+        if (qy > .5) qy -= .12; else side = Math.round(side * .8);
+      }
+      out.length <= SUG_DOC_MAX - 2000 ? res(out) : rej(new Error('too big')); };
+      img.onerror = rej; img.src = r.result; };
+    r.onerror = rej; r.readAsDataURL(file);
+  });
+}
+/* 문제 화면에서 연 경우: 그 문제를 그대로 남긴다 (오빠가 같은 모양으로 볼 수 있게) */
+function sugSnapQ(){
+  if (!RUN || !RUN.q) return null;
+  const q = RUN.q, b = RUN.b;
+  let vis = ''; try { vis = q.vis ? visHTML(q) : ''; } catch (e) {}
+  if (vis.length > 120000) vis = '';
+  return { subj:q.subj || RUN.k || '', lesson:q.lesson || (b && b.cur && b.cur.lesson) || '', type:q.type || '', key:String(q.key || '').slice(0, 200),
+    prompt:String(q.prompt || ''), read:String(q.read || q.listen || ''), input:q.input || '', opts:q.input === 'choice' ? (q.opts || []).map(String) : [],
+    ans:String(q.ans), wrongs:(RUN.wrongs || []).map(String), tries:RUN.tries || 0, vis, board:RUN.k || '', no:b ? `${b.idx + 1}/${b.qs.length}` : '' };
+}
+function sugCtx(){
+  const parts = [];
+  try { ['math','kor','eng'].forEach(s => parts.push(`${SUBJ_NAME[s]} ${currLabel(s)}`)); } catch (e) {}
+  return parts.join(' · ');
+}
+function sugQHTML(q, showAns = true){
+  if (!q) return '';
+  const lab = (q.lesson ? `${q.lesson} · ` : '') + (SUBJ_NAME[q.subj] || q.subj || '') + (q.no ? ` · ${q.no}번째` : '');
+  return `<div class="sug-q"><div class="muted" style="font-size:13px">📎 ${esc(lab)}</div>
+    <p class="sug-q-p">${esc(q.prompt)}${q.read && q.read !== q.prompt ? ` <span class="muted">(🔊 ${esc(q.read)})</span>` : ''}</p>
+    ${q.vis ? `<div class="sug-q-vis">${q.vis}</div>` : ''}
+    ${q.opts && q.opts.length ? `<div class="sug-q-opts">${q.opts.map(o => `<span class="${showAns && o === q.ans ? 'ok' : ''} ${(q.wrongs || []).includes(o) ? 'no' : ''}">${esc(o)}</span>`).join('')}</div>` : ''}
+    ${showAns ? `<div class="muted" style="font-size:13px">정답 ${esc(q.ans)}${q.wrongs && q.wrongs.length ? ` · 재윤이가 고른 답 ${q.wrongs.map(esc).join(', ')}` : ''}</div>` : ''}</div>`;
+}
+function sugStatusPill(x){
+  const s = Suggest.status(x.id);
+  if (s && s.st === 'done') return `<span class="pill ok">고쳤어요 ✓</span>`;
+  if (s && s.st === 'seen') return `<span class="pill">오빠가 봤어요 👀</span>`;
+  if (x.pending) return `<span class="pill wait">${linked() ? '보내는 중…' : '이 기기에만 저장'}</span>`;
+  return `<span class="pill wait">오빠한테 갔어요</span>`;
+}
+
+/* ---------- 쓰는 화면 ---------- */
+VIEWS.suggest = arg => {
+  if (arg && arg.who) sugNew(arg.who, arg.from || 'home', arg.q);
+  if (!SUG) sugNew('kid', 'home');
+  const P = SUG, kid = P.who === 'kid', kinds = SUG_KINDS[kid ? 'kid' : 'adult'];
+  const mine = Suggest.all().filter(x => x.who === P.who).slice(0, 8);
+  const can = P.text.trim() || P.imgs.length || P.aud || P.q;
+  const isTab = isTabletDev();
+  const shotHelp = isTab ? '태블릿 화면 캡처: <b>전원 버튼 + 소리 줄이기 버튼</b>을 같이 꾹 누르면 사진첩에 저장돼요' : '폰 화면 캡처: <b>전원 버튼 + 소리 줄이기 버튼</b>을 같이 누르면 사진첩에 저장돼요';
+  app().innerHTML = `<section class="screen sug">
+    <div class="row"><button class="icon-btn" data-a="sugback" aria-label="돌아가기">${ICON.back}</button><h2 style="flex:1">${kid ? '💌 오빠에게 말하기' : '💌 오빠에게 건의하기'}</h2></div>
+    ${P.sent ? `<div class="sug-done">${stageHTML(150, { expr:'love', size:110, cls:'hop' })}<b class="disp">${kid ? '고마워! 오빠한테 보냈어 💌' : '오빠에게 보냈어요 💌'}</b>
+        <span class="muted">${linked() ? (P.sent.ok === false ? '사진이 커서 이 기기에 다 못 담았어요. 앱을 끄기 전에 인터넷을 연결해 주세요.' : '오빠 폰으로 알림이 가요. 오빠가 보면 여기에 표시돼요.') : '체험판이라 이 기기에만 저장했어요.'}</span>
+        <div class="row" style="justify-content:center;flex-wrap:wrap">${P.from === 'q' ? `<button class="btn big" data-a="sugback">문제로 돌아가기</button>` : `<button class="btn" data-a="sugback">돌아가기</button>`}<button class="btn ghost" data-a="sugagain">하나 더 말하기</button></div></div>`
+    : `${kid ? `<div class="hero" style="min-height:0">${stageHTML(120, { expr:'think', size:92 })}<div class="bubble left">${P.q ? '어떤 게 이상했어? 말로 해도 돼!' : '오빠한테 하고 싶은 말이 있어? 말로 해도 되고, 사진을 보내도 돼!'}</div></div>` : `<p class="muted" style="font-size:15px">불편한 점, 이상한 문제, 있으면 좋겠는 것을 적어 주세요. 화면을 캡처해서 같이 보내면 오빠가 바로 알아볼 수 있어요.</p>`}
+    ${P.q ? `<div class="panel">${sugQHTML(P.q, !kid)}<button class="btn ghost small" data-a="sugdropq" style="justify-self:start">이 문제 빼기</button></div>` : ''}
+    <div class="panel"><h3>${kid ? '어떤 이야기야?' : '어떤 내용인가요?'}</h3>
+      <div class="sug-kinds">${kinds.map(([k, ic, l]) => `<button class="sug-kind ${P.kind === k ? 'on' : ''}" data-a="sugkind" data-v="${k}"><span class="ic">${ic}</span>${l}</button>`).join('')}</div></div>
+    <div class="panel"><h3>${kid ? '하고 싶은 말' : '내용'}</h3>
+      <div class="field"><textarea id="sugText" rows="${kid ? 3 : 4}" maxlength="1000" placeholder="${kid ? '글로 써도 되고, 아래 🎤로 말해도 돼' : '예: 받아쓰기 3번은 소리가 안 나와요 / 수학 문제 그림이 잘려요'}">${esc(P.text)}</textarea></div>
+      <div class="sug-rec">
+        <button class="rec-btn ${SUG_REC ? 'on' : ''}" data-a="sugrec">${SUG_REC ? '멈추기' : '🎤'}</button>
+        <span class="grow" style="flex:1">${SUG_REC ? `<b>듣고 있어요…</b> <span id="sugRecT">0</span>초 (끝나면 멈추기)` : P.aud ? `<audio controls src="${P.aud}"></audio><button class="btn ghost small" data-a="sugdelaud">목소리 지우기</button>` : `<span class="muted">${kid ? '눌러서 말로 하기' : '말로 남기기 (최대 90초)'}</span>`}</span>
+      </div></div>
+    <div class="panel"><h3>📷 사진 · 캡처 화면 <small class="muted">${P.imgs.length}/${SUG_MAX_IMG}</small></h3>
+      ${P.imgs.length ? `<div class="sug-thumbs">${P.imgs.map((s, i) => `<div class="sug-thumb"><img src="${s}" alt="올린 사진 ${i + 1}"><button data-a="sugdelimg" data-v="${i}" aria-label="사진 빼기">✕</button></div>`).join('')}</div>` : ''}
+      ${P.imgs.length < SUG_MAX_IMG ? `<label class="btn ${P.imgs.length ? 'ghost' : 'sky'} file-btn">${P.imgs.length ? '사진 더 올리기' : '사진첩에서 고르기'}<input type="file" accept="image/*" multiple id="sugImg"></label>` : ''}
+      <p class="muted" style="font-size:13px">${shotHelp}. 그다음 여기서 "사진첩에서 고르기"를 눌러요.</p></div>
+    <button class="btn big ${can ? '' : 'off'}" data-a="sugsend" ${can ? '' : 'aria-disabled="true"'}>${kid ? '오빠한테 보내기 💌' : '오빠에게 보내기'}</button>`}
+    ${mine.length ? `<div class="panel"><h3>${kid ? '내가 보낸 이야기' : '보낸 건의'}</h3><div class="list">${mine.map(x => { const s = Suggest.status(x.id), k = sugKind(x.who, x.kind);
+      return `<div class="li" style="flex-wrap:wrap"><span class="grow" style="flex:1;min-width:60%">${k[1]} ${esc(x.text || (x.q ? '이 문제가 이상해요' : x.aud ? '(목소리)' : x.imgs ? `(사진 ${x.imgs}장)` : ''))}<br><span class="muted" style="font-size:13px">${agoText(x.at)}</span>${s && s.reply ? `<br><span class="sug-reply">🎁 오빠: ${esc(s.reply)}</span>` : ''}</span>${sugStatusPill(x)}</div>`; }).join('')}</div></div>` : ''}
+  </section>`;
+  if (!P.sent && kid && arg && arg.who) speak(P.q ? '어떤 게 이상했어? 말로 해도 돼!' : '오빠한테 하고 싶은 말이 있어? 말로 해도 되고, 사진을 보내도 돼!');
+};
+document.addEventListener('input', e => { if (e.target && e.target.id === 'sugText' && SUG) { SUG.text = e.target.value; const b = document.querySelector('[data-a="sugsend"]'); if (b) { const can = SUG.text.trim() || SUG.imgs.length || SUG.aud || SUG.q; b.classList.toggle('off', !can); can ? b.removeAttribute('aria-disabled') : b.setAttribute('aria-disabled', 'true'); } } });
+document.addEventListener('change', async e => {
+  const el = e.target; if (!el || el.id !== 'sugImg' || !el.files || !SUG) return;
+  const files = [...el.files].slice(0, SUG_MAX_IMG - SUG.imgs.length); if (!files.length) return;
+  toast('사진을 올리는 중이에요…');
+  let bad = 0; for (const f of files) { try { SUG.imgs.push(await shrinkShot(f)); } catch (x) { bad++; } }
+  if (bad) toast('사진 하나를 불러오지 못했어요. 다른 사진으로 해 주세요');
+  if (el.files.length > files.length) toast(`사진은 ${SUG_MAX_IMG}장까지 보낼 수 있어요`);
+  sugRefresh();
+});
+async function sugRecStart(){
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    const chunks = [], rec = new MediaRecorder(stream), t0 = Date.now();
+    SUG_REC = { rec, stream, t0, tick:setInterval(() => { const s = Math.round((Date.now() - t0) / 1000), el = document.getElementById('sugRecT'); if (el) el.textContent = s; if (s >= SUG_MAX_REC) sugRecStop(); }, 500) };
+    rec.ondataavailable = ev => chunks.push(ev.data);
+    rec.onstop = () => { stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type:rec.mimeType || 'audio/webm' });
+      blobToData(blob).then(d => { if (!SUG) return; if (d.length > SUG_DOC_MAX - 2000) { toast('목소리가 너무 길어요. 짧게 다시 말해 줘요'); } else { SUG.aud = d; SUG.audSec = Math.round((Date.now() - t0) / 1000); } if (SCREEN === 'suggest') sugRefresh(); }); };
+    rec.start(); sugRefresh();
+  } catch (x) { SUG_REC = null; toast('여기서는 녹음이 안 돼요. 글이나 사진으로 보내 주세요'); }
+}
+function sugRecStop(){ if (!SUG_REC) return; const r = SUG_REC; SUG_REC = null; clearInterval(r.tick); try { r.rec.stop(); } catch (x) { try { r.stream.getTracks().forEach(t => t.stop()); } catch (y) {} } }
+function sugSubmit(){
+  const P = SUG; if (!P || P.sent) return;
+  if (!(P.text.trim() || P.imgs.length || P.aud || P.q)) { toast('하고 싶은 말을 적거나 사진을 골라 주세요'); return; }
+  sugRecStop();
+  const kind = P.kind || (P.q ? 'bug' : P.who === 'kid' ? 'idea' : 'etc');
+  const doc = { who:P.who, kind, text:P.text.trim().slice(0, 1000), at:Date.now(), d:todayKey(), ver:String(window.APP_VERSION || ''), dev:devId(), tab:isTabletDev(), from:P.from || '', ctx:sugCtx(), imgs:P.imgs.length, aud:P.aud ? (P.audSec || 1) : 0 };
+  if (P.q) doc.q = P.q;
+  const media = {}; P.imgs.forEach((s, i) => media['i' + i] = s); if (P.aud) media.a = P.aud;
+  const r = Suggest.add(doc, media);
+  // 오빠 폰 알림 (알림함 + ntfy). 오빠가 스스로 남긴 메모는 알리지 않음
+  if (P.who !== 'oppa') {
+    const k = sugKind(P.who, kind), extra = [doc.imgs ? `사진 ${doc.imgs}장` : '', doc.aud ? `목소리 ${doc.aud}초` : '', P.q ? `문제 ${P.q.lesson || ''}` : ''].filter(Boolean).join(' · ');
+    const n = { to:'oppa', text:`💌 ${SUG_WHO[P.who][1]} 건의 · ${k[1]} ${k[2]}${doc.text ? `: "${doc.text.slice(0, 60)}${doc.text.length > 60 ? '…' : ''}"` : ''}${extra ? ` (${extra})` : ''}`, at:Date.now(), d:todayKey() };
+    S.notes.unshift(n); trimNotes(); Sync.addNote(n); try { Ntfy.send(n); } catch (x) {}
+    save();
+  }
+  P.sent = r; SFX.right && SFX.right();
+  if (P.who === 'kid') speak('고마워! 오빠한테 보냈어');
+  sugRefresh();
+}
+Object.assign(ACT, {
+  sug(el){ const who = el.dataset.v || 'kid'; go('suggest', { who, from: SCREEN === 'adult' ? 'adult' : 'home' }); },
+  sugq(){ if (!RUN || !RUN.q) return; const snap = sugSnapQ(); SUG_BACK = { tries:RUN.tries, wrongs:[...(RUN.wrongs || [])], done:!!RUN.locked, el:Date.now() - (RUN.t0 || Date.now()), q:RUN.q }; go('suggest', { who: linked() && role() !== 'kid' ? (role() === 'oppa' ? 'oppa' : 'mom') : 'kid', from:'q', q:snap }); },
+  sugkind(el){ if (!SUG) return; SUG.kind = SUG.kind === el.dataset.v ? '' : el.dataset.v; SFX.tap(); sugRefresh(); },
+  sugdropq(){ if (SUG) { SUG.q = null; sugRefresh(); } },
+  sugrec(){ if (SUG_REC) sugRecStop(); else sugRecStart(); },
+  sugdelaud(){ if (SUG) { SUG.aud = null; SUG.audSec = 0; sugRefresh(); } },
+  sugdelimg(el){ if (SUG) { SUG.imgs.splice(+el.dataset.v, 1); sugRefresh(); } },
+  sugsend(){ sugSubmit(); },
+  sugagain(){ if (SUG) { sugNew(SUG.who, SUG.from === 'q' ? 'home' : SUG.from); sugRefresh(); } },
+  sugback(){ sugRecStop(); const from = SUG ? SUG.from : 'home'; SUG = null;
+    if (from === 'q' && RUN && RUN.b && RUN.b.qs[RUN.b.idx]) { const bk = SUG_BACK; SUG_BACK = null;
+      // 이미 맞혔거나 정답을 본 문제(답이 기록됨)면 다음 문제로, 아니면 그 문제를 틀린 횟수 그대로 다시. 건의 화면에 있던 시간은 문제 시간에서 뺌
+      if (bk && bk.done && RUN.b.qs[RUN.b.idx] === bk.q) { SCREEN = 'q'; RUN.t0 = Date.now() - bk.el; nextQ(); return; }
+      go('q'); if (bk && RUN.b.qs[RUN.b.idx] === bk.q) { RUN.tries = bk.tries; RUN.wrongs = bk.wrongs; RUN.t0 = Date.now() - bk.el; } return; }
+    go(from === 'adult' ? 'adult' : 'home'); },
+  /* 오빠: 상태 바꾸기 · 한마디 · 복사 · 사진 보기 */
+  sugst(el){ const id = el.dataset.id, st = el.dataset.v; SUG_VIEW.keep[id] = true; const inp = document.getElementById('sugrp_' + id), reply = inp ? inp.value.trim() : ((Suggest.status(id) || {}).reply || '');
+    Suggest.setSt(id, st, reply).then(ok => { toast(ok ? (st === 'done' ? '고쳤어요로 표시했어요. 보낸 사람 화면에 보여요' : '봤어요로 표시했어요') : '저장하지 못했어요. 인터넷을 확인해 주세요'); const x = Suggest.all().find(y => y.id === id);
+      if (ok && st === 'done' && x && x.who === 'mom') { const n = { to:'mom', text:`💌 오빠가 건의를 고쳤어요: "${(x.text || '사진 건의').slice(0, 40)}"${reply ? ` · ${reply}` : ''}`, at:Date.now(), d:todayKey() }; Sync.addNote(n); try { Ntfy.send(n); } catch (e) {} }
+      const y = scrollY; VIEWS.adult(); scrollTo(0, y); }); },
+  sugopen(el){ const id = el.dataset.id; SUG_VIEW.open[id] = !SUG_VIEW.open[id]; const x = Suggest.all().find(y => y.id === id); if (SUG_VIEW.open[id] && x) Suggest.loadMedia(x); const y = scrollY; VIEWS.adult(); scrollTo(0, y); },
+  sugkeep(el){ SUG_VIEW.keep[el.dataset.id] = true; const y = scrollY; VIEWS.adult(); scrollTo(0, y); },
+  sugmore(){ SUG_VIEW.more++; const y = scrollY; VIEWS.adult(); scrollTo(0, y); },
+  sugcopy(el){ const x = Suggest.all().find(y => y.id === el.dataset.id); if (!x) return; const t = sugCopyText(x);
+    const fb = () => { const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast('내용을 복사했어요'); } catch (e) { toast('복사하지 못했어요'); } ta.remove(); };
+    try { navigator.clipboard.writeText(t).then(() => toast('내용을 복사했어요. Claude에게 붙여 넣으면 돼요'), fb); } catch (e) { fb(); } },
+  sugkidseen(){ try { localStorage.setItem('jaeyun-fbseen', String(Date.now())); } catch (e) {} go('suggest', { who:'kid', from:'home' }); },
+});
+function sugCopyText(x){
+  const k = sugKind(x.who, x.kind), d = new Date(x.at), s = Suggest.status(x.id);
+  const L = [`[재윤이 공부방 건의] ${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]}) ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')} · ${SUG_WHO[x.who] ? SUG_WHO[x.who][1] : x.who} · ${k[1]} ${k[2]}`];
+  if (x.text) L.push('내용: ' + x.text);
+  if (x.q) { const q = x.q; L.push(`문제: [${SUBJ_NAME[q.subj] || q.subj} ${q.lesson || ''} · ${q.type}${q.no ? ` · ${q.no}` : ''}] ${q.prompt}${q.read && q.read !== q.prompt ? ` (읽기: ${q.read})` : ''}`);
+    if (q.opts && q.opts.length) L.push(`보기: ${q.opts.join(' / ')}`); L.push(`정답: ${q.ans}${q.wrongs && q.wrongs.length ? ` · 재윤이가 고른 답: ${q.wrongs.join(', ')}` : ''}`); L.push(`문제 키: ${q.key}`); }
+  if (x.imgs || x.aud) L.push(`첨부: ${x.imgs ? `사진 ${x.imgs}장` : ''}${x.imgs && x.aud ? ' · ' : ''}${x.aud ? `목소리 ${x.aud}초` : ''} (사진은 길게 눌러 저장해서 같이 보내기)`);
+  L.push(`진도: ${x.ctx || '-'}`);
+  L.push(`기기: ${x.tab ? '태블릿' : '폰'} · ${{ q:'문제 풀다가', home:'첫 화면에서', adult:'엄마·오빠 메뉴에서' }[x.from] || '-'} · 앱 ${kidVer(x.ver)}`);
+  if (s && s.st) L.push(`상태: ${s.st === 'done' ? '고침' : '봄'}${s.reply ? ` · ${s.reply}` : ''}`);
+  return L.join('\n');
+}
+/* 오빠 탭: 건의함 */
+function suggestPanel(){
+  const every = Suggest.all(), fresh = every.filter(x => !Suggest.status(x.id) && x.who !== 'oppa');
+  // 고친 건의는 아래 접는 칸으로 (오빠 탭이 길어지지 않게). 방금 고친 것(열어 둔 것)은 그 자리에
+  const isDone = x => { const s = Suggest.status(x.id); return s && s.st === 'done' && !SUG_VIEW.open[x.id] && !SUG_VIEW.keep[x.id]; };
+  const all = every.filter(x => !isDone(x)), done = every.filter(isDone);
+  const show = all.slice(0, 6 + SUG_VIEW.more * 10);
+  return `<div class="panel sug-box"><h3>💌 건의함 ${fresh.length ? `<span class="pill">새 건의 ${fresh.length}</span>` : ''}</h3>
+    ${all.length ? `<div class="list">${show.map(x => { const k = sugKind(x.who, x.kind), s = Suggest.status(x.id), open = SUG_VIEW.open[x.id], md = Suggest.media[x.id] || {}, w = SUG_WHO[x.who] || ['💬', x.who];
+      return `<div class="li sug-item ${s ? '' : 'new'}"><div class="grow" style="flex:1;min-width:0">
+        <div class="row" style="gap:6px;flex-wrap:wrap"><b>${w[0]} ${w[1]}</b><span>${k[1]} ${k[2]}</span><span class="spacer"></span><span class="muted" style="font-size:13px">${agoText(x.at)}</span>${sugStatusPill(x)}</div>
+        ${x.text ? `<p class="sug-text">${esc(x.text)}</p>` : ''}
+        ${x.q ? sugQHTML(x.q) : ''}
+        ${x.lost ? `<p class="muted" style="font-size:13px">사진·목소리는 보내기 전에 앱이 꺼져서 못 왔어요</p>` : ''}
+        ${x.imgs || x.aud ? (open ? `<div class="sug-media">${Array.from({ length:x.imgs || 0 }, (_, i) => md['i' + i] ? `<a href="${md['i' + i]}" download="재윤이건의_${x.id}_${i + 1}.jpg" target="_blank"><img src="${md['i' + i]}" alt="건의 사진 ${i + 1}"></a>` : `<span class="muted">사진 받는 중…</span>`).join('')}${x.aud ? (md.a ? `<audio controls src="${md.a}"></audio>` : `<span class="muted">목소리 받는 중…</span>`) : ''}</div><p class="muted" style="font-size:12px">사진을 누르면 크게 열려요 · 길게 눌러 저장</p>`
+          : `<button class="btn ghost small" data-a="sugopen" data-id="${x.id}">${x.imgs ? `📷 사진 ${x.imgs}장` : ''}${x.imgs && x.aud ? ' · ' : ''}${x.aud ? `🎤 목소리 ${x.aud}초` : ''} 보기</button>`) : ''}
+        <p class="muted" style="font-size:12px">${esc(x.ctx || '')}</p>
+        ${x.who !== 'oppa' ? `<div class="field"><input type="text" id="sugrp_${x.id}" maxlength="80" placeholder="${x.who === 'kid' ? '재윤이에게 한마디 (예: 고쳤어! 알려 줘서 고마워)' : '엄마에게 한마디'}" value="${esc((s && s.reply) || '')}"></div>` : ''}
+        <div class="row" style="flex-wrap:wrap;gap:6px">${s ? '' : `<button class="btn ghost small" data-a="sugst" data-id="${x.id}" data-v="seen">👀 봤어요</button>`}<button class="btn small ${s && s.st === 'done' ? 'ghost' : 'mint'}" data-a="sugst" data-id="${x.id}" data-v="done">${s && s.st === 'done' ? '한마디 고치기' : '✓ 고쳤어요'}</button><button class="btn ghost small" data-a="sugcopy" data-id="${x.id}">📋 내용 복사</button>${open ? `<button class="btn ghost small" data-a="sugopen" data-id="${x.id}">사진 접기</button>` : ''}</div>
+      </div></div>`; }).join('')}</div>
+      ${all.length > show.length ? `<button class="btn ghost small" data-a="sugmore">${all.length - show.length}개 더 보기</button>` : ''}`
+    : every.length ? `<p class="muted">새 건의가 없어요 ✓</p>` : `<p class="muted">아직 건의가 없어요. 재윤이 첫 화면 "💌 오빠에게 말하기", 문제 화면 "🙋 이 문제 이상해요", 엄마 탭 "💌 오빠에게 건의하기"로 보낼 수 있어요.</p>`}
+    ${done.length ? `<details class="sug-done-list"><summary>고친 건의 ${done.length}개</summary><div class="list">${done.slice(0, 40).map(x => { const k = sugKind(x.who, x.kind), s = Suggest.status(x.id), w = SUG_WHO[x.who] || ['💬', x.who];
+      return `<button class="li" data-a="sugkeep" data-id="${x.id}" style="text-align:left"><span class="grow" style="flex:1;min-width:0">${w[0]} ${k[1]} ${esc((x.text || (x.q ? x.q.prompt : '사진 건의')).slice(0, 50))}${s.reply ? `<br><span class="sug-reply">🎁 ${esc(s.reply)}</span>` : ''}</span><span class="muted" style="font-size:12px;white-space:nowrap">${shortDate(x.d || todayKey())}</span></button>`; }).join('')}</div></details>` : ''}
+    <p class="muted" style="font-size:13px">"📋 내용 복사"를 누르면 문제·진도·앱 버전까지 한 번에 복사돼요. Claude에게 붙여 넣고 캡처 사진을 같이 보내면 바로 고칠 수 있어요.</p>
+    <button class="btn ghost small" data-a="sug" data-v="oppa" style="justify-self:start">✏️ 오빠 메모 남기기</button></div>`;
+}
+/* 재윤이 첫 화면: 오빠가 고쳐 준 게 있으면 알려 준다 (한 번 보면 사라짐) */
+function sugKidBanner(){
+  let seen = 0; try { seen = +localStorage.getItem('jaeyun-fbseen') || 0; } catch (e) {}
+  const x = Suggest.all().find(y => y.who === 'kid' && Suggest.status(y.id) && Suggest.status(y.id).st === 'done' && Suggest.status(y.id).at > seen && Date.now() - Suggest.status(y.id).at < 7 * 86400000);
+  if (!x) return '';
+  const s = Suggest.status(x.id);
+  return `<button class="alarm-banner" data-a="sugkidseen" style="width:100%;text-align:left;border-color:var(--mint-deep);background:var(--mint-pale)"><span style="font-size:28px">💌</span><span style="flex:1">오빠가 재윤이 이야기를 듣고 고쳤대!${s.reply ? ` "${esc(s.reply)}"` : ''}</span></button>`;
+}
+window.addEventListener('online', () => Suggest.flush());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) Suggest.flush(); });
 
 /* ===================== 매일 뽑기 캡슐 · 도감 · 오늘 순서 고르기 ===================== */
 /* 하루 공부를 다 끝내면 캡슐 하나. 안에는 토리 친구가 랜덤으로 (보통 · 반짝 · 무지개) */

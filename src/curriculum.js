@@ -26,7 +26,7 @@ const LESSON_GEN = {
     if (v === 1) { const fake = new Set(); const tries = [numKo(h * 100 + o * 10 + t), numKo(n).replace('백', '백영'), numKo(h * 100 + t * 10) + (o ? '' : '영'), numKo(n + 10 > 999 ? n - 10 : n + 10)];
       for (const f of tries) { if (f !== numKo(n) && fake.size < 2) fake.add(f); }
       return cq(`c:read${n}`, 'read3', `${n}을 바르게 읽은 것은?`, '수를 바르게 읽은 것을 골라 봐요', eqH(`${n}`), [numKo(n), ...fake], numKo(n), '0인 자리는 읽지 않아요', `${n}은 ${numKo(n)}`, { cols:1 }); }
-    return nq(`c:ko${n}`, 'write3', `'${numKo(n)}'을 수로 쓰면?`, `${numKo(n)}을 수로 써 봐요`, `<div class="sent text-q"><span class="big-word">${numKo(n)}</span></div>`, n, '읽지 않은 자리에는 0을 써요', `${numKo(n)} = ${n}`); },
+    return nq(`c:ko${n}`, 'write3', `'${numKo(n)}'${hasBatchim(numKo(n)) ? '을' : '를'} 수로 쓰면?`, `${josa(numKo(n), '을', '를')} 수로 써 봐요`, `<div class="sent text-q"><span class="big-word">${numKo(n)}</span></div>`, n, '읽지 않은 자리에는 0을 써요', `${numKo(n)} = ${n}`); },
   '1-4'(){ const v = rnd(0, 2), n = distinctDigits(), d = String(n).split('').map(Number);
     if (v === 0) { const i = rnd(0, 2), val = d[i] * [100, 10, 1][i]; const cand = [d[i] * 100, d[i] * 10, d[i]];
       return cq(`c:pv${n}-${i}`, 'placevalue', `${n}에서 숫자 ${d[i]}는 얼마를 나타내나요?`, null, eqH(String(n).split('').map((c, j) => j === i ? `<span style="color:#EE5F8D">${c}</span>` : c).join('')), [...new Set(cand)], val, `${d[i]}가 ${['백','십','일'][i]}의 자리에 있어요`, `${['백','십','일'][i]}의 자리 숫자 ${d[i]}는 ${val}`); }
@@ -49,19 +49,19 @@ const LESSON_GEN = {
       return cq(`c:pickT${right}${wrong}`, 'pickshape', '삼각형을 골라요', null, null, [right, ...wrong], right, '곧은 선 3개로 둘러싸인 모양이에요. 열린 곳이 없어야 해요', '곧은 선 3개로 둘러싸인 도형이 삼각형', { pic:true, optHtml:shapeOpts([right, ...wrong]) }); }
     if (v === 1) { const id = pick(['tri1','tri2','tri3']), what = pick(['변','꼭짓점']);
       return nq(`c:cnt${id}${what}`, 'count', `삼각형의 ${what}은 몇 개일까요?`, null, shapeSVG(id, 150, { marks: what === '꼭짓점' }), 3, what === '변' ? '곧은 선을 하나씩 세어 봐요' : '두 선이 만나는 뾰족한 점을 세어 봐요', `삼각형은 ${what}이 3개`); }
-    const st = pick([['삼각형은 곧은 선 3개로 둘러싸여 있어요.','O'],['삼각형의 꼭짓점은 4개예요.','X'],['삼각형에는 굽은 선이 있어요.','X'],['삼각형의 변은 3개예요.','O']]);
+    const st = pickOX([['삼각형은 곧은 선 3개로 둘러싸여 있어요.','O'],['삼각형의 꼭짓점은 4개예요.','X'],['삼각형에는 굽은 선이 있어요.','X'],['삼각형의 변은 3개예요.','O']]);
     return ox(`c:oxT${st[0]}`, st[0], st[1], '삼각형: 변 3개, 꼭짓점 3개, 곧은 선만', `${st[0]} → ${st[1]}`); },
   '2-2'(){ const v = rnd(0, 2);
     if (v === 0) { const right = pick(['quad1','quad2','quad3']), wrong = shuffle(['tri1','circ','open4','pent','tri3']).slice(0, 2);
       return cq(`c:pickQ${right}${wrong}`, 'pickshape', '사각형을 골라요', null, null, [right, ...wrong], right, '곧은 선 4개로 둘러싸인 모양이에요', '곧은 선 4개로 둘러싸인 도형이 사각형', { pic:true, optHtml:shapeOpts([right, ...wrong]) }); }
     if (v === 1) { const id = pick(['quad1','quad2','quad3']), what = pick(['변','꼭짓점']);
       return nq(`c:cnt${id}${what}`, 'count', `사각형의 ${what}은 몇 개일까요?`, null, shapeSVG(id, 150, { marks: what === '꼭짓점' }), 4, '하나씩 짚으며 세어 봐요', `사각형은 ${what}이 4개`); }
-    const st = pick([['사각형은 변이 4개예요.','O'],['사각형은 꼭짓점이 3개예요.','X'],['사각형은 곧은 선 4개로 둘러싸여 있어요.','O'],['네모난 모양은 모두 변이 4개예요.','O']]);
+    const st = pickOX([['사각형은 변이 4개예요.','O'],['사각형은 꼭짓점이 3개예요.','X'],['사각형은 곧은 선 4개로 둘러싸여 있어요.','O'],['네모난 모양은 모두 변이 4개예요.','O'],['사각형은 굽은 선으로 둘러싸여 있어요.','X'],['사각형의 변은 5개예요.','X'],['사각형은 꼭짓점이 4개예요.','O'],['동그라미도 사각형이에요.','X']]);
     return ox(`c:oxQ${st[0]}`, st[0], st[1], '사각형: 변 4개, 꼭짓점 4개', `${st[0]} → ${st[1]}`); },
   '2-3'(){ const v = rnd(0, 1);
     if (v === 0) { const wrong = shuffle(['oval','quad2','tri1','hex']).slice(0, 2);
       return cq(`c:pickC${wrong}`, 'pickshape', '원을 골라요', null, null, ['circ', ...wrong], 'circ', '어느 쪽에서 보아도 똑같이 동그란 모양이에요. 길쭉하면 원이 아니에요', '똑같이 동그란 모양이 원', { pic:true, optHtml:shapeOpts(['circ', ...wrong]) }); }
-    const st = pick([['원에는 꼭짓점이 없어요.','O'],['원에는 변이 4개 있어요.','X'],['원은 뾰족한 곳이 없어요.','O'],['원은 곧은 선으로 둘러싸여 있어요.','X'],['원은 어느 쪽에서 보아도 똑같이 동그래요.','O']]);
+    const st = pickOX([['원에는 꼭짓점이 없어요.','O'],['원에는 변이 4개 있어요.','X'],['원은 뾰족한 곳이 없어요.','O'],['원은 곧은 선으로 둘러싸여 있어요.','X'],['원은 어느 쪽에서 보아도 똑같이 동그래요.','O']]);
     return ox(`c:oxC${st[0]}`, st[0], st[1], '원은 굽은 선 하나로 동그랗게 둘러싸여 있어요', `${st[0]} → ${st[1]}`); },
   '2-4'(){ const v = rnd(0, 5);
     if (v === 0) return nq('c:tgTri', 'tangram', '칠교판 조각 중에서 삼각형은 몇 개일까요?', null, tangramSVG({ nums:true }), 5, '곧은 선 3개로 둘러싸인 조각을 하나씩 세어 봐요', '삼각형 조각은 ①②③⑤⑦ 5개');
@@ -71,7 +71,7 @@ const LESSON_GEN = {
     if (v === 3) return nq('c:tg7', 'tangram', '칠교판은 모두 몇 조각일까요?', null, tangramSVG({ nums:true }), 7, '번호를 하나씩 세어 봐요', '칠교판은 일곱 조각 (칠 = 7)');
     if (v === 4) { const k = pick(['square','tri']); const nm = k === 'square' ? '사각형' : '삼각형';
       return cq(`c:tg2${k}`, 'tangram', '작은 삼각형 두 조각을 붙여서 만든 모양은?', '작은 삼각형 두 조각을 붙여서 만든 모양은 무엇일까?', twoTriSVG(k, 110), ['삼각형','사각형','원'], nm, '바깥 테두리의 변을 세어 봐요', `바깥 변이 ${k === 'square' ? 4 : 3}개라서 ${nm}`, { cols:3 }); }
-    const st = pick([['칠교판 조각에는 원 모양이 없어요.','O'],['칠교판은 일곱 조각으로 되어 있어요.','O'],['칠교판 조각은 모두 삼각형이에요.','X'],['칠교판 조각은 모두 곧은 선으로 둘러싸여 있어요.','O'],['칠교판에서 가장 큰 조각은 사각형이에요.','X'],['칠교판 조각 두 개를 붙이면 원을 만들 수 있어요.','X']]);
+    const st = pickOX([['칠교판 조각에는 원 모양이 없어요.','O'],['칠교판은 일곱 조각으로 되어 있어요.','O'],['칠교판 조각은 모두 삼각형이에요.','X'],['칠교판 조각은 모두 곧은 선으로 둘러싸여 있어요.','O'],['칠교판에서 가장 큰 조각은 사각형이에요.','X'],['칠교판 조각 두 개를 붙이면 원을 만들 수 있어요.','X']]);
     return ox(`c:oxTg${st[0]}`, st[0], st[1], '칠교판: 삼각형 5조각 + 사각형 2조각, 모두 곧은 선', `${st[0]} → ${st[1]}`); },
   '2-5'(){ const v = rnd(0, 2);
     if (v === 0) { const cols = rnd(2, 4), h = Array.from({ length:cols }, () => rnd(1, 3)), n = h.reduce((a, b) => a + b, 0);
@@ -114,7 +114,7 @@ const LESSON_GEN = {
   /* ---------- 4단원 길이 재기 ---------- */
   '4-1'(){ const v = rnd(0, 1);
     if (v === 0) { const n = rnd(3, 8), obj = pick(['연필','크레파스','리본','색연필']); return nq(`c:clip${n}${obj}`, 'clips', `${obj}의 길이는 클립 몇 개만큼일까요?`, null, clipsSVG(n, obj), n, '클립을 하나씩 세어 봐요', `클립 ${n}개만큼`); }
-    const st = pick([['같은 연필을 클립과 지우개로 재면, 더 작은 클립으로 잰 수가 더 커요.','O'],['재는 단위가 달라도 잰 수는 항상 같아요.','X'],['뼘으로 재면 사람마다 잰 길이가 다를 수 있어요.','O']]);
+    const st = pickOX([['같은 연필을 클립과 지우개로 재면, 더 작은 클립으로 잰 수가 더 커요.','O'],['재는 단위가 달라도 잰 수는 항상 같아요.','X'],['뼘으로 재면 사람마다 잰 길이가 다를 수 있어요.','O']]);
     return ox(`c:oxL${st[0]}`, st[0], st[1], '작은 단위로 재면 여러 번 재야 해요', `${st[0]} → ${st[1]}`); },
   '4-2'(){ const n = rnd(2, 15), v = rnd(0, 1);
     if (v === 0) return nq(`c:cm${n}`, 'cm', `1 cm가 ${n}번이면 몇 cm일까요?`, `1센티미터가 ${n}번이면 몇 센티미터일까?`, eqH(`1 cm × ${n}번 = ${QB} cm`, true), n, '1 cm씩 더해 가요', `${n} cm`);

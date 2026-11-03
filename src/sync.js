@@ -36,7 +36,7 @@ function fsVal(v){
 function fsFields(o){ const f = {}; for (const k in o) if (o[k] !== undefined && typeof o[k] !== 'function') f[k] = fsVal(o[k]); return f; }
 const SEND_WAIT = 40000;
 /* ---------- 역할이 잘못된 기기 찾기 (2026-10-29 사고: 재윤이 태블릿이 "오빠 폰"으로 연결돼 5일 동안 공부가 미리보기로만 남음) ---------- */
-const BOARD_SCREENS = ['intro','q','cards','write','dict','photo','reward','lecwait','leccheck','eyebreak'];
+const BOARD_SCREENS = ['intro','q','suggest','cards','write','dict','photo','reward','lecwait','leccheck','eyebreak'];
 function devId(){ try { let d = localStorage.getItem('jaeyun-dev'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); localStorage.setItem('jaeyun-dev', d); } return d; } catch (e) { return 'dx'; } }
 function isTabletDev(){ return window.__forceTablet || Math.min(screen.width, screen.height) >= 600; }
 /* 최근 3일 동안 이 기기에서 판을 끝낸 날 수 */
@@ -123,7 +123,7 @@ const Sync = {
       this.ready = true; this.status = 'on';
       // 태블릿: 아직 서버에 없는 사진(예전에 올리다 실패한 것)도 다시 올린다
       if (kid) Object.entries(this.blobCache).forEach(([h, d]) => this.putBlob(h, d));
-      this.schedule(); this.beat(); this.devBeat(true); this.flushNotes();
+      this.schedule(); this.beat(); this.devBeat(true); this.flushNotes(); Suggest.flush();
     } catch (e) { this.status = 'error'; this.error = String(e && e.message || e); console.warn('sync', e); clearTimeout(this.retryT); this.retryT = setTimeout(() => this.start(), 30000); }
   },
   /* 내 역할이 쓸 수 있는 칸 */
@@ -138,6 +138,9 @@ const Sync = {
     this.unsub.push(this.db.collection(`${b}/s`).onSnapshot({ includeMetadataChanges:true }, snap => this.onState(snap)));
     this.unsub.push(this.db.collection(`${b}/days`).onSnapshot({ includeMetadataChanges:true }, snap => this.onDays(snap)));
     this.unsub.push(this.db.collection(`${b}/notes`).orderBy('at', 'desc').limit(120).onSnapshot(snap => this.onNotes(snap)));
+    // 건의함 (11/3): 글만 받는다. 사진·목소리(fbm)는 오빠가 "보기"를 누를 때만
+    try { this.unsub.push(this.db.collection(`${b}/fb`).orderBy('at', 'desc').limit(80).onSnapshot(snap => Suggest.onList(snap)));
+      this.unsub.push(this.db.collection(`${b}/fbst`).onSnapshot(snap => Suggest.onSt(snap))); } catch (e) {}
     // 재윤이 태블릿이 마지막으로 연결된 때 (엄마·오빠 폰에서 보여 줌)
     // 기기들 상태(meta/dev-…): 엄마·오빠 역할로 연결된 태블릿에서 재윤이가 공부하고 있으면 폰에서 알려 준다
     try { this.unsub.push(this.db.collection(`${b}/meta`).onSnapshot(snap => { const devs = {}; let k = null;

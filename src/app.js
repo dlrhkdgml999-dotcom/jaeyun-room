@@ -605,6 +605,7 @@ VIEWS.home = () => {
       <button class="stage-btn tori-stage" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
       <div class="bubble left" id="heroBubble">${esc(greet)}</div>
     </div>
+    ${sugKidBanner()}
     ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
     ${al && al.passed && !al.started && !d.done ? `<button class="alarm-banner" data-a="m2" style="width:100%;text-align:left"><span style="font-size:28px">⏰</span><span style="flex:1">공부할 시간이야! 엄마 목소리 들어 볼까?</span><span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span></button>` : ''}
     ${capsuleWaiting(d) ? `<button class="alarm-banner" data-a="go" data-v="capsule" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:30px">🎁</span><span style="flex:1">오늘의 캡슐이 기다려요! 열어 볼까?</span></button>` : ''}
@@ -629,6 +630,7 @@ VIEWS.home = () => {
     </div>
     ${isInstalled() ? '' : `<button class="install-tile" data-a="installkid"><span style="font-size:30px">📲</span><span style="flex:1">바탕화면에 공부방 놓기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">엄마랑 같이 해요</span></span></button>`}
     ${d.done && (S.praise && (S.praise.audio || S.praise.text)) ? `<button class="btn lav big" data-a="go" data-v="alldone">오빠 칭찬 다시 듣기</button>` : ''}
+    <button class="sug-kid" data-a="sug" data-v="kid"><span class="ic">💌</span><span>오빠에게 말하기<small>이상한 거, 어려운 거, 바라는 거</small></span></button>
     ${kidSyncNote()}
     <button class="grown-up" data-a="go" data-v="pin">${ICON.lock}엄마 · 오빠 메뉴</button>
   </section>`;
@@ -750,6 +752,7 @@ VIEWS.q = () => {
       <button class="icon-btn" data-a="home" aria-label="그만하고 나가기">${ICON.close}</button>
       <div class="track" aria-label="${b.idx + 1}번째 문제 / ${b.qs.length}"><span class="rail"></span><span class="fill" style="width:${pct}%"></span><span class="runner" style="left:${pct}%">${bunnySVG({ size:36, eq:{} })}</span><span class="goal">🥕</span></div>
       <span class="disp" style="font-size:18px;white-space:nowrap">${b.idx + 1}/${b.qs.length}</span>
+      <button class="sug-flag" data-a="sugq" aria-label="이 문제 이상해요 (오빠에게 말하기)">🙋<span> 이상해요</span></button>
     </div>
     ${q.rev ? `<span class="pill" style="align-self:flex-start">전에 틀렸던 문제</span>` : ''}
     <div class="q-card">
@@ -793,7 +796,7 @@ function answer(val){
     logQ(b, q, RUN.tries === 0 ? 1 : 2);
     feedback(esc(pick(PRAISE_LINES)) + (q.eng ? ` <b>${esc(q.explain)}</b>` : ''), 'happy');
     if (q.eng) speak(q.ans, 'en-US');
-    setTimeout(() => nextQ(), q.eng ? 1500 : 1100);
+    setTimeout(() => { if (SCREEN === 'suggest') return; nextQ(); }, q.eng ? 1500 : 1100);   // 맞힌 뒤 바로 "🙋 이 문제 이상해요"를 누르면 건의 화면에서 기다렸다가 돌아올 때 다음 문제로
     return;
   }
   RUN.tries++; (RUN.wrongs = RUN.wrongs || []).push(String(val));
@@ -1152,6 +1155,7 @@ VIEWS.adult = () => {
         <button class="mq" data-a="momfold" data-v="notes"><span class="ic">🔔</span><b>알림함</b><small>${newNotes ? `오늘 ${newNotes}개` : '새 알림 없음'}</small></button>
         <button class="mq" data-a="momfold" data-v="report"><span class="ic">📊</span><b>주간 리포트</b><small>지난주 한눈에</small></button>
       </div>`
+      + `<button class="install-tile sug-tile" data-a="sug" data-v="${role() === 'oppa' ? 'oppa' : 'mom'}"><span style="font-size:30px">💌</span><span style="flex:1">오빠에게 건의하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">불편한 점 · 이상한 문제 · 바라는 점 (캡처 사진도)</span></span></button>`
       + momFold('notes', '🔔 엄마 알림함', notesPanel('mom', '엄마 알림함'))
       + momFold('report', '📊 주간 리포트', reportPanel())
       + momFold('curr', `📚 진도 · 강의 <small>${esc(currLabel('math').slice(0, 18))} …</small>`, currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel())
@@ -1179,7 +1183,7 @@ VIEWS.adult = () => {
     const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
     const pr = S.praise || {};
     const g = S.gift, gd = giftDays().length;
-    body = glancePanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
+    body = glancePanel() + suggestPanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
       <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 (재윤이 화면에 보여요)</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>

@@ -96,9 +96,11 @@ async def main():
 
         # 7) 혼자 꼼지락 (가만히 두면)
         await s.ev("go('home')"); await p.wait_for_timeout(100)
-        moved = await s.ev("""new Promise(res => { const svg = document.querySelector('.tori-stage svg.bunny'); const seen = new Set();
-          const ob = new MutationObserver(() => seen.add(svg.getAttribute('class'))); ob.observe(svg, { attributes:true });
-          setTimeout(() => { ob.disconnect(); res([...seen]); }, 23000); })""")
+        # 11/3: 꼼지락은 9초마다 · 마지막 터치 12초 뒤부터라 23초는 빠듯했음(동시에 여러 시뮬레이션을 돌리면 실패) → 32초,
+        # 그 사이 첫 화면이 다시 그려져 토끼 그림이 바뀌어도 놓치지 않게 무대 전체를 지켜봄
+        moved = await s.ev("""new Promise(res => { const st = document.querySelector('.tori-stage') || document.body; const seen = new Set();
+          const ob = new MutationObserver(ms => ms.forEach(m => { if (m.target.matches && m.target.matches('svg.bunny')) seen.add(m.target.getAttribute('class')); })); ob.observe(document.body, { attributes:true, subtree:true, attributeFilter:['class'] });
+          setTimeout(() => { ob.disconnect(); res([...seen]); }, 32000); })""")
         print('가만히 둘 때:', moved)
         s.expect(len(moved) > 0, '가만히 두면 전혀 안 움직임')
         s.expect(not any('talking' in m for m in moved), '혼자 있을 때 말을 함 (조용해야 함)')
