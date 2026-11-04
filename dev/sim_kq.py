@@ -88,8 +88,12 @@ async def main():
         kqa = docs(fid, 'kqa'); print('서버 kqa:', {k: (v['guess'], v['right'], v['by']) for k, v in kqa.items()})
         oppa.expect(len(kqa) == 3 and kqa[ids['calc']]['right'] and not kqa[ids['draw']]['right'] and kqa[ids['riddle']]['right'] and kqa[ids['riddle']]['by'] == 'mom', 'kqa 결과 이상')
         # E) 태블릿
-        await tab.ev("go('home')"); await tab.p.wait_for_timeout(300)
-        ban = await tab.p.locator('[data-a="kqseen"]').count(); tab.expect(ban == 1, '첫 화면에 결과 알림이 없음')
+        # 11/4 오후: 첫 화면 알림은 하나만 → 공부 알림 시간이 지났는데 아직 시작 안 했으면 "공부할 시간"이 먼저라 결과 알림이 그 뒤로 감
+        #   (오후 4시 넘어 돌리면 그래서 실패했음) → 여기서는 공부 알림을 꺼 두고 결과 알림만 본다
+        await tab.ev("S.alarms.on = S.alarms.on.map(() => false); go('home')"); await tab.p.wait_for_timeout(300)
+        ban = await tab.p.locator('[data-a="kqseen"]').count()
+        other = await tab.ev("[...document.querySelectorAll('.alarm-banner')].map(x => x.dataset.a + ' ' + x.innerText)")
+        print('첫 화면 알림:', ban, other); tab.expect(ban == 1, f'첫 화면에 결과 알림이 없음 (대신: {other})')
         if ban:
             tab.expect('재윤이 승' in await tab.p.locator('[data-a="kqseen"]').inner_text(), '알림에 "재윤이 승"이 없음')
             await tab.click('[data-a="kqseen"]'); await tab.p.wait_for_timeout(300)

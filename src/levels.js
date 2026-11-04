@@ -243,7 +243,7 @@ function boardKid(k){
   const c = curr(k), u = CURRS[k].units[c.unit];
   if (!u) return { sub:currLabel(k), tag:'' };
   const full = boardSub(k);
-  const tag = /보는 날/.test(full) ? '📺 영상 보는 날' : /미리 맛보기/.test(full) ? '🔭 미리 맛보기' : c.test ? '🏆 단원 평가' : '';
+  const tag = c.test ? '🏆 단원 평가' : /보는 날/.test(full) ? '📺 영상 보는 날' : /미리 맛보기/.test(full) ? '🔭 미리 맛보기' : '';
   return { sub:u.name + (k === 'eng' ? ' + 받아쓰기' : ''), tag };
 }
 /* 최근 7일 정답률로 엄마에게 단계 바꾸기 제안 */
