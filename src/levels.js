@@ -235,6 +235,17 @@ function boardSub(k){
   if (k === 'eng') return `${levelLabel('eng')} · ${BOARD_SUB.eng[lv('eng')]} + 받아쓰기`;
   return `${levelLabel(k)} · ${BOARD_SUB[k][lv(k)]}`;
 }
+/* 재윤이 첫 화면용 짧은 설명 (11/4): 설명은 단원 이름만, 오늘 무엇을 하는지는 작은 표(📺 영상 · 🔭 미리 맛보기 · 🏆 단원 평가)로.
+   어떤 날인지는 boardSub(엄마 화면·시뮬레이션이 쓰는 긴 글)와 같은 판단을 그대로 따른다 */
+function boardKid(k){
+  if (k === 'rev') return { sub:'틀린 문제 다시 풀기', tag:'' };
+  if (!currOn(k)) return { sub:boardSub(k), tag:'' };
+  const c = curr(k), u = CURRS[k].units[c.unit];
+  if (!u) return { sub:currLabel(k), tag:'' };
+  const full = boardSub(k);
+  const tag = /보는 날/.test(full) ? '📺 영상 보는 날' : /미리 맛보기/.test(full) ? '🔭 미리 맛보기' : c.test ? '🏆 단원 평가' : '';
+  return { sub:u.name + (k === 'eng' ? ' + 받아쓰기' : ''), tag };
+}
 /* 최근 7일 정답률로 엄마에게 단계 바꾸기 제안 */
 function levelAdvice(){
   const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), -i));

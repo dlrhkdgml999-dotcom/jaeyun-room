@@ -465,9 +465,6 @@ audio{width:100%}
 .book-cell.empty{opacity:.45;box-shadow:none;border-style:dashed}
 .stage-btn{position:relative}
 .friends{position:absolute;left:0;right:0;bottom:2px;display:flex;justify-content:space-around;font-size:26px;pointer-events:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.08))}
-.order-pick{background:var(--butter-pale);border:2.5px dashed var(--butter-deep);border-radius:var(--r-md);padding:12px 14px;display:grid;gap:10px;justify-items:center}
-.order-btn{flex:1;background:#fff;border:2.5px solid var(--line);border-radius:var(--r-md);padding:8px 4px;display:grid;justify-items:center;gap:4px;font-family:var(--f-display);font-size:18px;box-shadow:var(--shadow)}
-.order-btn .badge{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:17px}
 /* 1학년 2학기: 수 카드 · 수 배열표 · 코스 제목 */
 .num-card{display:inline-grid;place-items:center;width:58px;height:74px;border:3px solid var(--ink,#5B3A4A);border-radius:12px;background:#fff;font-family:Jua,sans-serif;font-size:38px;box-shadow:0 3px 0 rgba(91,58,74,.18)}
 .hchart td{min-width:46px;height:44px;font-size:22px}
@@ -794,3 +791,55 @@ section.screen{position:relative}
 .cheer-box{border-color:var(--lav, #C3ADF2)}
 @keyframes glow{50%{box-shadow:0 4px 0 #9BD67E,0 0 0 8px rgba(155,214,126,.35)}}
 .preview-pill{background:#EEF6FF;border-color:#9CCBFF;color:#2F6FB0}
+
+/* ---------- 재윤이 첫 화면 (11/4 간단하게: 토리 → 공부 판 4개 → 선물 한 줄 → 놀거리 아이콘) ---------- */
+.home{gap:14px}
+.home .hero{grid-template-columns:118px minmax(0,1fr);gap:8px;align-items:center;min-height:0}
+.home .hero .stage{height:140px!important}
+.hero-side{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
+.hero-side .bubble{margin:0}
+.home .ev-banner{padding:6px 12px;gap:8px;border-width:2px}
+.home .ev-banner > span{min-width:0}
+.home .ev-banner .ic{font-size:24px}
+.home .ev-banner b{font-size:16px}
+.home .ev-banner b b{display:inline}
+.home .ev-banner small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.home .alarm-banner{width:100%;text-align:left;padding:10px 14px;font-size:18px}
+.home .alarm-banner .ic{font-size:26px}
+.home .alarm-banner .tx{flex:1;min-width:0}
+.alarm-banner.pink{border-color:var(--pink);background:var(--pink-pale)}
+.alarm-banner.lav{border-color:#C3ADF2;background:#F3EEFF}
+.home .boards{grid-template-columns:1fr 1fr;gap:10px}
+.home .board-card{grid-template-columns:auto 1fr;grid-template-rows:auto;gap:8px 12px;padding:12px;align-items:center;align-content:start;justify-items:stretch}
+.home .board-card .badge{width:52px;height:52px;border-radius:16px;font-size:20px}
+.home .board-card .txt{display:grid;gap:2px;min-width:0}
+.home .board-card .t{font-size:21px}
+.home .board-card .s{font-size:14px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.home .board-card .chips{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:5px}
+.home .board-card .chips:empty{display:none}
+.home .board-card .tag{font-size:13px;padding:4px 9px;border-radius:999px;background:#EEF6FF;color:#2F6FB0;white-space:nowrap}
+.home .board-card .state{font-size:14px;padding:4px 10px;grid-column:auto;justify-self:auto}
+.home .board-card.done{opacity:.72}
+.home .gift-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px 12px;padding:8px 14px}
+.home .gift-card .gt{font-family:var(--f-display);font-size:18px;min-width:0}
+.home .gift-card .gt b{color:var(--pink-deep);font-weight:400}
+.home .gift-card .gn{color:var(--pink-deep)}
+.home .gift-card .gw{font-family:var(--f-body);font-size:14px;color:var(--ink-soft);white-space:nowrap}
+.home .gift-card .meter{grid-column:2}
+.home .home-nav{grid-template-columns:repeat(4,1fr);gap:8px}
+.home .home-nav .nav-tile{position:relative;width:auto;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;padding:8px 4px;font-family:var(--f-display);font-size:15px;color:var(--ink);text-align:center;background:var(--paper);border:2.5px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow);animation:none}
+.home .home-nav .nav-tile.ping{animation:glow 1.6s infinite}
+.home .home-nav .nav-tile .ic{width:auto;height:auto;background:none;font-size:28px;line-height:1.1}
+.home .home-nav .nav-tile .nm{line-height:1.15;word-break:keep-all}
+.home .home-nav .nav-tile .dot{position:absolute;top:-7px;right:-5px;background:var(--pink);color:#fff;font-family:var(--f-body);font-size:12px;line-height:1;border-radius:999px;padding:4px 7px}
+@media (min-width:700px){
+  .home .hero{grid-template-columns:168px minmax(0,1fr)} .home .hero .stage{height:168px!important} .home .hero .bunny{width:132px;height:158px}
+  .home .board-card .badge{width:60px;height:60px;font-size:22px} .home .board-card .t{font-size:23px} .home .board-card .s{font-size:15px}
+  .home .gift-card{grid-template-columns:auto auto 1fr} .home .gift-card .meter{grid-column:auto}
+  .home .gift-card .gt{white-space:nowrap;font-size:19px}
+  .home .home-nav .nav-tile{font-size:17px;padding:10px 4px} .home .home-nav .nav-tile .ic{font-size:32px}
+}
+@media (min-width:960px) and (orientation:landscape){
+  .home .boards{grid-template-columns:repeat(4,1fr)}
+  .home .home-nav{grid-template-columns:repeat(8,1fr)}
+}

@@ -84,8 +84,3 @@ function orderedBoards(d = day()){
   if (!d.order) { try { const lec = currOn('math') || currOn('kor') ? planLecture(d) : null; if (lec && lec.s && !lec.done && !d.boards[lec.s]) ord = [lec.s, ...ord.filter(k => k !== lec.s)]; } catch (e) {} }
   return [...ord.map(k => BOARDS.find(b => b.k === k)), BOARDS.find(b => b.k === 'rev')];
 }
-function orderPickHTML(d = day()){
-  if (d.order || Object.keys(d.boards).length) return '';
-  return `<div class="order-pick"><span class="disp" style="font-size:20px">오늘은 뭐부터 할까?</span>
-    <div class="row" style="gap:10px">${BOARDS.filter(b => b.k !== 'rev').map(b => `<button class="order-btn" data-a="pickfirst" data-v="${b.k}"><span class="badge ${b.cls}">${b.badge}</span>${b.k === 'eng' ? '영어' : b.name}</button>`).join('')}</div></div>`;
-}

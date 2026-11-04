@@ -512,15 +512,15 @@ function friendDays(){
 function greeting(d){
   const n = now(), h = n.getHours(), dow = n.getDay(), wk = dow === 0 || dow === 6;
   const done = BOARDS.filter(b => boardState(b.k, d) === 'done').length;
-  if (d.done) return n.getDate() % 2 ? '오늘 공부 끝! 재윤이 최고야! 이제 신나게 놀자!' : '재윤이 오늘도 해냈다! 토리랑 꾸미기 하러 갈래?';
+  if (d.done) return n.getDate() % 2 ? '오늘 공부 끝! 재윤이 최고야! 이제 신나게 놀자!' : `재윤이 오늘도 해냈다! ${josa(S.bunnyName,'이랑','랑')} 꾸미기 하러 갈래?`;
   if (done > 0) return `${4 - done}판만 더 하면 끝이야. 재윤이는 할 수 있어!`;
   const st = streakDays();
   if (st >= 2) return `재윤이랑 ${st}일 연속 공부했어! 오늘도 같이 하자!`;
   const y = S.days[addDays(todayKey(), -1)];
   if (y && y.done) return '어제도 다 했지? 재윤이 정말 대단해! 오늘도 같이 하자!';
   if (h < 12) return '재윤아, 좋은 아침! 오늘도 반짝반짝 공부해 볼까?';
-  if (h < 18) return wk ? '재윤아, 신나는 주말이야! 공부 먼저 하고 놀자!' : '재윤아, 학교 잘 다녀왔어? 토리가 기다렸어!';
-  return '재윤아, 저녁 먹었어? 토리랑 같이 공부하자!';
+  if (h < 18) return wk ? '재윤아, 신나는 주말이야! 공부 먼저 하고 놀자!' : `재윤아, 학교 잘 다녀왔어? ${josa(S.bunnyName,'이가','가')} 기다렸어!`;
+  return `재윤아, 저녁 먹었어? ${josa(S.bunnyName,'이랑','랑')} 같이 공부하자!`;
 }
 
 /* ---------- 받아쓰기 채점 (엄마가 S.grades에 적고, 재윤이 기록에는 재윤이 기기가 반영) ---------- */
@@ -603,55 +603,61 @@ VIEWS.home = () => {
   const doneCount = BOARDS.filter(b => boardState(b.k, d) === 'done').length;
   const al = alarmInfo();
   const greet = greeting(d);
-  const g = S.gift, gd = giftDays().length;
-  const nextItem = ITEMS.find(i => i.need > total);
-  const prevNeed = ITEMS.filter(i => i.need <= total).reduce((m, i) => Math.max(m, i.need), 0);
-  const kn = S.kidNotes[0];
-  app().innerHTML = `<section class="screen">
+  const g = S.gift, gd = giftDays().length, won = giftAch();
+  /* 11/4 첫 화면 간단하게 (오빠: "재윤이 화면이 너무 복잡해"): 토리 → 오늘 할 공부 4개 → 선물 한 줄 → 놀거리 아이콘 한 줄.
+     알림(엄마 한마디·오빠 답장·캡슐 등)은 한 번에 하나만, 날짜·진도 지도·스티커 막대·바탕화면 놓기는 첫 화면에서 뺌 */
+  const gs = gardenState(), gReady = gs.plots.filter(p => plotStage(p) === 'ready').length;
+  const tile = (cls, act, v, ic, name, dot) => `<button class="nav-tile ${cls}" data-a="${act}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><span class="nm">${name}</span>${dot ? `<span class="dot">${dot}</span>` : ''}</button>`;
+  app().innerHTML = `<section class="screen home">
     ${wrongRoleHTML()}
     ${linked() && role() !== 'kid' && !wrongRoleTablet() ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 (여기서 풀어 본 건 재윤이 기록에 안 들어가요) · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
     <div class="home-top">
       <span class="nameplate">재윤이 공부방</span><span class="spacer"></span>
       <span class="sticker-chip" aria-label="모은 스티커">⭐ ${total}</span>
     </div>
-    <p class="muted" style="font-size:15px;margin-top:-8px">${korDate(now())} · ${esc(josa(S.bunnyName,'이랑','랑'))} 친구 된 지 ${friendDays()}일째</p>
     <div class="hero">
       <button class="stage-btn tori-stage" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
-      <div class="bubble left" id="heroBubble">${esc(greet)}</div>
+      <div class="hero-side"><div class="bubble left" id="heroBubble">${esc(greet)}</div>${funEventHTML()}</div>
     </div>
-    ${funEventHTML()}
-    ${sugKidBanner()}${kqKidBanner()}
-    ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
-    ${al && al.passed && !al.started && !d.done ? `<button class="alarm-banner" data-a="m2" style="width:100%;text-align:left"><span style="font-size:28px">⏰</span><span style="flex:1">공부할 시간이야! 엄마 목소리 들어 볼까?</span><span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span></button>` : ''}
-    ${capsuleWaiting(d) ? `<button class="alarm-banner" data-a="go" data-v="capsule" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:30px">🎁</span><span style="flex:1">오늘의 캡슐이 기다려요! 열어 볼까?</span></button>` : ''}
-    ${orderPickHTML(d)}
+    ${homeNotice(d, al)}
     <div class="boards">
       ${orderedBoards(d).map(b => { const st = boardState(b.k, d); const isNext = nb && nb.k === b.k && !d.done; const bo = d.boards[b.k];
-        const label = st === 'done' ? '다 했어!' : st === 'doing' ? `${bo.phase === 'dict' ? '받아쓰기 중' : (bo.idx + 1) + '번부터'}` : isNext ? '시작!' : '';
+        const label = st === 'done' ? '다 했어! ✓' : st === 'doing' ? `${bo.phase === 'dict' ? '받아쓰기 중' : (bo.idx + 1) + '번부터'}` : isNext ? '시작!' : '';
+        const kb = st === 'done' ? { sub:boardKid(b.k).sub, tag:'' } : boardKid(b.k);
         return `<button class="board-card ${st} ${isNext ? 'next' : ''}" data-a="board" data-k="${b.k}">
           <span class="badge ${b.cls}">${b.badge}</span>
-          <span><span class="t">${b.name}</span><br><span class="s">${boardSub(b.k)}</span></span>
-          ${label ? `<span class="state">${label}</span>` : '<span></span>'}</button>`; }).join('')}
+          <span class="txt"><span class="t">${b.k === 'eng' ? '영어' : b.name}</span><span class="s">${esc(kb.sub)}</span></span>
+          <span class="chips">${kb.tag ? `<span class="tag">${kb.tag}</span>` : ''}${label ? `<span class="state">${label}</span>` : ''}</span></button>`; }).join('')}
     </div>
-    <button class="gift-card ${giftAch() ? 'won' : ''}" data-a="go" data-v="gift">${giftBox(58, giftAch() ? 'hop' : '')}
-      <span style="flex:1;display:grid;gap:6px">${giftAch() ? `<span class="disp" style="font-size:21px">오빠 선물 받는 날! 오빠한테 자랑하자!</span>` : `<span class="disp" style="font-size:19px">오빠 선물까지 <b style="color:var(--pink-deep);font-weight:400">${g.goal - gd}일</b> 남았어!</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span><span class="muted" style="font-size:14px">공부 다 한 날 ${gd} / ${g.goal}일 · ${g.name ? `🎁 ${esc(g.name)}` : '🎁 받고 싶은 선물을 적어 봐!'}</span>`}</span></button>
-    ${gardenTileHTML()}
-    ${mapTileHTML()}
-    ${nextItem ? `<div class="next-item"><div class="row"><span class="disp" style="font-size:18px">스티커 ${nextItem.need - total}개 더 모으면 '${esc(nextItem.name)}'!</span></div><div class="meter"><i style="width:${Math.round((total - prevNeed) / (nextItem.need - prevNeed) * 100)}%"></i></div></div>` : ''}
+    <button class="gift-card ${won ? 'won' : ''}" data-a="go" data-v="gift">${giftBox(40, won ? 'hop' : '')}
+      ${won ? `<span class="gt"><b>오빠 선물 받는 날! 🎉</b>${g.name ? ` <span class="gn">${esc(g.name)}</span>` : ''}</span>`
+        : `<span class="gt">${g.name ? `<span class="gn">${esc(g.name)}</span>까지` : '오빠 선물까지'} <b>${g.goal - gd}일</b> 남았어!${g.name ? '' : ' <span class="gw">✏️ 받고 싶은 선물 적기</span>'}</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span>`}</button>
     <div class="home-nav">
-      <button class="nav-tile" data-a="go" data-v="room"><span class="ic" style="background:var(--pink-pale)">🎀</span>꾸미기</button>
-      <button class="nav-tile" data-a="go" data-v="cal"><span class="ic" style="background:var(--mint-pale)">📅</span>달력</button>
-      <button class="nav-tile" data-a="go" data-v="book"><span class="ic" style="background:var(--butter-pale)">🦄</span>도감</button>
-      <button class="nav-tile" data-a="notebook"><span class="ic" style="background:var(--sky-pale, #E4F1FB)">📒</span>오답노트</button>
+      ${tile('garden-tile' + (gReady || gs.cans ? ' ping' : ''), 'go', 'garden', gReady ? '🧺' : '🌱', '텃밭', gReady ? '수확!' : gs.cans ? `🪣${gs.cans}` : '')}
+      ${tile('', 'go', 'room', '🎀', '꾸미기')}
+      ${tile('', 'go', 'book', '🦄', '도감')}
+      ${tile('', 'go', 'cal', '📅', '달력')}
+      ${SUBJS.some(currOn) ? tile('', 'go', 'map', '🗺️', '진도 지도') : ''}
+      ${tile('', 'notebook', '', '📒', '오답노트')}
+      ${tile('kq-tile', 'kq', '', '🎲', '문제 내기')}
+      ${tile('sug-kid', 'sug', 'kid', '💌', '오빠에게 말하기')}
     </div>
-    ${isInstalled() ? '' : `<button class="install-tile" data-a="installkid"><span style="font-size:30px">📲</span><span style="flex:1">바탕화면에 공부방 놓기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">엄마랑 같이 해요</span></span></button>`}
-    ${d.done && (S.praise && (S.praise.audio || S.praise.text)) ? `<button class="btn lav big" data-a="go" data-v="alldone">오빠 칭찬 다시 듣기</button>` : ''}
-    <button class="kq-tile" data-a="kq"><span class="ic">🎲</span><span>오빠에게 문제 내기<small>계산 문제 · 그림 퀴즈 · 수수께끼 (재윤이 ${kqScore().kid} : ${kqScore().op} 오빠)</small></span></button>
-    <button class="sug-kid" data-a="sug" data-v="kid"><span class="ic">💌</span><span>오빠에게 말하기<small>이상한 거, 어려운 거, 바라는 거</small></span></button>
     ${kidSyncNote()}
     <button class="grown-up" data-a="go" data-v="pin">${ICON.lock}엄마 · 오빠 메뉴</button>
   </section>`;
 };
+/* 첫 화면 알림은 한 번에 하나만 (누르면 사라지고 다음 것이 나옴) */
+function homeNotice(d, al){
+  const ban = (act, v, ic, text, cls = '', extra = '') => `<button class="alarm-banner ${cls}" data-a="${act}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><span class="tx">${text}</span>${extra}</button>`;
+  if (al && al.passed && !al.started && !d.done) return ban('m2', '', '⏰', '공부할 시간이야! 엄마 목소리 들어 볼까?', '', `<span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span>`);
+  const kn = S.kidNotes[0];
+  if (kn) return ban('kidnote', '', '💌', esc(kn.text), 'pink');
+  const s = sugKidBanner(); if (s) return s;
+  const q = kqKidBanner(); if (q) return q;
+  if (capsuleWaiting(d)) return ban('go', 'capsule', '🎁', '오늘의 캡슐이 기다려요! 열어 볼까?', 'pink');
+  if (d.done && S.praise && (S.praise.audio || S.praise.text)) return ban('go', 'alldone', '🏆', '오빠 칭찬 다시 듣기', 'lav');
+  return '';
+}
 
 /* ----- 판 시작 (엄마 목소리) ----- */
 let RUN = null;
@@ -1317,6 +1323,8 @@ const ACT = {
   board(el){
     const k = el.dataset.k, d = day();
     if (boardState(k, d) === 'done') { speak(`${josa(BNAME[k], "은", "는")} 오늘 다 했어!`); toast(`${josa(BNAME[k], "은", "는")} 오늘 다 했어요!`); return; }
+    // 11/4: "뭐부터 할까?" 상자를 없앰 → 오늘 처음 누른 과목이 맨 앞 (예전 pickfirst와 같은 결과)
+    if (!d.boards[k] && !d.order && k !== 'rev' && !Object.keys(d.boards).length) d.order = [k, ...['kor','math','eng'].filter(x => x !== k)];
     if (!d.boards[k]) { d.boards[k] = makeBoard(k); if (Object.keys(d.boards).length === 1) notify('mom', '재윤이가 오늘 공부를 시작했어요'); save(); }
     RUN = { k, b:d.boards[k] }; go('intro', k);
   },

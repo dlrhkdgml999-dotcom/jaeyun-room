@@ -6,8 +6,9 @@ async def main():
     async with Sim('O_캡슐·도감·순서') as s:
         p = s.p
         await s.click('[data-a="start"]'); await p.wait_for_timeout(200)
-        s.expect(await p.locator('.order-pick').count() == 1, '순서 고르기가 없음'); await s.shot('home_order')
-        await s.click('[data-a="pickfirst"][data-v="eng"]'); await p.wait_for_timeout(300)
+        # 11/4: "뭐부터 할까?" 상자는 없앰 → 처음 누른 판이 오늘 맨 앞
+        s.expect(await p.locator('.order-pick').count() == 0, '첫 화면에 순서 고르기 상자가 남아 있음'); await s.shot('home_order')
+        await s.click('.board-card[data-k="eng"]'); await p.wait_for_timeout(300)
         s.expect(await s.screen() == 'intro' and await s.ev("RUN.k") == 'eng', '영어부터 시작 안 됨')
         await s.ev("go('home')"); await p.wait_for_timeout(200)
         order = await s.ev("[...document.querySelectorAll('.board-card')].map(b => b.dataset.k)"); print('순서:', order)

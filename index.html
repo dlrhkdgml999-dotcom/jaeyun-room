@@ -484,9 +484,6 @@ audio{width:100%}
 .book-cell.empty{opacity:.45;box-shadow:none;border-style:dashed}
 .stage-btn{position:relative}
 .friends{position:absolute;left:0;right:0;bottom:2px;display:flex;justify-content:space-around;font-size:26px;pointer-events:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.08))}
-.order-pick{background:var(--butter-pale);border:2.5px dashed var(--butter-deep);border-radius:var(--r-md);padding:12px 14px;display:grid;gap:10px;justify-items:center}
-.order-btn{flex:1;background:#fff;border:2.5px solid var(--line);border-radius:var(--r-md);padding:8px 4px;display:grid;justify-items:center;gap:4px;font-family:var(--f-display);font-size:18px;box-shadow:var(--shadow)}
-.order-btn .badge{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:17px}
 /* 1학년 2학기: 수 카드 · 수 배열표 · 코스 제목 */
 .num-card{display:inline-grid;place-items:center;width:58px;height:74px;border:3px solid var(--ink,#5B3A4A);border-radius:12px;background:#fff;font-family:Jua,sans-serif;font-size:38px;box-shadow:0 3px 0 rgba(91,58,74,.18)}
 .hchart td{min-width:46px;height:44px;font-size:22px}
@@ -814,6 +811,58 @@ section.screen{position:relative}
 @keyframes glow{50%{box-shadow:0 4px 0 #9BD67E,0 0 0 8px rgba(155,214,126,.35)}}
 .preview-pill{background:#EEF6FF;border-color:#9CCBFF;color:#2F6FB0}
 
+/* ---------- 재윤이 첫 화면 (11/4 간단하게: 토리 → 공부 판 4개 → 선물 한 줄 → 놀거리 아이콘) ---------- */
+.home{gap:14px}
+.home .hero{grid-template-columns:118px minmax(0,1fr);gap:8px;align-items:center;min-height:0}
+.home .hero .stage{height:140px!important}
+.hero-side{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
+.hero-side .bubble{margin:0}
+.home .ev-banner{padding:6px 12px;gap:8px;border-width:2px}
+.home .ev-banner > span{min-width:0}
+.home .ev-banner .ic{font-size:24px}
+.home .ev-banner b{font-size:16px}
+.home .ev-banner b b{display:inline}
+.home .ev-banner small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.home .alarm-banner{width:100%;text-align:left;padding:10px 14px;font-size:18px}
+.home .alarm-banner .ic{font-size:26px}
+.home .alarm-banner .tx{flex:1;min-width:0}
+.alarm-banner.pink{border-color:var(--pink);background:var(--pink-pale)}
+.alarm-banner.lav{border-color:#C3ADF2;background:#F3EEFF}
+.home .boards{grid-template-columns:1fr 1fr;gap:10px}
+.home .board-card{grid-template-columns:auto 1fr;grid-template-rows:auto;gap:8px 12px;padding:12px;align-items:center;align-content:start;justify-items:stretch}
+.home .board-card .badge{width:52px;height:52px;border-radius:16px;font-size:20px}
+.home .board-card .txt{display:grid;gap:2px;min-width:0}
+.home .board-card .t{font-size:21px}
+.home .board-card .s{font-size:14px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.home .board-card .chips{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:5px}
+.home .board-card .chips:empty{display:none}
+.home .board-card .tag{font-size:13px;padding:4px 9px;border-radius:999px;background:#EEF6FF;color:#2F6FB0;white-space:nowrap}
+.home .board-card .state{font-size:14px;padding:4px 10px;grid-column:auto;justify-self:auto}
+.home .board-card.done{opacity:.72}
+.home .gift-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px 12px;padding:8px 14px}
+.home .gift-card .gt{font-family:var(--f-display);font-size:18px;min-width:0}
+.home .gift-card .gt b{color:var(--pink-deep);font-weight:400}
+.home .gift-card .gn{color:var(--pink-deep)}
+.home .gift-card .gw{font-family:var(--f-body);font-size:14px;color:var(--ink-soft);white-space:nowrap}
+.home .gift-card .meter{grid-column:2}
+.home .home-nav{grid-template-columns:repeat(4,1fr);gap:8px}
+.home .home-nav .nav-tile{position:relative;width:auto;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;padding:8px 4px;font-family:var(--f-display);font-size:15px;color:var(--ink);text-align:center;background:var(--paper);border:2.5px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow);animation:none}
+.home .home-nav .nav-tile.ping{animation:glow 1.6s infinite}
+.home .home-nav .nav-tile .ic{width:auto;height:auto;background:none;font-size:28px;line-height:1.1}
+.home .home-nav .nav-tile .nm{line-height:1.15;word-break:keep-all}
+.home .home-nav .nav-tile .dot{position:absolute;top:-7px;right:-5px;background:var(--pink);color:#fff;font-family:var(--f-body);font-size:12px;line-height:1;border-radius:999px;padding:4px 7px}
+@media (min-width:700px){
+  .home .hero{grid-template-columns:168px minmax(0,1fr)} .home .hero .stage{height:168px!important} .home .hero .bunny{width:132px;height:158px}
+  .home .board-card .badge{width:60px;height:60px;font-size:22px} .home .board-card .t{font-size:23px} .home .board-card .s{font-size:15px}
+  .home .gift-card{grid-template-columns:auto auto 1fr} .home .gift-card .meter{grid-column:auto}
+  .home .gift-card .gt{white-space:nowrap;font-size:19px}
+  .home .home-nav .nav-tile{font-size:17px;padding:10px 4px} .home .home-nav .nav-tile .ic{font-size:32px}
+}
+@media (min-width:960px) and (orientation:landscape){
+  .home .boards{grid-template-columns:repeat(4,1fr)}
+  .home .home-nav{grid-template-columns:repeat(8,1fr)}
+}
+
 </style>
 </head>
 <body>
@@ -834,7 +883,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261104033842";
+window.APP_VERSION = "20261104144434";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -1594,15 +1643,15 @@ function friendDays(){
 function greeting(d){
   const n = now(), h = n.getHours(), dow = n.getDay(), wk = dow === 0 || dow === 6;
   const done = BOARDS.filter(b => boardState(b.k, d) === 'done').length;
-  if (d.done) return n.getDate() % 2 ? '오늘 공부 끝! 재윤이 최고야! 이제 신나게 놀자!' : '재윤이 오늘도 해냈다! 토리랑 꾸미기 하러 갈래?';
+  if (d.done) return n.getDate() % 2 ? '오늘 공부 끝! 재윤이 최고야! 이제 신나게 놀자!' : `재윤이 오늘도 해냈다! ${josa(S.bunnyName,'이랑','랑')} 꾸미기 하러 갈래?`;
   if (done > 0) return `${4 - done}판만 더 하면 끝이야. 재윤이는 할 수 있어!`;
   const st = streakDays();
   if (st >= 2) return `재윤이랑 ${st}일 연속 공부했어! 오늘도 같이 하자!`;
   const y = S.days[addDays(todayKey(), -1)];
   if (y && y.done) return '어제도 다 했지? 재윤이 정말 대단해! 오늘도 같이 하자!';
   if (h < 12) return '재윤아, 좋은 아침! 오늘도 반짝반짝 공부해 볼까?';
-  if (h < 18) return wk ? '재윤아, 신나는 주말이야! 공부 먼저 하고 놀자!' : '재윤아, 학교 잘 다녀왔어? 토리가 기다렸어!';
-  return '재윤아, 저녁 먹었어? 토리랑 같이 공부하자!';
+  if (h < 18) return wk ? '재윤아, 신나는 주말이야! 공부 먼저 하고 놀자!' : `재윤아, 학교 잘 다녀왔어? ${josa(S.bunnyName,'이가','가')} 기다렸어!`;
+  return `재윤아, 저녁 먹었어? ${josa(S.bunnyName,'이랑','랑')} 같이 공부하자!`;
 }
 
 /* ---------- 받아쓰기 채점 (엄마가 S.grades에 적고, 재윤이 기록에는 재윤이 기기가 반영) ---------- */
@@ -1685,55 +1734,61 @@ VIEWS.home = () => {
   const doneCount = BOARDS.filter(b => boardState(b.k, d) === 'done').length;
   const al = alarmInfo();
   const greet = greeting(d);
-  const g = S.gift, gd = giftDays().length;
-  const nextItem = ITEMS.find(i => i.need > total);
-  const prevNeed = ITEMS.filter(i => i.need <= total).reduce((m, i) => Math.max(m, i.need), 0);
-  const kn = S.kidNotes[0];
-  app().innerHTML = `<section class="screen">
+  const g = S.gift, gd = giftDays().length, won = giftAch();
+  /* 11/4 첫 화면 간단하게 (오빠: "재윤이 화면이 너무 복잡해"): 토리 → 오늘 할 공부 4개 → 선물 한 줄 → 놀거리 아이콘 한 줄.
+     알림(엄마 한마디·오빠 답장·캡슐 등)은 한 번에 하나만, 날짜·진도 지도·스티커 막대·바탕화면 놓기는 첫 화면에서 뺌 */
+  const gs = gardenState(), gReady = gs.plots.filter(p => plotStage(p) === 'ready').length;
+  const tile = (cls, act, v, ic, name, dot) => `<button class="nav-tile ${cls}" data-a="${act}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><span class="nm">${name}</span>${dot ? `<span class="dot">${dot}</span>` : ''}</button>`;
+  app().innerHTML = `<section class="screen home">
     ${wrongRoleHTML()}
     ${linked() && role() !== 'kid' && !wrongRoleTablet() ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 (여기서 풀어 본 건 재윤이 기록에 안 들어가요) · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
     <div class="home-top">
       <span class="nameplate">재윤이 공부방</span><span class="spacer"></span>
       <span class="sticker-chip" aria-label="모은 스티커">⭐ ${total}</span>
     </div>
-    <p class="muted" style="font-size:15px;margin-top:-8px">${korDate(now())} · ${esc(josa(S.bunnyName,'이랑','랑'))} 친구 된 지 ${friendDays()}일째</p>
     <div class="hero">
       <button class="stage-btn tori-stage" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
-      <div class="bubble left" id="heroBubble">${esc(greet)}</div>
+      <div class="hero-side"><div class="bubble left" id="heroBubble">${esc(greet)}</div>${funEventHTML()}</div>
     </div>
-    ${funEventHTML()}
-    ${sugKidBanner()}${kqKidBanner()}
-    ${kn ? `<button class="alarm-banner" data-a="kidnote" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:28px">💌</span><span>${esc(kn.text)}</span></button>` : ''}
-    ${al && al.passed && !al.started && !d.done ? `<button class="alarm-banner" data-a="m2" style="width:100%;text-align:left"><span style="font-size:28px">⏰</span><span style="flex:1">공부할 시간이야! 엄마 목소리 들어 볼까?</span><span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span></button>` : ''}
-    ${capsuleWaiting(d) ? `<button class="alarm-banner" data-a="go" data-v="capsule" style="width:100%;text-align:left;border-color:var(--pink);background:var(--pink-pale)"><span style="font-size:30px">🎁</span><span style="flex:1">오늘의 캡슐이 기다려요! 열어 볼까?</span></button>` : ''}
-    ${orderPickHTML(d)}
+    ${homeNotice(d, al)}
     <div class="boards">
       ${orderedBoards(d).map(b => { const st = boardState(b.k, d); const isNext = nb && nb.k === b.k && !d.done; const bo = d.boards[b.k];
-        const label = st === 'done' ? '다 했어!' : st === 'doing' ? `${bo.phase === 'dict' ? '받아쓰기 중' : (bo.idx + 1) + '번부터'}` : isNext ? '시작!' : '';
+        const label = st === 'done' ? '다 했어! ✓' : st === 'doing' ? `${bo.phase === 'dict' ? '받아쓰기 중' : (bo.idx + 1) + '번부터'}` : isNext ? '시작!' : '';
+        const kb = st === 'done' ? { sub:boardKid(b.k).sub, tag:'' } : boardKid(b.k);
         return `<button class="board-card ${st} ${isNext ? 'next' : ''}" data-a="board" data-k="${b.k}">
           <span class="badge ${b.cls}">${b.badge}</span>
-          <span><span class="t">${b.name}</span><br><span class="s">${boardSub(b.k)}</span></span>
-          ${label ? `<span class="state">${label}</span>` : '<span></span>'}</button>`; }).join('')}
+          <span class="txt"><span class="t">${b.k === 'eng' ? '영어' : b.name}</span><span class="s">${esc(kb.sub)}</span></span>
+          <span class="chips">${kb.tag ? `<span class="tag">${kb.tag}</span>` : ''}${label ? `<span class="state">${label}</span>` : ''}</span></button>`; }).join('')}
     </div>
-    <button class="gift-card ${giftAch() ? 'won' : ''}" data-a="go" data-v="gift">${giftBox(58, giftAch() ? 'hop' : '')}
-      <span style="flex:1;display:grid;gap:6px">${giftAch() ? `<span class="disp" style="font-size:21px">오빠 선물 받는 날! 오빠한테 자랑하자!</span>` : `<span class="disp" style="font-size:19px">오빠 선물까지 <b style="color:var(--pink-deep);font-weight:400">${g.goal - gd}일</b> 남았어!</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span><span class="muted" style="font-size:14px">공부 다 한 날 ${gd} / ${g.goal}일 · ${g.name ? `🎁 ${esc(g.name)}` : '🎁 받고 싶은 선물을 적어 봐!'}</span>`}</span></button>
-    ${gardenTileHTML()}
-    ${mapTileHTML()}
-    ${nextItem ? `<div class="next-item"><div class="row"><span class="disp" style="font-size:18px">스티커 ${nextItem.need - total}개 더 모으면 '${esc(nextItem.name)}'!</span></div><div class="meter"><i style="width:${Math.round((total - prevNeed) / (nextItem.need - prevNeed) * 100)}%"></i></div></div>` : ''}
+    <button class="gift-card ${won ? 'won' : ''}" data-a="go" data-v="gift">${giftBox(40, won ? 'hop' : '')}
+      ${won ? `<span class="gt"><b>오빠 선물 받는 날! 🎉</b>${g.name ? ` <span class="gn">${esc(g.name)}</span>` : ''}</span>`
+        : `<span class="gt">${g.name ? `<span class="gn">${esc(g.name)}</span>까지` : '오빠 선물까지'} <b>${g.goal - gd}일</b> 남았어!${g.name ? '' : ' <span class="gw">✏️ 받고 싶은 선물 적기</span>'}</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span>`}</button>
     <div class="home-nav">
-      <button class="nav-tile" data-a="go" data-v="room"><span class="ic" style="background:var(--pink-pale)">🎀</span>꾸미기</button>
-      <button class="nav-tile" data-a="go" data-v="cal"><span class="ic" style="background:var(--mint-pale)">📅</span>달력</button>
-      <button class="nav-tile" data-a="go" data-v="book"><span class="ic" style="background:var(--butter-pale)">🦄</span>도감</button>
-      <button class="nav-tile" data-a="notebook"><span class="ic" style="background:var(--sky-pale, #E4F1FB)">📒</span>오답노트</button>
+      ${tile('garden-tile' + (gReady || gs.cans ? ' ping' : ''), 'go', 'garden', gReady ? '🧺' : '🌱', '텃밭', gReady ? '수확!' : gs.cans ? `🪣${gs.cans}` : '')}
+      ${tile('', 'go', 'room', '🎀', '꾸미기')}
+      ${tile('', 'go', 'book', '🦄', '도감')}
+      ${tile('', 'go', 'cal', '📅', '달력')}
+      ${SUBJS.some(currOn) ? tile('', 'go', 'map', '🗺️', '진도 지도') : ''}
+      ${tile('', 'notebook', '', '📒', '오답노트')}
+      ${tile('kq-tile', 'kq', '', '🎲', '문제 내기')}
+      ${tile('sug-kid', 'sug', 'kid', '💌', '오빠에게 말하기')}
     </div>
-    ${isInstalled() ? '' : `<button class="install-tile" data-a="installkid"><span style="font-size:30px">📲</span><span style="flex:1">바탕화면에 공부방 놓기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">엄마랑 같이 해요</span></span></button>`}
-    ${d.done && (S.praise && (S.praise.audio || S.praise.text)) ? `<button class="btn lav big" data-a="go" data-v="alldone">오빠 칭찬 다시 듣기</button>` : ''}
-    <button class="kq-tile" data-a="kq"><span class="ic">🎲</span><span>오빠에게 문제 내기<small>계산 문제 · 그림 퀴즈 · 수수께끼 (재윤이 ${kqScore().kid} : ${kqScore().op} 오빠)</small></span></button>
-    <button class="sug-kid" data-a="sug" data-v="kid"><span class="ic">💌</span><span>오빠에게 말하기<small>이상한 거, 어려운 거, 바라는 거</small></span></button>
     ${kidSyncNote()}
     <button class="grown-up" data-a="go" data-v="pin">${ICON.lock}엄마 · 오빠 메뉴</button>
   </section>`;
 };
+/* 첫 화면 알림은 한 번에 하나만 (누르면 사라지고 다음 것이 나옴) */
+function homeNotice(d, al){
+  const ban = (act, v, ic, text, cls = '', extra = '') => `<button class="alarm-banner ${cls}" data-a="${act}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><span class="tx">${text}</span>${extra}</button>`;
+  if (al && al.passed && !al.started && !d.done) return ban('m2', '', '⏰', '공부할 시간이야! 엄마 목소리 들어 볼까?', '', `<span class="speak-btn" style="width:46px;height:46px">${ICON.speak}</span>`);
+  const kn = S.kidNotes[0];
+  if (kn) return ban('kidnote', '', '💌', esc(kn.text), 'pink');
+  const s = sugKidBanner(); if (s) return s;
+  const q = kqKidBanner(); if (q) return q;
+  if (capsuleWaiting(d)) return ban('go', 'capsule', '🎁', '오늘의 캡슐이 기다려요! 열어 볼까?', 'pink');
+  if (d.done && S.praise && (S.praise.audio || S.praise.text)) return ban('go', 'alldone', '🏆', '오빠 칭찬 다시 듣기', 'lav');
+  return '';
+}
 
 /* ----- 판 시작 (엄마 목소리) ----- */
 let RUN = null;
@@ -2399,6 +2454,8 @@ const ACT = {
   board(el){
     const k = el.dataset.k, d = day();
     if (boardState(k, d) === 'done') { speak(`${josa(BNAME[k], "은", "는")} 오늘 다 했어!`); toast(`${josa(BNAME[k], "은", "는")} 오늘 다 했어요!`); return; }
+    // 11/4: "뭐부터 할까?" 상자를 없앰 → 오늘 처음 누른 과목이 맨 앞 (예전 pickfirst와 같은 결과)
+    if (!d.boards[k] && !d.order && k !== 'rev' && !Object.keys(d.boards).length) d.order = [k, ...['kor','math','eng'].filter(x => x !== k)];
     if (!d.boards[k]) { d.boards[k] = makeBoard(k); if (Object.keys(d.boards).length === 1) notify('mom', '재윤이가 오늘 공부를 시작했어요'); save(); }
     RUN = { k, b:d.boards[k] }; go('intro', k);
   },
@@ -2863,6 +2920,17 @@ function boardSub(k){
     return `${tag}${currLabel(k)}${k === 'eng' ? ' + 받아쓰기' : ''}`; }
   if (k === 'eng') return `${levelLabel('eng')} · ${BOARD_SUB.eng[lv('eng')]} + 받아쓰기`;
   return `${levelLabel(k)} · ${BOARD_SUB[k][lv(k)]}`;
+}
+/* 재윤이 첫 화면용 짧은 설명 (11/4): 설명은 단원 이름만, 오늘 무엇을 하는지는 작은 표(📺 영상 · 🔭 미리 맛보기 · 🏆 단원 평가)로.
+   어떤 날인지는 boardSub(엄마 화면·시뮬레이션이 쓰는 긴 글)와 같은 판단을 그대로 따른다 */
+function boardKid(k){
+  if (k === 'rev') return { sub:'틀린 문제 다시 풀기', tag:'' };
+  if (!currOn(k)) return { sub:boardSub(k), tag:'' };
+  const c = curr(k), u = CURRS[k].units[c.unit];
+  if (!u) return { sub:currLabel(k), tag:'' };
+  const full = boardSub(k);
+  const tag = /보는 날/.test(full) ? '📺 영상 보는 날' : /미리 맛보기/.test(full) ? '🔭 미리 맛보기' : c.test ? '🏆 단원 평가' : '';
+  return { sub:u.name + (k === 'eng' ? ' + 받아쓰기' : ''), tag };
 }
 /* 최근 7일 정답률로 엄마에게 단계 바꾸기 제안 */
 function levelAdvice(){
@@ -10470,11 +10538,6 @@ function orderedBoards(d = day()){
   let ord = d.order || ['kor','math','eng'];
   if (!d.order) { try { const lec = currOn('math') || currOn('kor') ? planLecture(d) : null; if (lec && lec.s && !lec.done && !d.boards[lec.s]) ord = [lec.s, ...ord.filter(k => k !== lec.s)]; } catch (e) {} }
   return [...ord.map(k => BOARDS.find(b => b.k === k)), BOARDS.find(b => b.k === 'rev')];
-}
-function orderPickHTML(d = day()){
-  if (d.order || Object.keys(d.boards).length) return '';
-  return `<div class="order-pick"><span class="disp" style="font-size:20px">오늘은 뭐부터 할까?</span>
-    <div class="row" style="gap:10px">${BOARDS.filter(b => b.k !== 'rev').map(b => `<button class="order-btn" data-a="pickfirst" data-v="${b.k}"><span class="badge ${b.cls}">${b.badge}</span>${b.k === 'eng' ? '영어' : b.name}</button>`).join('')}</div></div>`;
 }
 
 /* ===================== 재미 더하기 (2026-11-04 오빠 요청 "재윤이가 슬슬 지겨워하는 것 같아") =====================

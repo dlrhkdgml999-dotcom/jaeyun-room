@@ -1,3 +1,4 @@
+import re
 import os
 """시뮬레이션 3: 중간에 나갔다 오기 · 앱 다시 열기 · 날짜 바뀜 · 알림 · 이름 바꾸기 · 저장공간 꽉 참"""
 import asyncio, sys
@@ -71,8 +72,10 @@ async def main():
 
         # 6) 토끼 이름 바꾸기 (받침 있는 이름)
         await s.click('[data-a="atab"][data-v="set"]'); await p.fill('#bname', '몽실'); await s.click('[data-a="savename"]')
-        await s.ev("go('home')"); txt = await s.ev("document.querySelector('.screen').innerText")
-        s.expect('몽실이랑 친구' in txt, f'이름 조사가 어색함: {txt[:80]}')
+        # 11/4: 첫 화면의 "○○랑 친구 된 지 n일째" 줄은 없앰 → 인사말(오후 4시 40분)로 조사 확인
+        await s.ev("go('home')"); txt = await s.ev("document.querySelector('#heroBubble').innerText")
+        s.expect(('몽실이가' in txt or '몽실이랑' in txt or '몽실' not in txt) and not re.search('몽실(가|랑|는|를)', txt), f'이름 조사가 어색함: {txt[:80]}')
+        print('몽실 인사:', txt)
         await s.click('[data-k="kor"]'); await p.wait_for_timeout(200); await s.click('[data-a="home"]')
 
         # 7) 꾸미기 잠긴 아이템 누르기, 달력 앞뒤 넘기기
