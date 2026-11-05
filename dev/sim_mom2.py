@@ -56,14 +56,16 @@ async def main():
             g = await s.ev("""[...document.querySelectorAll('.prog')].map(x => ({ t:x.querySelector('.prog-top').innerText.replace(/\\n/g,' '), segs:[...x.querySelectorAll('.prog-seg small')].map(y => y.textContent), bunny:x.querySelector('.prog-bunny').style.left, now:(x.querySelector('.prog-now')||{}).innerText }))""")
             print('  진도:', g)
             s.expect(len(g) == 3 and all(len(x['segs']) >= 2 for x in g), f'진도 게이지 이상 {g}')
-            s.expect([x['segs'] for x in g][0] == ['1-2', '2-1', '2-2'], '수학 학기 칸이 1-2 · 2-1 · 2-2가 아님')
+            s.expect(all(x['segs'][:3] == ['1', '2', '3'] for x in g), '학기 막대 칸이 단원(1·2·3…)이 아님')   # 11/5 저녁: 지금 학기 기준
+            s.expect(all('2학년 2학기' not in x['t'] for x in g), '2학년 2학기 기준이 남음')
             await p.locator('details.mom-fold[data-k="prog"] .prog-panel').screenshot(path=f'out/shots3/mom2_prog_{tag}.png')
             s.expect(await p.locator('details.mom-fold[data-k="prog"] #cjump-math').count() == 0, '엄마 진도 칸에 오빠용 진도 옮기기가 있음')
             if tag == 'phone':
                 p1 = await s.ev("progOf('math').allPct"); await s.ev("const c = curr('math'); c.unit = CURRS.math.units.findIndex(u => u.course.short2 === '2-1'); c.lesson = 0; c.test = false; save(); go('adult')")
                 p2 = await s.ev("progOf('math')"); print('  진도 옮김:', p1, '→', p2['allPct'], p2['cur']['co']['short2'] if 'cur' in p2 else '')
-                s.expect(p2['allPct'] > p1 and p2['coursePct'] == 0, '진도를 2-1로 옮겼는데 게이지가 안 따라감')
-                left = await s.ev("document.querySelector('.prog-math .prog-bunny').style.left"); s.expect(abs(float(left[:-1]) - p2['allPct']) < 1.5, f'토끼 자리 {left} ≠ {p2["allPct"]}%')
+                top = await s.ev("document.querySelector('.prog-math .prog-top').innerText.replace(/\\n/g, ' ')"); print('  2-1로 옮긴 뒤:', top)
+                s.expect(p2['coursePct'] == 0 and '2학년 1학기' in top and top.strip().endswith('0%'), '진도를 2-1로 옮겼는데 게이지가 이번 학기 기준으로 안 바뀜')
+                left = await s.ev("document.querySelector('.prog-math .prog-bunny').style.left"); s.expect(abs(float(left[:-1])) < 1.5, f'2-1 처음인데 토끼 자리 {left}')
             # ---- D 받아쓰기
             await s.click('details.mom-fold[data-k="dict"] > summary'); await p.wait_for_timeout(200)
             rows = await s.ev("[...document.querySelectorAll('details.mom-fold[data-k=dict] .done-row')].map(x => x.innerText.replace(/\\n/g, ' '))")

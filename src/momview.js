@@ -13,23 +13,27 @@ function progOf(s){
   return { pos, total, segs, cur, coursePct:Math.round(Math.min(cur.n, pos - cur.start) / cur.n * 100), allPct:Math.round(pos / total * 100), done:pos >= total };
 }
 function progLabel(co){ return co.grade ? co.grade.replace(/ · .*/, '') : co.short2 || ''; }
+/* 11/5 오빠: %는 2학년 2학기까지가 아니라 "지금 하는 학기" 기준 → 막대 = 이번 학기, 칸 = 단원 */
 function progGauge(s){
-  const P = progOf(s), u = CURRS[s].units[curr(s).unit], last = P.segs[P.segs.length - 1].co;
-  const unitName = u ? `${u.n}단원 「${u.name}」` : '';
+  const P = progOf(s), C = CURRS[s], c = curr(s), co = P.cur.co, u = C.units[c.unit];
+  const units = C.units.filter(x => x.course === co), idx = C.courses.indexOf(co), next = C.courses[idx + 1];
+  const inPos = P.pos - P.cur.start;   // 이번 학기 안에서 몇 차시째
+  let acc = 0;
+  const segs = units.map(x => { const st = acc; acc += x.lessons.length; const fill = clamp((inPos - st) / x.lessons.length, 0, 1);
+    return `<div class="prog-seg ${x === u && !P.done ? 'now' : fill >= 1 ? 'done' : ''}" style="flex:${x.lessons.length}"><i style="width:${(fill * 100).toFixed(1)}%"></i><small>${x.n}</small></div>`; }).join('');
+  const pct = P.done ? 100 : P.coursePct;
   return `<div class="prog prog-${s}">
-    <div class="prog-top"><b>${SUBJ_NAME[s]}</b><span class="prog-pct">${P.allPct}<small>%</small></span></div>
-    <p class="prog-say">${P.done ? `${progLabel(last)}까지 모두 끝냈어요! 🎉` : `${progLabel(last)}까지 가는 길의 <b>${P.allPct}%</b> 왔어요`}</p>
-    <div class="prog-bar">${P.segs.map(g => { const fill = clamp((P.pos - g.start) / g.n, 0, 1);
-      return `<div class="prog-seg ${g === P.cur && !P.done ? 'now' : fill >= 1 ? 'done' : ''}" style="flex:${g.n}"><i style="width:${(fill * 100).toFixed(1)}%"></i><small>${esc(g.co.short2 || '')}</small></div>`; }).join('')}
-      <span class="prog-bunny" style="left:${(P.pos / P.total * 100).toFixed(1)}%">🐰</span></div>
-    ${P.done ? '' : `<p class="prog-now">지금 <b>${esc(progLabel(P.cur.co))}</b> 과정 ${P.coursePct}% · ${esc(unitName)}</p>`}
+    <div class="prog-top"><b>${SUBJ_NAME[s]} <small>${esc(progLabel(co))}</small></b><span class="prog-pct">${pct}<small>%</small></span></div>
+    <p class="prog-say">${P.done ? `${esc(progLabel(co))} 과정까지 모두 끝냈어요! 🎉` : `${esc(progLabel(co))} 과정의 <b>${pct}%</b>를 했어요`}</p>
+    <div class="prog-bar">${segs}<span class="prog-bunny" style="left:${(P.done ? 100 : inPos / P.cur.n * 100).toFixed(1)}%">🐰</span></div>
+    ${P.done ? '' : `<p class="prog-now">지금 ${esc(u ? `${u.n}단원 「${u.name}」` : '')}${next ? ` · 다 하면 ${esc(progLabel(next))}로` : ''}</p>`}
   </div>`;
 }
 function progressPanel(){
   const on = SUBJS.filter(currOn);
   return `<div class="panel prog-panel"><h3>재윤이가 어디까지 왔을까요?</h3>
     ${on.length ? on.map(progGauge).join('') : '<p class="muted">지금은 진도 없이 자유 연습만 하고 있어요.</p>'}
-    <p class="muted" style="font-size:13px">🐰가 재윤이 자리예요. 칸 하나가 한 학기(영어는 한 단계)예요. 차시를 통과하면 한 칸씩 나가요.</p></div>`;
+    <p class="muted" style="font-size:13px">막대 하나가 지금 하는 학기(영어는 단계)예요. 아래 숫자는 단원이고, 🐰가 재윤이 자리예요.</p></div>`;
 }
 
 /* ---------- 다 본 받아쓰기 · 쓴 글은 한 줄로 ---------- */

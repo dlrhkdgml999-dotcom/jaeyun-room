@@ -82,7 +82,7 @@ async def main():
                 await s.ev("ACT.board({ dataset:{ k:'kor' } }); go('home')")
             else: await s.click('.alarm-banner'); await p.wait_for_timeout(150); await s.ev("go('home')")
         print('  알림 순서:', seq)
-        s.expect(seq[:3] == ['m2', 'kidnote', 'kidnote'], f'알림 순서 이상 {seq}')
+        s.expect(seq[:2] == ['kidnote', 'kidnote'] and 'm2' not in seq, f'알림 순서 이상 {seq}')   # 11/5: 공부 시간 배너(m2) 없앰
         await fit(s, '하는 중')
 
         # 다 끝낸 날: 캡슐 → (열고 나면) 오빠 칭찬 다시 듣기

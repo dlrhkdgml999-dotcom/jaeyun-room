@@ -93,7 +93,7 @@ async def main():
             await s.click('details.mom-fold[data-k="prog"] > summary'); await p.wait_for_timeout(100)
             await s.ev("refreshIfIdle()"); await p.wait_for_timeout(100)
             s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=prog]').open && document.querySelector('details.mom-fold[data-k=report]').open"), '화면을 다시 그리니 열어 둔 칸이 닫힘')
-            await s.adult('set'); s.expect(await s.ev("!!document.querySelector('#al1')") , '설정 탭 공부 설정 칸 안에 공부 시간이 없음'); await s.adult('mom')
+            await s.adult('set'); s.expect(await s.ev("!document.querySelector('#al1')") , '설정 탭에 없앤 공부 시간 칸이 남음'); await s.adult('mom')
             await s.overflow(f'엄마 탭 펼침 {tag}'); await s.shot(f'mom_open_{tag}')
             await s.ev("document.querySelectorAll('details.mom-fold').forEach(d => d.open = false)"); await p.wait_for_timeout(50)
 

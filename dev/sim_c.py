@@ -61,13 +61,12 @@ async def main():
         for ch in '1234': await s.click(f'[data-a="pin"][data-v="{ch}"]')
         s.expect(await s.screen() == 'pin', '틀린 비밀번호로 들어가짐')
 
-        # 5) 공부 알림 시간이 지났는데 시작 안 함 → 재윤이 배너 + 엄마 알림
+        # 5) 11/5 공부 시간 안내 없앰: 예전에 켜 둔 값이 있어도 오후 4시 40분에 배너가 안 뜨고, 설정에도 없음
         await s.ev("const _n=now; window.now=()=>{const d=_n(); d.setHours(16,40,0,0); return d;}; S.alarms.on=[true,true,true,true,true,true,true]; S.alarms.time=S.alarms.time.map(()=>'16:00'); save(); go('home')")
-        s.expect(await p.locator('[data-a="m2"]').count() == 1, '공부 알림 배너가 안 보임')
-        await s.ev('window.__said=[]'); await s.click('[data-a="m2"]'); await p.wait_for_timeout(300)
-        s.expect('[clip]' in await s.ev('window.__said'), '배너 눌러도 엄마 목소리 #2가 안 나옴')
+        s.expect(await p.locator('[data-a="m2"]').count() == 0, '없앤 공부 시간 배너가 뜸')
         await s.adult('mom')
-        txt = await s.ev("document.querySelector('.glance').innerText"); s.expect('아직 시작 안 했어요' in txt and '16:00' in txt, '엄마 탭 오늘 한눈에 늦음 표시가 없음')   # 11/5 알림함 없앰
+        txt = await s.ev("document.querySelector('.glance').innerText"); s.expect('(공부 시간' not in txt and '알림' not in txt, '엄마 탭 오늘 한눈에 공부 시간 표시가 남음')
+        await s.adult('set'); s.expect(await p.locator('#al1').count() == 0, '설정에 공부 시간 칸이 남음'); await s.adult('mom')
         await s.shot('mom_nudge'); await s.overflow('mom')
 
         # 6) 토끼 이름 바꾸기 (받침 있는 이름)
