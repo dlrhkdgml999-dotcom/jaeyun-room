@@ -1,21 +1,4 @@
 /* ===================== 오빠 메뉴: 주간 리포트 · 문제 검토 ===================== */
-function weekReportPanel(){
-  const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), i - 6)), from = keys[0];
-  const rows = SUBJS.map(s => {
-    const c = curr(s), passed = Object.values(c.done).filter(d => d.pass && d.date >= from).length;
-    const medals = c.medals.filter(m => m.date >= from).length, lecs = Object.entries(c.seen || {}).filter(([, v]) => v.d >= from);
-    const mins = lecs.reduce((a, [, v]) => a + (v.mins || 0), 0);
-    return `<div class="li" style="flex-wrap:wrap"><span class="grow"><b class="disp" style="font-weight:400">${SUBJ_NAME[s]}</b> · ${esc(currLabel(s))}</span>
-      <span class="pill ok">통과 ${passed}차시</span>${medals ? `<span class="pill ok">🏅 ${medals}</span>` : ''}${CURRS[s].ebs ? `<span class="pill ${lecs.length ? 'ok' : 'wait'}">📺 ${lecs.length}편${mins ? ` · ${mins}분` : ''}</span>` : ''}</div>`;
-  }).join('');
-  const writes = keys.flatMap(k => Object.values((S.days[k] || {}).writes || {}).map(w => Object.assign({ k }, w))).filter(w => w.img);
-  const dictScores = keys.map(k => gradeOf(k)).filter(g => g.graded).map(g => g.score);
-  return `<div class="panel"><h3>이번 주 재윤이 (${shortDate(from)} ~ ${shortDate(keys[6])})</h3>
-    <div class="list">${rows}</div>
-    <p style="font-size:15px">받아쓰기 ${dictScores.length ? `${dictScores.length}번 · 평균 ${Math.round(dictScores.reduce((a, b) => a + b, 0) / dictScores.length * 10) / 10}점` : '채점된 것 없음'} · 직접 쓴 글 ${writes.length}편</p>
-    ${writes.length ? `<div class="row" style="gap:8px;overflow-x:auto">${writes.slice(-3).map(w => `<img src="${w.img}" alt="재윤이가 쓴 글" style="height:90px;border-radius:10px;border:2px solid var(--line);background:#fff">`).join('')}</div>` : ''}
-  </div>`;
-}
 /* 문제 검토: 오빠가 차시별 문제를 넘겨 보며 이상한 것을 표시 → 복사해서 Claude에게 */
 let REV = { lesson:'1-1', q:null };
 function reviewQ(){ try { REV.q = lessonQ(lessonById(REV.lesson)); } catch (e) { REV.q = null; } }

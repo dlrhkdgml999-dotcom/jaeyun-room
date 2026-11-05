@@ -7,7 +7,7 @@
    - 이 기기에만 남는 것: 역할, 가족 번호, 체험판 날짜, 탭 위치            */
 const LOCAL_KEYS = ['local','dayOffset','adultTab','notes','days','v'];
 const KID_KEYS = ['started','firstDay','stickers','equipped','seenItems','wrong','avgSec','dictUsed','curr','currs','lastLec','kidNotes','giftAch','reports','collect','friends','garden'];
-const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey','ntfyOff','ebsPlayer','ebsMode','ebsIntent','cheers'];
+const ADULT_KEYS = ['alarms','level','mathMode','modes','ebsOn','pace','dictMode','eyeBreak','tts','bunnyName','pin','praise','voices','grades','gift','writeFb','mail','ebsLinks','dayGoal','fcmKey','ebsPlayer','ebsMode','ebsIntent','cheers'];
 const BLOB_MIN = 4000, CHUNK = 700000;
 function role(){ return (S.local && S.local.role) || 'all'; }
 function linked(){ return !!(S.local && S.local.fid); }
@@ -75,8 +75,11 @@ const Sync = {
     // Firebase 웹 SDK(Lite)가 쓰는 것과 같은 방식: documents:commit 에 update(updateMask 없음 = 문서 통째로 바꾸기 = set)
     const db = `projects/${FIREBASE_CONFIG.projectId}/databases/(default)`, url = `https://firestore.googleapis.com/v1/${db}/documents:commit`;
     const body = JSON.stringify({ writes:[{ update:{ name:`${db}/documents/${path}`, fields:fsFields(data) } }] });
-    const go = async fresh => { const tok = await u.getIdToken(fresh);
-      return fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + tok }, body }); };
+    // 11/5: fetch가 끝없이 기다리면 그 뒤 보내기가 전부 멈춤 → 25초 넘으면 끊고 실패로 (다음에 다시 보냄)
+    const go = async fresh => { const tok = await u.getIdToken(fresh), ac = window.AbortController ? new AbortController() : null, to = ac && setTimeout(() => ac.abort(), window.__restWait || 25000);
+      try { return await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + tok }, body, signal:ac ? ac.signal : undefined }); }
+      catch (e) { throw new Error(e && e.name === 'AbortError' ? '서버 답 없음 (25초)' : String(e && e.message || e)); }
+      finally { clearTimeout(to); } };
     let r = await go(false); if (r.status === 401 || r.status === 403) r = await go(true);
     if (!r.ok) { let t = ''; try { t = (await r.text()).replace(/\s+/g, ' ').slice(0, 140); } catch (e) {} throw new Error(`서버 ${r.status} ${t}`); }
   },
@@ -95,15 +98,7 @@ const Sync = {
     }
   },
   sentOk(){ this.okAt = Date.now(); this.failSince = 0; this.sendErr = ''; },
-  sentBad(e){ this.sendErr = String(e && e.message || e).slice(0, 200); if (!this.failSince) this.failSince = Date.now(); this.warnOppa(); },
-  /* 30분 넘게 못 보내면 오빠 폰(ntfy, 다른 길)으로 한 번 알린다 (6시간에 한 번까지) */
-  warnOppa(){
-    if (role() !== 'kid' || !this.failSince || Date.now() - this.failSince < 30 * 60000 || navigator.onLine === false || typeof Ntfy === 'undefined') return;
-    let last = 0; try { last = +localStorage.getItem('jaeyun-syncwarn') || 0; } catch (e) {}
-    if (Date.now() - last < 6 * 3600000) return;
-    try { localStorage.setItem('jaeyun-syncwarn', String(Date.now())); } catch (e) {}
-    try { Ntfy.send({ to:'oppa', text:`⚠️ 재윤이 태블릿이 공부 기록을 엄마·오빠 폰으로 못 보내고 있어요 (${agoText(this.failSince)}부터). 이유: ${this.sendErr}`, at:Date.now() }); } catch (e) {}
-  },
+  sentBad(e){ this.sendErr = String(e && e.message || e).slice(0, 200); if (!this.failSince) this.failSince = Date.now(); },
   async start(){
     if (!linked() || this.ready) return;
     if (!window.firebase || !window.FIREBASE_CONFIG) { this.status = 'nosdk'; return; }
@@ -229,7 +224,7 @@ const Sync = {
     // 오빠 폰에서 원인을 볼 수 있게: 앱 버전, 보낸 길, 못 보낸 기록 수, 기기 저장 공간, 마지막으로 공부한 날
     let ls = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {}
     const days = Object.keys(S.days), sy = this.synced(), unsent = days.filter(k => !sy.d[k]).length; this.beatUnsent = unsent;
-    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, lf:(() => { try { return +localStorage.getItem('jaeyun-lecfill-n') || 0; } catch (e) { return 0; } })(), online:navigator.onLine !== false, failSince:this.failSince || 0 };
+    const info = { at:t, stickers:S.stickers.length, days:days.length, last:days.sort().pop() || '', err, okAt:this.okAt || 0, ver:String(window.APP_VERSION || ''), via:this.via || '', unsent, ls, lf:(() => { try { return +localStorage.getItem('jaeyun-lecfill-n') || 0; } catch (e) { return 0; } })(), online:navigator.onLine !== false, failSince:this.failSince || 0, kq:(typeof kqQueue === 'function' ? kqQueue().length : 0), kqErr:(typeof KQ !== 'undefined' && KQ.err) || '' };
     this.write(`${this.base()}/meta/kid`, info).then(() => { if (!this.okAt) this.okAt = Date.now(); }, e => { this.beatAt = 0; this.sentBad(e); });
   },
   /* 엄마·오빠 기기: 30분에 한 번 "이 기기는 무슨 역할 · 태블릿인지 · 여기서 공부한 날"을 올린다 */
@@ -445,7 +440,7 @@ function syncAlert(){
   if (bad) { const d = bad[1], who = d.role === 'mom' ? '엄마 폰' : '오빠 폰';
     return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 스티커 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
   // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
-  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}${kid.lf ? ` · 지난 강의 시간 ${kid.lf}편 되살림` : ''}</span>` : '';
+  const diag = kid.at ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}${kid.lf ? ` · 지난 강의 시간 ${kid.lf}편 되살림` : ''}${kid.kq ? ` · <b>못 보낸 문제 내기 ${kid.kq}개</b>${kid.kqErr ? ` (${esc(kid.kqErr)})` : ''}` : ''}</span>` : '';
   if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
   if (kid.days && kid.days > have + 1 && Date.now() - (kid.at || 0) < 2 * 86400000) return box(`<b>재윤이 태블릿 기록을 받는 중이에요</b> (태블릿 ${kid.days}일 · 이 폰 ${have}일)<br>태블릿 마지막 연결: ${agoText(kid.at)}. 몇 분 지나도 그대로면 오빠에게 알려 주세요.${diag}`, 'soft');
   if (!seen) return box(`<b>재윤이 태블릿에서 아직 기록이 한 번도 오지 않았어요</b><br>태블릿에서 <b>엄마·오빠 메뉴 → 설정 → 가족 기기 연결</b>을 확인해 주세요. "이 기기: 재윤이 태블릿 · 연결됨"이어야 해요. 아니면 가족 링크를 태블릿에서 열고 "재윤이"를 고르세요 (태블릿 기록은 지워지지 않고 올라가요).`);

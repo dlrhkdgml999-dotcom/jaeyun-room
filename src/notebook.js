@@ -209,4 +209,4 @@ Object.assign(ACT, {
     SFX.tap(); const sl = document.querySelector('.answer-box .slot'); if (sl) sl.textContent = P.typed; },
 });
 /* 엄마 탭 바로가기 → 접힌 칸 펼치기 (ACT는 app.js 맨 아래에서 만들어져서 여기서 붙인다) */
-ACT.momfold = el => { const k = el.dataset.v; MOM_OPEN.add(k); const d = document.querySelector(`details.mom-fold[data-k="${k}"]`); if (d) { d.open = true; d.scrollIntoView({ behavior:'smooth', block:'start' }); } };
+ACT.momfold = el => { const k = el.dataset.v; MOM_OPEN.add(k); const d = document.querySelector(`details.mom-fold[data-k="${k}"]`); if (d) { d.open = true; d.scrollIntoView({ behavior:'smooth', block:'start' }); } else { const x = document.querySelector({ sug:'.sug-box', kq:'.kq-box', gift:'.gift-box' }[k] || '#none'); if (x) x.scrollIntoView({ behavior:'smooth', block:'start' }); } };

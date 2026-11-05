@@ -210,11 +210,11 @@ function sugSubmit(){
   if (P.q) doc.q = P.q;
   const media = {}; P.imgs.forEach((s, i) => media['i' + i] = s); if (P.aud) media.a = P.aud;
   const r = Suggest.add(doc, media);
-  // 오빠 폰 알림 (알림함 + ntfy). 오빠가 스스로 남긴 메모는 알리지 않음
+  // 오빠 폰 알림함. 오빠가 스스로 남긴 메모는 알리지 않음
   if (P.who !== 'oppa') {
     const k = sugKind(P.who, kind), extra = [doc.imgs ? `사진 ${doc.imgs}장` : '', doc.aud ? `목소리 ${doc.aud}초` : '', P.q ? `문제 ${P.q.lesson || ''}` : ''].filter(Boolean).join(' · ');
     const n = { to:'oppa', text:`💌 ${SUG_WHO[P.who][1]} 건의 · ${k[1]} ${k[2]}${doc.text ? `: "${doc.text.slice(0, 60)}${doc.text.length > 60 ? '…' : ''}"` : ''}${extra ? ` (${extra})` : ''}`, at:Date.now(), d:todayKey() };
-    S.notes.unshift(n); trimNotes(); Sync.addNote(n); try { Ntfy.send(n); } catch (x) {}
+    S.notes.unshift(n); trimNotes(); Sync.addNote(n);
     save();
   }
   P.sent = r; SFX.right && SFX.right();
@@ -240,7 +240,7 @@ Object.assign(ACT, {
   /* 오빠: 상태 바꾸기 · 한마디 · 복사 · 사진 보기 */
   sugst(el){ const id = el.dataset.id, st = el.dataset.v; SUG_VIEW.keep[id] = true; const inp = document.getElementById('sugrp_' + id), reply = inp ? inp.value.trim() : ((Suggest.status(id) || {}).reply || '');
     Suggest.setSt(id, st, reply).then(ok => { toast(ok ? (st === 'done' ? '고쳤어요로 표시했어요. 보낸 사람 화면에 보여요' : '봤어요로 표시했어요') : '저장하지 못했어요. 인터넷을 확인해 주세요'); const x = Suggest.all().find(y => y.id === id);
-      if (ok && st === 'done' && x && x.who === 'mom') { const n = { to:'mom', text:`💌 오빠가 건의를 고쳤어요: "${(x.text || '사진 건의').slice(0, 40)}"${reply ? ` · ${reply}` : ''}`, at:Date.now(), d:todayKey() }; Sync.addNote(n); try { Ntfy.send(n); } catch (e) {} }
+      if (ok && st === 'done' && x && x.who === 'mom') { const n = { to:'mom', text:`💌 오빠가 건의를 고쳤어요: "${(x.text || '사진 건의').slice(0, 40)}"${reply ? ` · ${reply}` : ''}`, at:Date.now(), d:todayKey() }; Sync.addNote(n); }
       const y = scrollY; VIEWS.adult(); scrollTo(0, y); }); },
   sugopen(el){ const id = el.dataset.id; SUG_VIEW.open[id] = !SUG_VIEW.open[id]; const x = Suggest.all().find(y => y.id === id); if (SUG_VIEW.open[id] && x) Suggest.loadMedia(x); const y = scrollY; VIEWS.adult(); scrollTo(0, y); },
   sugkeep(el){ SUG_VIEW.keep[el.dataset.id] = true; const y = scrollY; VIEWS.adult(); scrollTo(0, y); },

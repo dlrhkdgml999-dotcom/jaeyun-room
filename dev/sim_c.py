@@ -67,7 +67,7 @@ async def main():
         await s.ev('window.__said=[]'); await s.click('[data-a="m2"]'); await p.wait_for_timeout(300)
         s.expect('[clip]' in await s.ev('window.__said'), '배너 눌러도 엄마 목소리 #2가 안 나옴')
         await s.adult('mom')
-        txt = await s.ev("document.querySelector('.screen').innerText"); s.expect('30분이 지났는데' in txt, '엄마 알림함에 늦음 알림이 없음')
+        txt = await s.ev("document.querySelector('.glance').innerText"); s.expect('아직 시작 안 했어요' in txt and '16:00' in txt, '엄마 탭 오늘 한눈에 늦음 표시가 없음')   # 11/5 알림함 없앰
         await s.shot('mom_nudge'); await s.overflow('mom')
 
         # 6) 토끼 이름 바꾸기 (받침 있는 이름)

@@ -487,7 +487,7 @@ function boardState(k, d = day()){
 function nextBoard(d = day()){ return orderedBoards(d).find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); Ntfy.send(n); if (USE_FCM) Relay.send(n); } S.notes.unshift(n); trimNotes(); }
+function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); if (USE_FCM) Relay.send(n); } S.notes.unshift(n); trimNotes(); }
 function trimNotes(){ const cnt = {}; S.notes = S.notes.filter(x => (cnt[x.to] = (cnt[x.to] || 0) + 1) <= 60); }
 function alarmInfo(){
   const d = now(), dow = d.getDay();
@@ -1141,7 +1141,7 @@ function levelPanel(){
 function minutesOf(dy){ return dy ? Math.round(BOARDS.reduce((s, b) => s + bsecs(dy.boards[b.k]), 0) / 60) : 0; }
 function adultHead(){
   return `<div class="row"><button class="icon-btn" data-a="home" aria-label="재윤이 화면으로">${ICON.back}</button><h2 style="flex:1">엄마 · 오빠 메뉴</h2></div>
-  <div class="tabs">${[['mom','엄마'],['oppa','오빠'],['set','설정']].map(([v, l]) => `<button class="${S.adultTab === v ? 'on' : ''}" data-a="atab" data-v="${v}">${l}</button>`).join('')}</div>`;
+  <div class="tabs">${[['mom','엄마'],['oppa','오빠'],['set','설정']].filter(([v]) => adultTabs().includes(v)).map(([v, l]) => `<button class="${S.adultTab === v ? 'on' : ''}" data-a="atab" data-v="${v}">${l}</button>`).join('')}</div>`;
 }
 /* 엄마: 하루 공부 시간 목표 + 최근 7일 실제로 걸린 시간 */
 function dayGoalPanel(){
@@ -1156,74 +1156,16 @@ function dayGoalPanel(){
     <div class="stat-row"><div class="stat"><b>${avgT == null ? '-' : avgT + '분'}</b><span>최근 하루 평균</span></div>${['kor','math','eng'].map(k => `<div class="stat"><b>${countFor(k)}<small>문제</small></b><span>${BNAME[k].replace(/ · .*/, '')} ${avg(per[k]) == null ? '' : `· ${avg(per[k])}분`}</span></div>`).join('')}</div>
     <p class="muted" style="font-size:14px">${verdict}<br>문제 수는 재윤이가 한 문제에 걸리는 시간을 보고 날마다 자동으로 맞춰요 (한 문제가 2분을 넘으면 2분으로 쳐서, 딴짓한 시간이 섞여도 크게 안 흔들려요).</p></div>`;
 }
-function todayPanel(){
-  const d = day();
-  return `<div class="panel"><h3>오늘 재윤이 (${korDate(now())})</h3><div class="list">${BOARDS.map(b => { const bo = d.boards[b.k], st = boardState(b.k, d);
-    return `<div class="li"><span class="grow">${b.name}</span>${st === 'done' ? `<span class="muted" style="font-size:14px">${bo.correct}/${bo.n || bo.qs.length} · ${Math.max(1, Math.round(bsecs(bo) / 60))}분</span><span class="pill ok">완료</span>` : st === 'doing' ? `<span class="pill wait">하는 중</span>` : `<span class="pill no">아직</span>`}</div>`; }).join('')}</div>
-    <p class="muted" style="font-size:15px">오늘 공부 시간 ${minutesOf(d)}분 · 받은 스티커 ${d.earned.length}개</p></div>`;
-}
 /* 엄마 탭 접는 칸: 열어 둔 칸은 화면을 다시 그려도 열린 채로 */
 const MOM_OPEN = new Set();
 function momFold(k, title, html){ return `<details class="mom-fold" data-k="${k}" ${MOM_OPEN.has(k) ? 'open' : ''}><summary>${title}</summary><div class="mom-fold-body">${html}</div></details>`; }
 document.addEventListener('toggle', e => { const d = e.target; if (d && d.matches && d.matches('details.mom-fold')) { if (d.open) MOM_OPEN.add(d.dataset.k); else MOM_OPEN.delete(d.dataset.k); } }, true);
-function notesPanel(to, title){
-  const al = alarmInfo(); const extra = [];
-  if (to === 'mom' && S.alarms.nudge && al && al.late && !al.started) extra.push({ text:`⏰ ${al.time} 공부 알림 뒤 30분이 지났는데 재윤이가 아직 시작하지 않았어요`, at:Date.now() });
-  const list = [...extra, ...S.notes.filter(n => n.to === to)].slice(0, 12);
-  return `<div class="panel"><h3>${title}</h3>${list.length ? `<div class="list">${list.map(n => `<div class="li"><span class="grow">${esc(n.text)}</span><span class="muted" style="font-size:13px;white-space:nowrap">${new Date(n.at).getHours()}:${String(new Date(n.at).getMinutes()).padStart(2,'0')}</span></div>`).join('')}</div>` : '<p class="muted">아직 알림이 없어요</p>'}
-  ${linked() ? (Ntfy.done(role()) ? '' : `<p class="muted" style="font-size:13px">설정 탭 → 폰 알림을 연결하면 이 내용이 폰으로도 와요.</p>`) : `<p class="demo-note">체험판에서는 알림이 여기에만 쌓여요.</p>`}</div>`;
-}
-VIEWS.adult = () => {
-  const tab = S.adultTab;
-  let body = '';
-  if (tab === 'mom') {
-    const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
-    const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
-    // 2026-10-29 오빠 요청 "엄마 화면은 간단히": 매일 하는 것(오늘 · 할 일 · 바로가기)만 위에, 나머지는 접어 둠 (열어 둔 것은 기억)
-    const writesTodo = Object.entries(S.days).some(([dk, dy]) => Object.entries(dy.writes || {}).some(([k, w]) => w && w.img && !(S.writeFb || {})[`${dk}|${k}`]));
-    const nbTodo = typeof notebookItems === 'function' ? notebookItems().filter(x => !x.fixed).length : 0;
-    const newNotes = S.notes.filter(n => n.to === 'mom' && Date.now() - n.at < 86400000).length;
-    body = glancePanel()
-      + (gradeTodo ? dictGradePanel(pend) : '') + (writesTodo ? writesPanel(true) : '')
-      + `<div class="mom-quick">
-        <button class="mq" data-a="notebook"><span class="ic">📒</span><b>오답노트</b><small>${nbTodo ? `같이 풀 문제 ${nbTodo}개` : '다 맞혔어요 ✓'}</small></button>
-        <button class="mq" data-a="study"><span class="ic">📅</span><b>공부 기록</b><small>달력 · 푼 문제</small></button>
-        <button class="mq" data-a="momfold" data-v="notes"><span class="ic">🔔</span><b>알림함</b><small>${newNotes ? `오늘 ${newNotes}개` : '새 알림 없음'}</small></button>
-        <button class="mq" data-a="momfold" data-v="report"><span class="ic">📊</span><b>주간 리포트</b><small>지난주 한눈에</small></button>
-      </div>`
-      + `<button class="install-tile sug-tile" data-a="sug" data-v="${role() === 'oppa' ? 'oppa' : 'mom'}"><span style="font-size:30px">💌</span><span style="flex:1">오빠에게 건의하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">불편한 점 · 이상한 문제 · 바라는 점 (캡처 사진도)</span></span></button>`
-      + (kqAll().some(x => !kqAns(x.id)) ? kqPanel() : '')
-      + momFold('notes', '🔔 엄마 알림함', notesPanel('mom', '엄마 알림함'))
-      + momFold('cheer', `💌 깜짝 응원 녹음 <small>${cheerList().filter(c => c.who === 'mom').length}개</small>`, cheersPanel('mom'))
-      + (kqAll().some(x => !kqAns(x.id)) ? '' : momFold('kq', '🎲 재윤이가 낸 문제', kqPanel()))
-      + momFold('report', '📊 주간 리포트', reportPanel())
-      + momFold('curr', `📚 진도 · 강의 <small>${esc(currLabel('math').slice(0, 18))} …</small>`, currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel())
-      + (gradeTodo ? '' : momFold('dict', '📝 받아쓰기 채점한 것', dictGradePanel(pend)))
-      + momFold('writes', '✏️ 재윤이가 쓴 글', writesPanel())
-      + momFold('set', '⚙️ 공부 설정 <small>하루 공부 시간 · 난이도 · 알림 시간 · 눈 건강 · 받아쓰기</small>', dayGoalPanel() + levelPanel() + `
-      ${isInstalled() ? '' : `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">엄마 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>`}
-      <div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
-        <p class="muted" style="font-size:13px">강의를 볼 때는 "팔 길이만큼 떨어져서 보기" 안내가 먼저 나와요.</p></div>
-      <div class="panel"><h3>받아쓰기 쓰는 곳</h3><div class="field"><select id="dictmode" data-ch="dictmode" aria-label="받아쓰기 쓰는 곳">
-        <option value="auto" ${(S.dictMode || 'auto') === 'auto' ? 'selected' : ''}>자동 (태블릿은 펜, 폰은 공책)</option><option value="pen" ${S.dictMode === 'pen' ? 'selected' : ''}>항상 화면에 펜으로</option><option value="paper" ${S.dictMode === 'paper' ? 'selected' : ''}>항상 공책에 쓰고 사진</option></select></div>
-        <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
-      <div class="panel"><h3>공부 알림 시간</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 화면 맨 위에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 태블릿 앱이 닫혀 있으면 안 들리니, 그 시간에 태블릿 알람을 같이 맞춰 두면 좋아요.</p>
-        ${[1,2,3,4,5,6,0].map(i => `<div class="alarm-row"><span class="dn">${DOW[i]}</span><input type="time" id="al${i}" value="${S.alarms.time[i]}" data-ch="altime" data-v="${i}" ${S.alarms.on[i] ? '' : 'disabled'}><button class="switch ${S.alarms.on[i] ? 'on' : ''}" data-a="alon" data-v="${i}" aria-label="${DOW[i]}요일 알림 켜기"></button></div>`).join('')}
-        <div class="row"><span class="grow" style="flex:1">30분 지나도 시작 안 하면 엄마에게 알림<br><span class="muted" style="font-size:13px">엄마·오빠 메뉴를 열었을 때 보여요 (태블릿이 꺼져 있으면 폰 알림은 못 보내요)</span></span><button class="switch ${S.alarms.nudge ? 'on' : ''}" data-a="nudge" aria-label="늦으면 알림"></button></div>
-      </div>`);
-  } else if (tab === 'oppa') {
-    const keys = Array.from({ length:7 }, (_, i) => addDays(todayKey(), i - 6));
-    const mins = keys.map(k => dayMins(k).total); const maxM = Math.max(60, ...mins);
-    const studyDays = keys.filter(k => S.days[k] && Object.keys(S.days[k].boards).length).length;
-    const acc = {}; ['kor','math','eng','rev'].forEach(s => acc[s] = [0, 0]);
-    keys.forEach(k => { const dy = S.days[k]; if (!dy) return; Object.entries(dy.boards).forEach(([s, bo]) => { const n = bo.done ? (bo.n || bo.qs.length) : bo.idx; acc[s][0] += bo.correct; acc[s][1] += n; }); });
-    const totC = Object.values(acc).reduce((s, a) => s + a[0], 0), totN = Object.values(acc).reduce((s, a) => s + a[1], 0);
-    const top = [...S.wrong].filter(w => w.misses > 0).sort((a, b) => b.misses - a.misses).slice(0, 6);
-    const qText = w => w.subj === 'dict' ? `받아쓰기 '${w.q.w}'` : w.q.vis && w.q.vis.k === 'eq' ? w.q.vis.html.replace(/<[^>]+>/g, '') : w.q.subj === 'eng' ? `영어 ${w.q.ans}` : w.q.type === 'clock' ? `시계 ${w.q.ans}` : w.q.subj === 'kor' ? `국어 '${w.q.ans}'` : `${w.q.prompt} (${w.q.ans})`;
-    const pr = S.praise || {};
-    const g = S.gift, gd = giftDays().length;
-    body = glancePanel() + suggestPanel() + kqPanel() + `<button class="install-tile study-tile" data-a="study"><span style="font-size:30px">📅</span><span style="flex:1">재윤이 공부 기록<br><span class="muted" style="font-family:var(--f-body);font-size:15px">기간 달력 · 날짜별 공부 시간 · 국어·수학·영어 푼 문제 전부</span></span></button>` + `<button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">재윤이 오답노트<br><span class="muted" style="font-family:var(--f-body);font-size:15px">틀린 문제 모아 보기 · 정답 가려 두고 재윤이랑 같이 다시 풀기</span></span></button>` + reportPanel() + weekReportPanel() + `
-      <div class="panel"><h3>한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
+/* 11/5 오빠 "엄마·오빠 메뉴가 너무 복잡해" → 탭마다: 오늘 한눈에 → 할 일(있을 때만) → 바로가기 4칸 → 나머지는 접는 칸.
+   폰 알림(ntfy)·알림함·주간 메일은 안 씀(오빠 결정). 엄마 폰에는 오빠 탭을 안 보여 줌 */
+function quickTiles(list){ return `<div class="mom-quick">${list.map(([a, v, ic, t, sub]) => `<button class="mq" data-a="${a}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><b>${t}</b><small>${sub}</small></button>`).join('')}</div>`; }
+const moreHead = () => `<p class="more-head">더 보기</p>`;
+function giftPanel(){ const g = S.gift, gd = giftDays().length;
+  return `<div class="panel"><h3>🎁 한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 — 재윤이가 직접 적어요${g.wishBy === 'kid' && g.wishAt ? ` (재윤이가 ${agoText(g.wishAt)} 적음)` : ''} · 오빠도 고칠 수 있어요</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
         <div class="row" style="flex-wrap:wrap"><span class="muted" style="font-size:15px">목표</span>${[20, 25, 30].map(v => `<button class="btn small ${g.goal === v ? '' : 'ghost'}" data-a="giftgoal" data-v="${v}">${v}일</button>`).join('')}</div>
@@ -1231,51 +1173,93 @@ VIEWS.adult = () => {
         ${giftAch() ? `<button class="btn mint" data-a="giftgiven">선물 줬어요 · 다음 약속 시작</button>` : ''}
         <p class="muted" style="font-size:14px">하루 4판을 다 한 날만 세요. 빠진 날이 있어도 이어서 셀 수 있어요. ${g.start ? `${shortDate(g.start)}부터 세는 중.` : ''}</p>
         ${g.history.length ? `<div class="list">${g.history.map(h => `<div class="li"><span class="grow">${h.round}번째 · ${esc(h.name || '깜짝 선물')}</span><span class="pill ok">${shortDate(h.achieved)} 달성</span></div>`).join('')}</div>` : ''}
-      </div>
-      <div class="panel"><h3>오늘의 칭찬 녹음</h3><p class="muted" style="font-size:15px">재윤이가 하루 공부를 다 끝내면 이 목소리가 나와요.</p>
+      </div>`; }
+function praisePanel(){ const pr = S.praise || {};
+  return `<div class="panel"><h3>오늘의 칭찬 녹음</h3><p class="muted" style="font-size:15px">재윤이가 하루 공부를 다 끝내면 이 목소리가 나와요.</p>
         <div class="row" style="justify-content:center;gap:16px"><button class="rec-btn ${RECORDING === 'praise' ? 'on' : ''}" data-a="rec" data-v="praise">${RECORDING === 'praise' ? '멈추기' : '녹음'}</button>
         <label class="btn ghost small file-btn">파일 올리기<input type="file" accept="audio/*" data-ch="audio" data-v="praise"></label></div>
         ${pr.audio ? `<audio controls src="${pr.audio}"></audio><button class="btn ghost small" data-a="delpraise" style="justify-self:start">녹음 지우기</button>` : ''}
         <div class="field"><label for="ptext">글로 남기는 칭찬</label><input type="text" id="ptext" maxlength="60" value="${esc(pr.text || '')}" placeholder="재윤아, 오늘도 끝까지 해서 정말 멋져!"></div>
         <button class="btn sky small" data-a="savepraise" style="justify-self:start">칭찬 저장</button>
-      </div>
-      ${cheersPanel('oppa')}
-      <div class="panel"><h3>엄마 목소리 6개</h3><p class="muted" style="font-size:15px">엄마가 보내 준 녹음 6개가 들어 있어요. 새로 녹음하면 "바꾸기"로 올려요. 카톡 음성(amr)은 폰에서 재생이 안 되니, 녹음 앱에서 m4a나 mp3로 저장한 파일을 올려 주세요.</p>
+      </div>`; }
+function momVoicesPanel(){
+  return `<div class="panel"><h3>엄마 목소리 6개</h3><p class="muted" style="font-size:15px">엄마가 보내 준 녹음 6개가 들어 있어요. 새로 녹음하면 "바꾸기"로 올려요. 카톡 음성(amr)은 폰에서 재생이 안 되니, 녹음 앱에서 m4a나 mp3로 저장한 파일을 올려 주세요.</p>
         <div class="list">${MOM_LINES.map((l, i) => { const own = !!S.voices[l.id], def = typeof DEFAULT_VOICES !== 'undefined' && !!DEFAULT_VOICES[l.id];
           return `<div class="li" style="flex-wrap:wrap"><span class="grow"><b class="disp" style="font-weight:400">#${i + 1}</b> ${esc(l.text)}<br><span class="muted" style="font-size:13px">${l.when}</span></span>
           ${own || def ? `<span class="pill ok">${own ? '새로 올림' : '엄마 녹음'}</span><button class="btn ghost small" data-a="mom" data-v="${l.id}">듣기</button>${own ? `<button class="btn ghost small" data-a="delvoice" data-v="${l.id}">되돌리기</button>` : ''}` : `<span class="pill no">토끼가 대신</span>`}
           <label class="btn small file-btn ghost">바꾸기<input type="file" accept="audio/*,.m4a,.mp3" data-ch="audio" data-v="${l.id}"></label></div>`; }).join('')}</div>
-      </div>
-      <div class="panel"><h3>최근 7일</h3>
-        <div class="stat-row"><div class="stat"><b>${studyDays}일</b><span>공부한 날</span></div><div class="stat"><b>${Math.round(mins.reduce((a, b) => a + b, 0) / 7)}분</b><span>하루 평균</span></div><div class="stat"><b>${totN ? Math.round(totC / totN * 100) : 0}%</b><span>한 번에 정답</span></div><div class="stat"><b>${S.stickers.length}</b><span>모은 스티커</span></div></div>
-        <div class="bars">${keys.map((k, i) => `<div class="bcol"><span class="v">${mins[i] || ''}</span><span class="bar ${mins[i] ? '' : 'zero'}" style="height:${Math.round(mins[i] / maxM * 90)}px"></span><small>${DOW[new Date(k).getDay()]}</small></div>`).join('')}</div>
-        <div class="subj-acc">${[['kor','국어','var(--pink)'],['math','수학','var(--sky-deep)'],['eng','영어','var(--mint-deep)'],['rev','복습','var(--lav-deep)']].map(([s, l, c]) => { const p = acc[s][1] ? Math.round(acc[s][0] / acc[s][1] * 100) : 0; return `<div class="r"><span>${l}</span><span class="m"><i style="width:${p}%;background:${c}"></i></span><span style="text-align:right;font-variant-numeric:tabular-nums">${acc[s][1] ? p + '%' : '-'}</span></div>`; }).join('')}</div>
-      </div>
-      <button class="install-tile nb-tile" data-a="notebook"><span style="font-size:30px">📒</span><span style="flex:1">자주 틀리는 문제는 오답노트에서<br><span class="muted" style="font-family:var(--f-body);font-size:15px">${top.length ? `많이 틀린 것: ${top.slice(0, 3).map(w => esc(qText(w))).join(' · ')}` : '틀린 문제를 모아서 재윤이랑 같이 다시 풀어요'}</span></span></button>
-      ${ebsLinkPanel()}
-      ${reviewPanel()}
-      ${notesPanel('oppa', '오빠 알림함')}`;
-  } else {
-    body = familyPanel() + ntfyPanel() + (linked() && USE_FCM ? pushPanel() : '') + mailPanel() + `
-      <div class="panel"><h3>토리 목소리</h3>
+      </div>`; }
+function ttsPanel(){
+  return `<div class="panel"><h3>토리 목소리</h3>
         <p class="muted" style="font-size:15px">폰에 들어 있는 음성으로 읽어 줘요. 재윤이가 좋아하는 소리로 골라 주세요.</p>
         <div class="list">${Object.entries(TTS_PRESETS).map(([k, pr]) => `<button class="li" style="text-align:left;${S.tts.preset === k ? 'outline:3px solid var(--pink)' : ''}" data-a="ttspreset" data-v="${k}"><span class="grow">${pr.name}</span>${S.tts.preset === k ? '<span class="pill">사용 중</span>' : ''}</button>`).join('')}</div>
         <div class="field"><label for="ttspitch">목소리 높이 <b id="pv">${S.tts.pitch.toFixed(2)}</b></label><input type="range" id="ttspitch" min="0.8" max="1.8" step="0.05" value="${S.tts.pitch}" data-ch="tts"></div>
         <div class="field"><label for="ttsrate">말 빠르기 <b id="rv">${S.tts.rate.toFixed(2)}</b></label><input type="range" id="ttsrate" min="0.6" max="1.2" step="0.02" value="${S.tts.rate}" data-ch="tts"></div>
         ${langVoices('ko').length > 1 ? `<div class="field"><label>한국어 목소리 고르기 (${langVoices('ko').length}개)</label><div class="list">${langVoices('ko').map(v => { const on = pickVoice('ko', S.tts.voice) === v; return `<div class="li" style="${on ? 'outline:3px solid var(--pink)' : ''}"><span class="grow" style="font-size:14px">${esc(v.name)}${v.localService ? '' : ' · 온라인'}</span><button class="btn ghost small" data-a="ttsvoice" data-v="${esc(v.name)}">${on ? '듣기' : '고르기'}</button></div>`; }).join('')}</div></div>` : `<p class="muted" style="font-size:14px">이 폰에서 고를 수 있는 한국어 목소리가 ${langVoices('ko').length ? '하나뿐이에요' : '아직 안 보여요'}. 태블릿(폰) 설정에서 "TTS" 또는 "텍스트 음성"을 검색해 Google 엔진의 한국어 음성을 고르면 그 목소리로 읽어 줘요.</p>`}
         <button class="btn sky" data-a="ttstest">들어 보기</button>
-      </div>
-      <div class="panel"><h3>토끼 친구 이름</h3><div class="field"><input type="text" id="bname" maxlength="8" value="${esc(S.bunnyName)}"></div><button class="btn small" data-a="savename" style="justify-self:start">이름 저장</button></div>
-      <div class="panel"><h3>비밀번호 바꾸기</h3><div class="field"><input type="password" inputmode="numeric" id="newpin" maxlength="4" placeholder="숫자 4자리"></div><button class="btn small" data-a="savepin" style="justify-self:start">바꾸기</button></div>
-      ${dayGoalPanel()}
-      <div class="panel"><h3>체험판 도구</h3>
+      </div>`; }
+function studySetPanels(){
+  return dayGoalPanel() + levelPanel() + `<div class="panel"><h3>받아쓰기 쓰는 곳</h3><div class="field"><select id="dictmode" data-ch="dictmode" aria-label="받아쓰기 쓰는 곳">
+        <option value="auto" ${(S.dictMode || 'auto') === 'auto' ? 'selected' : ''}>자동 (태블릿은 펜, 폰은 공책)</option><option value="pen" ${S.dictMode === 'pen' ? 'selected' : ''}>항상 화면에 펜으로</option><option value="paper" ${S.dictMode === 'paper' ? 'selected' : ''}>항상 공책에 쓰고 사진</option></select></div>
+        <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
+<div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
+        <p class="muted" style="font-size:13px">강의를 볼 때는 "팔 길이만큼 떨어져서 보기" 안내가 먼저 나와요.</p></div>
+<div class="panel"><h3>공부 시간 (태블릿 화면)</h3><p class="muted" style="font-size:15px">정한 시간이 지나면 재윤이 태블릿 첫 화면에 "공부할 시간!"이 뜨고 엄마 목소리 #2가 나와요. 끄면 안 나와요.</p>
+        ${[1,2,3,4,5,6,0].map(i => `<div class="alarm-row"><span class="dn">${DOW[i]}</span><input type="time" id="al${i}" value="${S.alarms.time[i]}" data-ch="altime" data-v="${i}" ${S.alarms.on[i] ? '' : 'disabled'}><button class="switch ${S.alarms.on[i] ? 'on' : ''}" data-a="alon" data-v="${i}" aria-label="${DOW[i]}요일 알림 켜기"></button></div>`).join('')}
+      </div>`; }
+function adultTabs(){ const r = linked() ? role() : 'all'; return r === 'mom' ? ['mom','set'] : r === 'oppa' ? ['oppa','mom','set'] : ['mom','oppa','set']; }
+VIEWS.adult = () => {
+  if (!adultTabs().includes(S.adultTab)) S.adultTab = adultTabs()[0];
+  const tab = S.adultTab;
+  const kqTodo = kqAll().some(x => !kqAns(x.id)), kqAny = kqAll().length > 0;
+  const nbTodo = typeof notebookItems === 'function' ? notebookItems().filter(x => !x.fixed).length : 0;
+  const tNb = ['notebook', '', '📒', '오답노트', nbTodo ? `같이 풀 문제 ${nbTodo}개` : '다 맞혔어요 ✓'], tStudy = ['study', '', '📅', '공부 기록', '달력 · 푼 문제'], tRep = ['momfold', 'report', '📊', '주간 리포트', '한 주 한눈에'];
+  const currFold = () => momFold('curr', `📚 진도 · 강의 <small>${esc(currLabel('math').slice(0, 18))} …</small>`, currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel());
+  let body = '';
+  if (tab === 'mom') {
+    const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
+    const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
+    const writesTodo = Object.entries(S.days).some(([dk, dy]) => Object.entries(dy.writes || {}).some(([k, w]) => w && w.img && !(S.writeFb || {})[`${dk}|${k}`]));
+    body = glancePanel()
+      + (gradeTodo ? dictGradePanel(pend) : '') + (writesTodo ? writesPanel(true) : '') + (kqTodo ? kqPanel() : '')
+      + quickTiles([tNb, tStudy, tRep, ['sug', role() === 'oppa' ? 'oppa' : 'mom', '💌', '오빠에게 말하기', '불편한 점 · 캡처']])
+      + moreHead()
+      + momFold('report', '📊 주간 리포트', reportPanel())
+      + currFold()
+      + momFold('dict', '📝 받아쓰기 · 쓴 글', (gradeTodo ? '' : dictGradePanel(pend)) + writesPanel())
+      + momFold('cheer', `💌 깜짝 응원 녹음 <small>${cheerList().filter(c => c.who === 'mom').length}개</small>`, cheersPanel('mom'))
+      + (kqTodo || !kqAny ? '' : momFold('kq', '🎲 재윤이가 낸 문제', kqPanel()));
+  } else if (tab === 'oppa') {
+    const fresh = Suggest.all().filter(x => !Suggest.status(x.id) && x.who !== 'oppa').length, g = S.gift;
+    if (fresh) SUG_VIEW.top = true;   // 새 건의를 위에서 처리하는 동안은 "고쳤어요"를 눌러도 위에 그대로 (접는 칸으로 숨지 않게)
+    const sugTop = fresh || SUG_VIEW.top;
+    body = glancePanel()
+      + (sugTop ? suggestPanel() : '') + (kqTodo ? kqPanel() : '') + (giftAch() ? giftPanel() : '')
+      + quickTiles([tNb, tStudy, tRep, ['momfold', 'sug', '💌', '건의함', fresh ? `새 건의 ${fresh}개` : '새 건의 없음']])
+      + moreHead()
+      + momFold('report', '📊 주간 리포트', reportPanel())
+      + (sugTop ? '' : momFold('sug', '💌 건의함', suggestPanel()))
+      + (giftAch() ? '' : momFold('gift', `🎁 선물 약속 <small>${giftDays().length}/${g.goal}일${g.name ? ` · ${esc(g.name)}` : ''}</small>`, giftPanel()))
+      + momFold('voice', '🎙️ 목소리 <small>오늘의 칭찬 · 깜짝 응원 · 엄마 목소리</small>', praisePanel() + cheersPanel('oppa') + momVoicesPanel())
+      + (kqTodo || !kqAny ? '' : momFold('kq', '🎲 재윤이가 낸 문제', kqPanel()))
+      + currFold()
+      + momFold('ebs', '📺 EBS 강의 여는 곳', ebsLinkPanel())
+      + momFold('rev', '🔍 문제 검토', reviewPanel());
+  } else {
+    body = familyPanel()
+      + momFold('studyset', '⚙️ 공부 설정 <small>하루 공부 시간 · 난이도 · 받아쓰기 · 눈 건강 · 공부 시간</small>', studySetPanels())
+      + momFold('tts', '🔊 토리 목소리', ttsPanel())
+      + momFold('etc', '🐰 토끼 이름 · 비밀번호', `<div class="panel"><h3>토끼 친구 이름</h3><div class="field"><input type="text" id="bname" maxlength="8" value="${esc(S.bunnyName)}"></div><button class="btn small" data-a="savename" style="justify-self:start">이름 저장</button></div>
+      <div class="panel"><h3>비밀번호 바꾸기</h3><div class="field"><input type="password" inputmode="numeric" id="newpin" maxlength="4" placeholder="숫자 4자리"></div><button class="btn small" data-a="savepin" style="justify-self:start">바꾸기</button></div>`)
+      + (isInstalled() ? '' : `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">이 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>`)
+      + (linked() ? '' : `<div class="panel"><h3>체험판 도구</h3>
         <p class="muted" style="font-size:15px">지금 보는 날짜: ${korDate(now())}</p>
         <button class="btn sky small" data-a="nextday" style="justify-self:start">하루 넘기기 (내일로)</button>
         <button class="btn ghost small" data-a="reset" style="justify-self:start">${RESET_ARMED ? '정말 처음부터? 한 번 더 누르면 지워져요' : '모든 기록 지우고 처음부터'}</button>
         <p class="demo-note">지금은 이 폰 하나에 재윤이·엄마·오빠 화면이 함께 들어 있는 체험판이에요. 서버를 연결하면 세 폰이 같은 기록을 나눠 써요.</p>
-      </div>`;
+      </div>`);
   }
-  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${tab !== 'set' ? ntfyNudge() + (USE_FCM ? pushNudge() : '') : ''}${body}</section>`;
+  app().innerHTML = `<section class="screen adult">${adultHead()}${syncAlert()}${body}</section>`;
 };
 let RESET_ARMED = false;
 
@@ -1457,12 +1441,6 @@ const ACT = {
   pickfirst(el){ const k = el.dataset.v, d = day(); d.order = [k, ...['kor','math','eng'].filter(x => x !== k)]; save(); ACT.board({ dataset:{ k } }); },
   repshare(el){ const r = el.dataset.v && S.reports[el.dataset.v] ? S.reports[el.dataset.v] : buildWeekReport(mondayOf(todayKey())); const text = reportText(r);
     if (navigator.share) navigator.share({ title:reportTitle(r), text }).catch(() => {}); else { try { navigator.clipboard.writeText(text).then(() => toast('복사했어요. 카톡에 붙여 넣어 주세요')); } catch (e) { toast('복사가 안 됐어요'); } } },
-  mailsave(){ const mom = $('#mmom').value.trim(), oppa = $('#moppa').value.trim(); const ok = x => !x || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
-    if (!ok(mom) || !ok(oppa) || (!USE_FCM && !mom && !oppa)) { toast('메일 주소를 확인해 주세요'); return; }
-    S.mail = Object.assign({}, S.mail || {}, { mom, oppa }); if (!S.mail.key) S.mail.key = newFid().slice(0, 16); save(); toast(S.mail.url ? '저장했어요. 코드를 다시 붙여 넣고 새 버전으로 배포해 주세요' : '코드를 만들었어요. 아래 순서대로 설정해 주세요'); const y = scrollY; go('adult'); scrollTo(0, y); },
-  mailcopy(el){ const t = $(el.dataset.v || '#mailcode').value; try { navigator.clipboard.writeText(t).then(() => toast('코드를 복사했어요'), () => { $('#mailcode').select(); }); } catch (e) { $('#mailcode').select(); } },
-  mailurl(){ const u = $('#murl').value.trim(); if (u && !/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(u)) { toast('https://script.google.com/macros/s/…/exec 모양의 주소를 넣어 주세요'); return; } S.mail = Object.assign({}, S.mail || {}, { url:u }); save(); toast(u ? 'URL을 저장했어요' : 'URL을 지웠어요'); const y = scrollY; go('adult'); scrollTo(0, y); },
-  mailtest(){ const ok = sendReportMail(buildWeekReport(mondayOf(todayKey())), true); toast(ok ? '테스트 메일을 보냈어요. 1분 안에 메일함을 확인해 주세요' : 'URL을 먼저 저장해 주세요'); },
   revnext(){ reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
   revbad(){ const q = REV.q; if (!q) return; S.reviewNotes = S.reviewNotes || []; S.reviewNotes.push({ lesson:REV.lesson, prompt:q.prompt + (q.vis && q.vis.html ? ' / ' + q.vis.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) : '') + (q.listen ? ' / 듣기: ' + q.listen : ''), opts:(q.opts || []).join(', '), ans:String(q.ans), memo:($('#revmemo') || {}).value || '' }); saveLocal(); toast('표시했어요'); reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
   revcopy(){ const t = reviewText(); try { navigator.clipboard.writeText(t).then(() => toast('복사했어요. Claude에게 붙여 넣어 주세요'), () => toast('복사가 안 됐어요')); } catch (e) { toast('복사가 안 됐어요'); } },
@@ -1489,7 +1467,7 @@ const ACT = {
     if (PIN.length === 4) { if (PIN === S.pin) { PIN = ''; return go('adult'); } PIN = ''; toast('비밀번호가 달라요'); }
     go('pin');
   },
-  atab(el){ S.adultTab = el.dataset.v; RESET_ARMED = false; save(); go('adult'); },
+  atab(el){ S.adultTab = el.dataset.v; RESET_ARMED = false; SUG_VIEW.top = false; save(); go('adult'); },
   mark(el){ const [k, i, v] = el.dataset.v.split('|'); const g = gradeOf(k, true); g.marks[+i] = v === '1'; save(); markRefresh(k); },
   markrest(el){ const k = el.dataset.v, g = gradeOf(k, true); g.marks = g.marks.map(m => m === null ? true : m); save(); markRefresh(k); },
   study(el){ go('study', el.dataset.v ? { sel:el.dataset.v } : undefined); },

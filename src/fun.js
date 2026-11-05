@@ -198,19 +198,29 @@ Object.assign(ACT, {
 });
 
 /* ---------- 4. 재윤이가 오빠에게 문제 내기 ---------- */
-const KQ = { list:{}, ans:{}, flushing:false };
+const KQ = { list:{}, ans:{}, flushing:false, mem:[], err:'' };
 let KQP = null;   // 만드는 중인 문제
-function kqQueue(){ try { return JSON.parse(localStorage.getItem('jaeyun-kqq') || '[]'); } catch (e) { return []; } }
-function kqSetQueue(q){ try { q.length ? localStorage.setItem('jaeyun-kqq', JSON.stringify(q)) : localStorage.removeItem('jaeyun-kqq'); } catch (e) {} }
+/* 11/5 "재윤이가 문제 냈는데 오빠한테 안 왔어": 보낼 문제를 localStorage에만 두었는데, 태블릿 저장 공간이 차 있으면
+   조용히 못 쓰고 사라질 수 있었다(화면은 "보냈어!"). 보내기가 멈춰도(fetch가 끝없이 기다림) 다시 안 보냈다.
+   → 보낼 문제는 메모리에도 두고, 한 문제씩 따로 보내고(하나가 막혀도 나머지는 감), 그날 공부 기록(d.kq, 늘 잘 가는 길)에도 글을 남긴다 */
+function kqQueue(){ let st = []; try { st = JSON.parse(localStorage.getItem('jaeyun-kqq') || '[]'); } catch (e) {}
+  const m = {}; st.concat(KQ.mem).forEach(x => { if (x && x.id && !KQ.list[x.id]) m[x.id] = x; }); return Object.values(m); }
+function kqSetQueue(q){ KQ.mem = q.slice(); try { q.length ? localStorage.setItem('jaeyun-kqq', JSON.stringify(q)) : localStorage.removeItem('jaeyun-kqq'); } catch (e) {
+  try { localStorage.setItem('jaeyun-kqq', JSON.stringify(q.map(x => Object.assign({}, x, { img:'' })))); } catch (e2) {} } }
+/* 그날 공부 기록에 남긴 문제 (그림 빼고) — 서버 kq 문서가 아직 없어도 오빠·엄마 폰에 보이게 */
+function kqFromDays(){ const out = []; Object.values(S.days || {}).forEach(d => (d && d.kq || []).forEach(x => { if (x && x.id) out.push(x); })); return out; }
 function kqLocalAns(){ try { return JSON.parse(localStorage.getItem('jaeyun-kqa') || '{}'); } catch (e) { return {}; } }
-function kqAll(){ const m = Object.assign({}, KQ.list); kqQueue().forEach(x => { if (!m[x.id]) m[x.id] = Object.assign({ pending:true }, x); }); return Object.values(m).sort((a, b) => b.at - a.at); }
+function kqAll(){ const m = Object.assign({}, KQ.list); kqQueue().forEach(x => { if (!m[x.id]) m[x.id] = Object.assign({ pending:true }, x); });
+  kqFromDays().forEach(x => { if (!m[x.id]) m[x.id] = Object.assign({ viaDay:true }, x); }); return Object.values(m).sort((a, b) => b.at - a.at); }
 function kqAns(id){ return KQ.ans[id] || kqLocalAns()[id] || null; }
 async function kqFlush(){
   if (!linked() || !Sync.ready || KQ.flushing || navigator.onLine === false) return;
-  KQ.flushing = true;
-  try { for (const x of kqQueue()) { const doc = Object.assign({}, x); delete doc.id; await Sync.write(`${Sync.base()}/kq/${x.id}`, doc); KQ.list[x.id] = x; kqSetQueue(kqQueue().filter(y => y.id !== x.id)); } }
-  catch (e) { setTimeout(kqFlush, 60000); }
-  KQ.flushing = false;
+  KQ.flushing = true; let bad = 0;
+  try { for (const x of kqQueue()) {
+    try { const doc = Object.assign({}, x); delete doc.id; delete doc.pending; await Sync.write(`${Sync.base()}/kq/${x.id}`, doc); KQ.list[x.id] = x; kqSetQueue(kqQueue().filter(y => y.id !== x.id)); KQ.err = ''; }
+    catch (e) { bad++; KQ.err = String(e && e.message || e).slice(0, 120); } } }
+  finally { KQ.flushing = false; }
+  if (bad) { clearTimeout(KQ.t); KQ.t = setTimeout(kqFlush, 30000); }
 }
 function kqOnList(snap){ let ch = false; snap.docs.forEach(d => { const x = Object.assign({ id:d.id }, d.data()); if (JSON.stringify(KQ.list[d.id]) !== JSON.stringify(x)) { KQ.list[d.id] = x; ch = true; } }); if (ch) kqRefresh(); }
 function kqOnAns(snap){ let ch = false; snap.docs.forEach(d => { const x = d.data(); if (JSON.stringify(KQ.ans[d.id]) !== JSON.stringify(x)) { KQ.ans[d.id] = x; ch = true; } }); if (ch) kqRefresh(); }
@@ -257,6 +267,10 @@ VIEWS.kq = () => {
   </section>`;
   if (P && P.type === 'draw' && P.step === 'draw') setupPen(1);
 };
+/* 그림은 긴 쪽 720px · jpeg로 줄여서 보낸다 (태블릿 화면 그대로면 커서 저장·보내기가 무거움) */
+function kqShrink(){ const cv = $('#pen'); if (!cv) return null; const sc = Math.min(1, 720 / Math.max(cv.width, cv.height));
+  const c = document.createElement('canvas'); c.width = Math.round(cv.width * sc); c.height = Math.round(cv.height * sc);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(cv, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .7); }
 function kqStart(type){ KQP = { type, step: type === 'calc' ? 'make' : type === 'draw' ? 'draw' : 'write', a:'', b:'', op:'+', focus:'a', my:'', tries:0 }; }
 function kqSave(){ const a = $('#kqAns'), h = $('#kqHint'), t = $('#kqText'); if (KQP) { if (a) KQP.ans = a.value.trim(); if (h) KQP.hint = h.value.trim(); if (t) KQP.text = t.value.trim(); } }
 function kqSubmit(){
@@ -266,9 +280,12 @@ function kqSubmit(){
   if (P.type === 'draw') Object.assign(doc, { img:P.img || '', hint:P.hint || '' });
   if (P.type === 'riddle') doc.text = P.text;
   const id = 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-  const q = kqQueue(); q.push(Object.assign({ id }, doc)); kqSetQueue(q); kqFlush();
+  const q = kqQueue(); q.push(Object.assign({ id }, doc)); kqSetQueue(q);
+  // 그날 공부 기록에도 (그림은 빼고): 공부 기록과 같은 길로 가서, kq 문서가 막혀도 오빠·엄마 폰에 문제가 보인다
+  const dk = day(); dk.kq = (dk.kq || []).concat(Object.assign({ id }, doc, { img:'' })).slice(-20);
+  kqFlush();
   const n = { to:'oppa', text:`🎲 재윤이가 오빠에게 문제를 냈어요! ${P.type === 'draw' ? '(그림 퀴즈)' : `"${kqQText(doc).slice(0, 40)}"`} 오빠 탭에서 풀어 주세요`, at:Date.now(), d:todayKey() };
-  if (role() === 'kid' || !linked()) { S.notes.unshift(n); trimNotes(); Sync.addNote(n); try { Ntfy.send(n); } catch (e) {} }
+  if (role() === 'kid' || !linked()) { S.notes.unshift(n); trimNotes(); Sync.addNote(n); }
   const e = funDay(); let st = '';
   if (dayEvent().id === 'quiz' && !e.quiz) { e.quiz = true; st = funBonusSticker('quiz'); }
   save(); P.sent = true; SFX.sticker();
@@ -302,7 +319,7 @@ Object.assign(ACT, {
     SFX.tap(); VIEWS.kq();
   },
   kqclear(){ setupPen(1); },
-  kqdrawn(){ if (!PEN.drawn) { toast('먼저 그림을 그려 주세요'); return; } KQP.img = penImage(); KQP.step = 'write'; VIEWS.kq(); speak('이 그림의 정답을 써 줘. 오빠한테는 안 보여!'); },
+  kqdrawn(){ if (!PEN.drawn) { toast('먼저 그림을 그려 주세요'); return; } KQP.img = kqShrink(); KQP.step = 'write'; VIEWS.kq(); speak('이 그림의 정답을 써 줘. 오빠한테는 안 보여!'); },
   kqsend(){ kqSave(); const P = KQP;
     if (P.type === 'riddle' && !P.text) { toast('수수께끼 문제를 써 주세요'); return; }
     if (!P.ans) { toast('정답을 써 주세요'); return; }
@@ -327,7 +344,7 @@ function kqPanel(){
     <p class="muted" style="font-size:14px">재윤이 ${sc.kid} : ${sc.op} 오빠·엄마 · 틀려 주면 재윤이가 아주 좋아해요 😉</p>
     ${todo.length ? todo.map(x => `<div class="li kq-item" style="display:grid;gap:6px">
       <b>${x.type === 'calc' ? '➕ 계산 문제' : x.type === 'draw' ? '🎨 그림 퀴즈' : '🤔 수수께끼'} <span class="muted" style="font-size:13px">${agoText(x.at)}</span></b>
-      ${x.type === 'draw' && x.img ? `<img src="${x.img}" alt="재윤이 그림" style="max-width:100%;max-height:220px;object-fit:contain;background:#fff;border-radius:10px;border:2px solid var(--line)">` : `<span class="disp" style="font-size:22px">${esc(kqQText(x))}</span>`}
+      ${x.type === 'draw' && x.img ? `<img src="${x.img}" alt="재윤이 그림" style="max-width:100%;max-height:220px;object-fit:contain;background:#fff;border-radius:10px;border:2px solid var(--line)">` : x.type === 'draw' ? `<span class="muted">🎨 그림은 재윤이 태블릿에서 오는 중이에요. 태블릿에서 공부방 앱을 열면 와요.</span>` : `<span class="disp" style="font-size:22px">${esc(kqQText(x))}</span>`}
       ${x.hint ? `<span class="muted">힌트: ${esc(x.hint)}</span>` : ''}
       <div class="row" style="gap:6px;flex-wrap:wrap"><input type="${x.type === 'calc' ? 'number' : 'text'}" id="kqg_${x.id}" placeholder="답" style="flex:1;min-width:90px;border:2px solid var(--line);border-radius:12px;padding:8px"><input type="text" id="kqm_${x.id}" placeholder="재윤이에게 한마디" maxlength="60" style="flex:2;min-width:140px;border:2px solid var(--line);border-radius:12px;padding:8px"><button class="btn small" data-a="kqguess" data-id="${x.id}">답하기</button></div></div>`).join('')
       : `<p class="muted">${all.length ? '다 풀었어요 ✓' : '아직 재윤이가 낸 문제가 없어요. 재윤이 첫 화면 "🎲 오빠에게 문제 내기"에서 낼 수 있어요.'}</p>`}

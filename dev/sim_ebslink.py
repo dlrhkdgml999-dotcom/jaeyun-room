@@ -66,7 +66,7 @@ async def main():
         s.expect(tgt is None and '나의 학습방' in txt and 'EBS 초등 앱' in txt, '앱 안내 이상')
         await s.ev("document.querySelector('[data-lecgo]').addEventListener('click', e => e.preventDefault())"); await a.click(); await p.wait_for_timeout(200)
         s.expect(await s.screen() == 'lecwait' and (await p.locator('a:has-text("EBS 앱 다시 열기")').get_attribute('href')).startswith('intent:'), '앱 열고 기다리는 화면 이상')
-        await s.ev("S.adultTab='oppa'; go('adult')"); await p.wait_for_timeout(200)
+        await s.ev("MOM_OPEN.add('ebs'); S.adultTab='oppa'; go('adult')"); await p.wait_for_timeout(200)   # 11/5: 오빠 탭 접는 칸
         s.expect(await p.locator('[data-a="ebsmode"]').count() == 2 and await p.locator('a[href^="intent:"]').count() == 1, '오빠 메뉴 여는 곳 고르기 없음')
         await p.locator('.panel:has([data-a="ebsmode"])').screenshot(path=SHOTS + '/ebs_mode_panel.png')
         await s.click('[data-a="ebsmode"][data-v="web"]'); await p.wait_for_timeout(150)

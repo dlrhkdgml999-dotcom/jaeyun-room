@@ -30,7 +30,7 @@ async def main():
         kn = await s.ev("S.kidNotes.map(n => n.text)"); print('재윤이 소식:', kn[:1])
         s.expect(any('반듯' in t for t in kn), '엄마 한마디가 재윤이에게 안 감')
         # 오빠 메뉴: 리포트 · 검토
-        await s.click('[data-a="atab"][data-v="oppa"]'); await p.wait_for_timeout(200); await s.shot('oppa_report')
+        await s.adult('oppa'); await s.shot('oppa_report')   # 11/5: 문제 검토는 접는 칸 안
         await p.select_option('#revlesson', 'k4-1'); await p.wait_for_timeout(200)
         for i in range(3): await s.click('[data-a="revnext"]'); await p.wait_for_timeout(80)
         await p.fill('#revmemo', '보기가 헷갈려요'); await s.click('[data-a="revbad"]'); await p.wait_for_timeout(150)

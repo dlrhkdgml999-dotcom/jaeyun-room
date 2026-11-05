@@ -27,6 +27,7 @@ async def main():
         # 엄마가 드롭다운으로 바꾸기
         await s.adult('mom')
         for sj in ['math','kor','eng']: await p.select_option(f'#mode-{sj}', 'free'); await p.wait_for_timeout(200)
+        await s.adult('set')   # 11/5: 난이도는 설정 탭 → 공부 설정
         await p.select_option('#lv_math', '4'); await p.wait_for_timeout(200)
         await p.select_option('#lv_kor', '5'); await p.wait_for_timeout(200)
         await p.select_option('#lv_eng', '2'); await p.wait_for_timeout(200)
@@ -43,7 +44,7 @@ async def main():
         await s.board('rev'); await s.after_reward()
         # 둘째 날도 다 맞히면 → 올리기 제안
         await s.next_day(); await s.full_day()
-        await s.adult('mom'); tips = await s.ev("[...document.querySelectorAll('.lvl-tip')].map(t=>t.innerText)"); print('올리기 제안:', tips)
+        await s.adult('set'); tips = await s.ev("[...document.querySelectorAll('.lvl-tip')].map(t=>t.innerText)"); print('올리기 제안:', tips)
         s.expect(any('올리기' in t for t in tips), '다 맞혔는데 올리기 제안이 없음')
         await s.shot('mom_tip')
         if tips:

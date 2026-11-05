@@ -53,7 +53,7 @@ async def main():
             await p.set_viewport_size({'width': w, 'height': h})
             # 2) 엄마 메뉴: 채점이 맨 위 근처에 있는지
             await s.adult('mom'); await p.wait_for_timeout(300)
-            order = await s.ev("[...document.querySelectorAll('.screen > .panel, .screen > .install-tile, .screen > .sync-alert')].slice(0, 4).map(e => (e.querySelector('h3') || e).textContent.trim().slice(0, 14))")
+            order = await s.ev("[...document.querySelectorAll('.screen > .panel, .screen > .install-tile, .screen > .sync-alert, .screen > .glance')].slice(0, 4).map(e => (e.querySelector('h3') || e).textContent.trim().slice(0, 14))")
             print(f'[{tag}] 엄마 탭 위에서부터:', order)
             if tag == 'phone': s.expect(any('받아쓰기 채점' in o for o in order[:3]), '채점할 게 있는데 받아쓰기 채점이 위쪽에 없음')
             rows = await s.ev("document.querySelectorAll('.grade-card .grade-row .crop').length")
@@ -146,7 +146,7 @@ async def main():
             await s.click('[data-a="studyset"][data-preset="month"]')
             await s.ev("go('adult')")
         # 4) 오빠 탭에도 바로가기
-        await s.adult('oppa'); s.expect(await p.locator('.study-tile').count() == 1 and await p.locator('.glance').count() == 1, '오빠 탭에 공부 기록 바로가기 없음')
+        await s.adult('oppa'); s.expect(await p.locator('.mq[data-a="study"]').count() == 1 and await p.locator('.glance').count() == 1, '오빠 탭에 공부 기록 바로가기 없음')
         # 5) 저장 크기: 100일이면?
         per_day = st['logBytes'] / 9
         print(f'문제 기록 하루 약 {per_day/1000:.1f}KB → 180일 보관 약 {per_day*180/1e6:.2f}MB')

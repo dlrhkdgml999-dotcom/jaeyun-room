@@ -693,11 +693,12 @@ button.sd:active{transform:scale(.95)}
 .mq .ic{font-size:28px}.mq b{font-family:var(--f-display);font-weight:400;font-size:19px}.mq small{color:var(--ink-soft);font-size:13px}
 .mq:active{transform:translateY(2px)}
 .mom-fold{background:#fff;border:2px solid var(--line);border-radius:16px}
-.mom-fold>summary{list-style:none;cursor:pointer;padding:14px 16px;font-family:var(--f-display);font-size:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mom-fold>summary{list-style:none;cursor:pointer;padding:12px 16px;font-family:var(--f-display);font-size:18px;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
 .mom-fold>summary::-webkit-details-marker{display:none}
 .mom-fold>summary::after{content:'▾';margin-left:auto;color:var(--ink-soft);transition:transform .2s}
 .mom-fold[open]>summary::after{transform:rotate(180deg)}
-.mom-fold>summary small{font-family:var(--f-body);font-size:13px;color:var(--ink-soft);width:100%}
+.mom-fold>summary small{font-family:var(--f-body);font-size:13px;color:var(--ink-soft);flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.more-head{margin:6px 4px -4px;font-family:var(--f-display);font-size:16px;color:var(--ink-soft)}
 .mom-fold-body{padding:0 10px 10px;display:grid;gap:10px}
 .mom-fold-body>.panel{box-shadow:none}
 @media (min-width:700px){ .mom-quick{grid-template-columns:repeat(4,1fr)} }

@@ -4,7 +4,9 @@ B) 그림 퀴즈: 펜으로 그리기 → 정답·힌트 → 보내기 (그림�
 C) 수수께끼: 글 → 보내기
 D) 오빠 폰: 풀 문제 3개·그림 보임 → 계산 맞힘, 그림 틀림, 수수께끼는 엄마 폰에서 맞힘 → 서버 kqa
 E) 태블릿: 첫 화면 "재윤이 승" 알림 → 내가 낸 문제 상태(맞혔어/재윤이 승) · 점수 1 : 2
-F) 인터넷 끊긴 채 낸 문제 → 연결되면 저절로 / 오빠 알림함 · 오퀴즈 날 보너스 스티커 / Firestore가 거부한 값 없음"""
+F) 인터넷 끊긴 채 낸 문제 → 연결되면 저절로 / 오빠 알림함 · 오퀴즈 날 보너스 스티커 / Firestore가 거부한 값 없음
+H) 11/5 "재윤이가 문제 냈는데 안 왔어": 태블릿 저장 공간이 꽉 참 + kq 문서 보내기가 막힘 → 그래도 오빠 폰에 문제가 보이고(그날 기록 d.kq) 답할 수 있음,
+   오빠 폰 맨 위에 "못 보낸 문제 내기 n개", 막힘이 풀리면 저절로 서버 kq까지 / 서버가 답을 안 하는(fetch가 끝없이 기다리는) 태블릿도 25초(시험에선 0.6초) 뒤 SDK로 감"""
 import asyncio, sys, os, subprocess
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from harness import CHROME
@@ -114,6 +116,34 @@ async def main():
         g = await oppa.ev("({ name:S.gift.name, by:S.gift.wishBy, n:S.notes.filter(n => n.to === 'oppa' && /선물로/.test(n.text)).length, field:(document.querySelector('#gname')||{}).value })"); print('오빠 폰 선물:', g)
         oppa.expect(g['name'] == '색연필 세트' and g['by'] == 'kid' and g['field'] == '색연필 세트', '재윤이가 적은 선물이 오빠 폰에 안 옴')
         oppa.expect(g['n'] >= 2, '재윤이가 선물을 적었는데 오빠 알림이 없음')
+        # H) 저장 공간 꽉 참 + kq 문서 막힘
+        await tab.ev(r"""(() => { window.__oSet = Storage.prototype.setItem; Storage.prototype.setItem = function(k, v){ if (k === 'jaeyun-kqq') throw new DOMException('full', 'QuotaExceededError'); return window.__oSet.call(this, k, v); };
+          window.__oW = Sync.write.bind(Sync); Sync.write = (path, data) => /\/kq\//.test(path) ? Promise.reject(new Error('시험: kq 막힘')) : window.__oW(path, data); return 1; })()""")
+        await tab.ev("KQP = null; go('kq')"); await tab.p.wait_for_timeout(150)
+        await calc(tab, 30, 4, '+', False)
+        for ch in '34': await tab.click(f'.kq-pad [data-v="{ch}"]')
+        await tab.click('.kq-pad [data-v="ok"]'); await tab.p.wait_for_timeout(500)
+        hid = await tab.ev("(kqQueue().find(x => x.a === 30) || {}).id || ''"); print('H 막힌 문제(메모리 큐):', hid)
+        tab.expect(hid, 'H: 저장 공간이 꽉 차니 낸 문제가 사라짐')
+        await tab.ev("Sync.beat && (Sync.beatAt = 0, Sync.beat())"); await asyncio.sleep(2.5)
+        await oppa.adult_tab('oppa'); await asyncio.sleep(.5); await oppa.adult_tab('oppa')
+        seen = await oppa.p.locator(f'#kqg_{hid}').count(); al = await oppa.ev("(document.querySelector('.sync-alert')||{}).textContent || ''")
+        print('H 오빠 폰: 문제 보임', seen, '| 맨 위:', al[-80:])
+        oppa.expect(seen == 1, 'H: kq 문서가 막히니 오빠 폰에 문제가 안 보임 (그날 기록으로 와야 함)')
+        oppa.expect('못 보낸 문제 내기 1개' in al, 'H: 오빠 폰 맨 위에 못 보낸 문제 수가 없음')
+        await oppa.p.fill(f'#kqg_{hid}', '34'); await oppa.click(f'[data-a="kqguess"][data-id="{hid}"]'); await asyncio.sleep(1.5)
+        oppa.expect(hid in docs(fid, 'kqa'), 'H: 그날 기록으로 온 문제에 답이 서버로 안 감')
+        tab.expect(await tab.ev(f"!!kqAns('{hid}')"), 'H: 오빠 답이 태블릿에 안 옴')
+        # 풀림 → 저절로 (앱 다시 보기)
+        await tab.ev("Storage.prototype.setItem = window.__oSet; Sync.write = window.__oW; document.dispatchEvent(new Event('visibilitychange'))"); await asyncio.sleep(2)
+        tab.expect(hid in docs(fid, 'kq') and await tab.ev("kqQueue().length") == 0, 'H: 막힘이 풀렸는데 kq 문서가 안 감')
+        # 서버가 답을 안 함 (fetch 끝없이) → 짧게 끊고 SDK로
+        await tab.ev(r"""(() => { window.__restWait = 600; window.__oF = window.fetch; window.fetch = (u, o) => /firestore\.googleapis/.test(String(u)) ? new Promise((res, rej) => o && o.signal && o.signal.addEventListener('abort', () => rej(new DOMException('a', 'AbortError')))) : window.__oF(u, o); return 1; })()""")
+        await tab.ev("KQP = null; go('kq')"); await tab.click('[data-a="kqtype"][data-v="riddle"]'); await tab.p.wait_for_timeout(150)
+        await tab.p.fill('#kqText', '귀가 길고 깡충깡충 뛰어요'); await tab.p.fill('#kqAns', '토끼'); await tab.click('[data-a="kqsend"]'); await asyncio.sleep(3)
+        via = await tab.ev("Sync.via"); n2 = [v for v in docs(fid, 'kq').values() if v.get('ans') == '토끼' and v.get('type') == 'riddle']
+        print('H fetch 멈춤 →', via, len(n2)); tab.expect(n2 and via == 'sdk', 'H: fetch가 멈추니 문제가 안 감')
+        await tab.ev("window.fetch = window.__oF")
         for d in (oppa, tab, mom): await d.report()
         await br.close()
     srv.terminate()

@@ -52,14 +52,12 @@ async def main():
         await tab.adult_tab('set'); txt = await tab.ev("document.querySelector('.screen').textContent")
         tab.expect('보내기 실패' in txt, 'G3: 태블릿 설정에 "보내기 실패"가 안 보임')
         await tab.shot('G3_set')
-        # 10분 넘게 실패 → 재윤이 첫 화면 아래 작은 안내, 30분 넘으면 오빠 폰 알림(ntfy) 한 번
-        await tab.ev("Sync.failSince = Date.now() - 40 * 60000; localStorage.removeItem('jaeyun-syncwarn'); Sync.sentBad(new Error('시험'))")
+        # 10분 넘게 실패 → 재윤이 첫 화면 아래 작은 안내 (11/5 폰 알림 ntfy는 없앰)
+        await tab.ev("Sync.failSince = Date.now() - 40 * 60000; Sync.sentBad(new Error('시험'))")
         await tab.ev("go('home')"); await tab.p.wait_for_timeout(200)
         note = await tab.ev("(document.querySelector('.kid-sync-note')||{}).textContent || ''"); print('G3 태블릿 첫 화면:', note)
         tab.expect('안 가고 있어요' in note, 'G3: 재윤이 첫 화면에 안내가 없음')
         await tab.shot('G3_home')
-        q = await tab.ev("JSON.parse(localStorage.getItem('jaeyun-ntfyq') || '[]').concat(window.__ntfySent || []).map(x => x.text || x.message || '').filter(t => /못 보내고/.test(t)).length")
-        print('G3 오빠 ntfy 알림:', q); tab.expect(q >= 1, 'G3: 오래 못 보내도 오빠에게 ntfy 알림이 안 감')
         # 풀림 → 다음 재시도에서 저절로
         await tab.ev("window.__sdkHang = false; window.__restDown = false; Sync.tries = 0; Sync.push()"); await asyncio.sleep(2.5)
         st = await tab.ev("({status:Sync.status, fail:Sync.failSince})"); print('G3 풀린 뒤:', st, days_on_server(fid))
