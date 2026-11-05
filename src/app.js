@@ -1162,10 +1162,10 @@ function momFold(k, title, html){ return `<details class="mom-fold" data-k="${k}
 document.addEventListener('toggle', e => { const d = e.target; if (d && d.matches && d.matches('details.mom-fold')) { if (d.open) MOM_OPEN.add(d.dataset.k); else MOM_OPEN.delete(d.dataset.k); } }, true);
 /* 11/5 오빠 "엄마·오빠 메뉴가 너무 복잡해" → 탭마다: 오늘 한눈에 → 할 일(있을 때만) → 바로가기 4칸 → 나머지는 접는 칸.
    폰 알림(ntfy)·알림함·주간 메일은 안 씀(오빠 결정). 엄마 폰에는 오빠 탭을 안 보여 줌 */
-function quickTiles(list){ return `<div class="mom-quick">${list.map(([a, v, ic, t, sub]) => `<button class="mq" data-a="${a}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><b>${t}</b><small>${sub}</small></button>`).join('')}</div>`; }
+function quickTiles(list, cls){ return `<div class="mom-quick ${cls || ''}">${list.map(([a, v, ic, t, sub]) => `<button class="mq" data-a="${a}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><b>${t}</b><small>${sub}</small></button>`).join('')}</div>`; }
 const moreHead = () => `<p class="more-head">더 보기</p>`;
 function giftPanel(){ const g = S.gift, gd = giftDays().length;
-  return `<div class="panel"><h3>🎁 한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
+  return `<div class="panel gift-box"><h3>🎁 한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
         <div class="field"><label for="gname">약속한 선물 — 재윤이가 직접 적어요${g.wishBy === 'kid' && g.wishAt ? ` (재윤이가 ${agoText(g.wishAt)} 적음)` : ''} · 오빠도 고칠 수 있어요</label><input type="text" id="gname" maxlength="30" value="${esc(g.name)}" placeholder="예: 토끼 인형, 색연필 세트"></div>
         <div class="row" style="flex-wrap:wrap"><span class="muted" style="font-size:15px">목표</span>${[20, 25, 30].map(v => `<button class="btn small ${g.goal === v ? '' : 'ghost'}" data-a="giftgoal" data-v="${v}">${v}일</button>`).join('')}</div>
@@ -1214,34 +1214,36 @@ VIEWS.adult = () => {
   const kqTodo = kqAll().some(x => !kqAns(x.id)), kqAny = kqAll().length > 0;
   const nbTodo = typeof notebookItems === 'function' ? notebookItems().filter(x => !x.fixed).length : 0;
   const tNb = ['notebook', '', '📒', '오답노트', nbTodo ? `같이 풀 문제 ${nbTodo}개` : '다 맞혔어요 ✓'], tStudy = ['study', '', '📅', '공부 기록', '달력 · 푼 문제'], tRep = ['momfold', 'report', '📊', '주간 리포트', '한 주 한눈에'];
-  const currFold = () => momFold('curr', `📚 진도 · 강의 <small>${esc(currLabel('math').slice(0, 18))} …</small>`, currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel());
+  const pctLine = SUBJS.filter(currOn).map(s => `${SUBJ_NAME[s]} ${progOf(s).allPct}%`).join(' · ');
+  const currFold = () => momFold('curr', `📚 진도 · 강의 <small>${pctLine}</small>`, progressPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel());
   let body = '';
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
     const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
     const writesTodo = Object.entries(S.days).some(([dk, dy]) => Object.entries(dy.writes || {}).some(([k, w]) => w && w.img && !(S.writeFb || {})[`${dk}|${k}`]));
+    const dictTodo = pend.filter(([k]) => !gradeOf(k).graded), dictDone = pend.length - dictTodo.length, oppaHere = role() === 'oppa';
     body = glancePanel()
-      + (gradeTodo ? dictGradePanel(pend) : '') + (writesTodo ? writesPanel(true) : '') + (kqTodo ? kqPanel() : '')
-      + quickTiles([tNb, tStudy, tRep, ['sug', role() === 'oppa' ? 'oppa' : 'mom', '💌', '오빠에게 말하기', '불편한 점 · 캡처']])
+      + (gradeTodo ? dictGradePanel(dictTodo) : '') + (writesTodo ? writesPanel(true) : '') + (kqTodo ? kqPanel() : '')
+      + quickTiles([tNb, tStudy, tRep, ['sug', oppaHere ? 'oppa' : 'mom', '💌', oppaHere ? '오빠 메모' : '아들에게 말하기', '불편한 점 · 캡처']])
       + moreHead()
       + momFold('report', '📊 주간 리포트', reportPanel())
-      + currFold()
-      + momFold('dict', '📝 받아쓰기 · 쓴 글', (gradeTodo ? '' : dictGradePanel(pend)) + writesPanel())
+      + momFold('prog', `📚 재윤이 진도 <small>${pctLine}</small>`, progressPanel())
+      + momFold('dict', `📝 받아쓰기 · 쓴 글 <small>${dictDone ? `채점 완료 ${dictDone}개` : ''}</small>`, `<div class="panel"><h3>📝 받아쓰기</h3>${dictDoneList(pend)}</div>` + (writesDoneList() ? `<div class="panel"><h3>✏️ 재윤이가 쓴 글</h3>${writesDoneList()}</div>` : ''))
       + momFold('cheer', `💌 깜짝 응원 녹음 <small>${cheerList().filter(c => c.who === 'mom').length}개</small>`, cheersPanel('mom'))
       + (kqTodo || !kqAny ? '' : momFold('kq', '🎲 재윤이가 낸 문제', kqPanel()));
   } else if (tab === 'oppa') {
-    const fresh = Suggest.all().filter(x => !Suggest.status(x.id) && x.who !== 'oppa').length, g = S.gift;
+    const fresh = Suggest.all().filter(x => !Suggest.status(x.id) && x.who !== 'oppa').length, g = S.gift, kqN = kqAll().filter(x => !kqAns(x.id)).length;
     if (fresh) SUG_VIEW.top = true;   // 새 건의를 위에서 처리하는 동안은 "고쳤어요"를 눌러도 위에 그대로 (접는 칸으로 숨지 않게)
     const sugTop = fresh || SUG_VIEW.top;
     body = glancePanel()
       + (sugTop ? suggestPanel() : '') + (kqTodo ? kqPanel() : '') + (giftAch() ? giftPanel() : '')
-      + quickTiles([tNb, tStudy, tRep, ['momfold', 'sug', '💌', '건의함', fresh ? `새 건의 ${fresh}개` : '새 건의 없음']])
+      + quickTiles([tNb, tStudy, tRep, ['momfold', 'kq', '🎲', '재윤이 문제', kqN ? `풀 문제 ${kqN}개` : '새 문제 없음'], ['momfold', 'sug', '💌', '건의함', fresh ? `새 건의 ${fresh}개` : '새 건의 없음'], ['momfold', 'gift', '🎁', '선물 약속', `${giftDays().length}/${g.goal}일`]], 'six')
       + moreHead()
       + momFold('report', '📊 주간 리포트', reportPanel())
       + (sugTop ? '' : momFold('sug', '💌 건의함', suggestPanel()))
       + (giftAch() ? '' : momFold('gift', `🎁 선물 약속 <small>${giftDays().length}/${g.goal}일${g.name ? ` · ${esc(g.name)}` : ''}</small>`, giftPanel()))
       + momFold('voice', '🎙️ 목소리 <small>오늘의 칭찬 · 깜짝 응원 · 엄마 목소리</small>', praisePanel() + cheersPanel('oppa') + momVoicesPanel())
-      + (kqTodo || !kqAny ? '' : momFold('kq', '🎲 재윤이가 낸 문제', kqPanel()))
+      + (kqTodo ? '' : momFold('kq', `🎲 재윤이가 낸 문제 <small>${kqAll().length}개</small>`, kqPanel()))
       + currFold()
       + momFold('ebs', '📺 EBS 강의 여는 곳', ebsLinkPanel())
       + momFold('rev', '🔍 문제 검토', reviewPanel());
@@ -1439,7 +1441,8 @@ const ACT = {
   captap(){ if (!CAP) return; CAP.taps++; SFX.tap(); const b = $('.capsule'); if (b) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); } document.querySelectorAll('.cap-dots i').forEach((i, n) => i.classList.toggle('on', n < CAP.taps)); if (CAP.taps >= 3) { CAP = null; setTimeout(openCapsule, 450); } },
   friend(el){ const id = el.dataset.v; S.friends = S.friends || []; if (S.friends.includes(id)) S.friends = S.friends.filter(x => x !== id); else { S.friends.push(id); if (S.friends.length > 3) S.friends.shift(); } SFX.tap(); save(); const y = scrollY; go('book'); scrollTo(0, y); },
   pickfirst(el){ const k = el.dataset.v, d = day(); d.order = [k, ...['kor','math','eng'].filter(x => x !== k)]; save(); ACT.board({ dataset:{ k } }); },
-  repshare(el){ const r = el.dataset.v && S.reports[el.dataset.v] ? S.reports[el.dataset.v] : buildWeekReport(mondayOf(todayKey())); const text = reportText(r);
+  repweek(el){ REP_W += +el.dataset.v; const y = scrollY; go('adult'); scrollTo(0, y); },
+  repshare(el){ const r = buildWeekReport(el.dataset.v || mondayOf(todayKey())); const text = reportText(r);
     if (navigator.share) navigator.share({ title:reportTitle(r), text }).catch(() => {}); else { try { navigator.clipboard.writeText(text).then(() => toast('복사했어요. 카톡에 붙여 넣어 주세요')); } catch (e) { toast('복사가 안 됐어요'); } } },
   revnext(){ reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
   revbad(){ const q = REV.q; if (!q) return; S.reviewNotes = S.reviewNotes || []; S.reviewNotes.push({ lesson:REV.lesson, prompt:q.prompt + (q.vis && q.vis.html ? ' / ' + q.vis.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) : '') + (q.listen ? ' / 듣기: ' + q.listen : ''), opts:(q.opts || []).join(', '), ans:String(q.ans), memo:($('#revmemo') || {}).value || '' }); saveLocal(); toast('표시했어요'); reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y); },
@@ -1521,8 +1524,6 @@ document.addEventListener('change', async ev => {
     S.pace = el.value; save(); toast(el.value === 'slow' ? '천천히: 한 차시를 이틀 연습해요' : '보통 속도로 바꿨어요');
   } else if (el.dataset.ch === 'revlesson') {
     REV.lesson = el.value; reviewQ(); const y = scrollY; go('adult'); scrollTo(0, y);
-  } else if (el.dataset.ch === 'repsel') {
-    REP_SEL = el.value; const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'cjump') {
     const s = el.dataset.v, [u, l, t] = el.value.split('|').map(Number); Sync.touch(s === 'math' ? 'curr' : 'currs'); const c = curr(s); c.unit = u; c.lesson = l; c.test = !!t; save(); toast(`${SUBJ_NAME[s]} 진도를 옮겼어요: ${currLabel(s)}`); const y = scrollY; go('adult'); scrollTo(0, y);
   } else if (el.dataset.ch === 'level') {

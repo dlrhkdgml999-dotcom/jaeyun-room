@@ -40,8 +40,9 @@ async def main():
             print(f'  {dnum}일차 끝 오답 목록:', w)
             s.expect(w['dupIds'] == 0, '오답 목록에 같은 문제가 겹쳐 들어감')
         await s.adult('oppa'); await s.shot('oppa'); await s.overflow('oppa')
-        top = await s.ev("[...document.querySelectorAll('.panel')].find(p=>p.textContent.includes('자주 틀리는')).innerText")
-        print('오빠 화면 자주 틀리는 문제:\n', top)
+        # 11/5: 주간 리포트에서 "자주 틀리는 것" 목록은 뺌 → 오답노트 바로가기의 같이 풀 문제 수로 확인
+        top = await s.ev("document.querySelector('.mq[data-a=notebook] small').textContent")
+        print('오빠 화면 오답노트 바로가기:', top); s.expect('같이 풀 문제' in top, '오답노트 바로가기에 틀린 문제 수가 없음')
         stats = await s.ev("[...document.querySelectorAll('.stat')].map(x=>x.innerText.replace('\\n',' '))"); print('7일 통계:', stats)
         await s.adult('mom'); await s.shot('mom_last')
         notes = await s.ev("S.notes.slice(0,6).map(n=>n.to+': '+n.text)"); print('최근 알림:', *notes, sep='\n  ')

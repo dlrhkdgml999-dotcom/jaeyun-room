@@ -44,14 +44,6 @@ function reportText(r){
     `• 받아쓰기: ${r.dict.length ? `${r.dict.length}번 · 평균 ${Math.round(r.dict.reduce((a, b) => a + b, 0) / r.dict.length * 10) / 10}점` : '채점 없음'} · 직접 쓴 글 ${r.writes}편`,
     r.weak.length ? `• 자주 틀리는 것: ${r.weak.join(' / ')}` : '', `💬 ${r.notes.join(' ')}`, r.gift.name ? `🎁 ${r.gift.name}까지 ${r.gift.done}/${r.gift.goal}일` : ''].filter(Boolean).join('\n');
 }
-function reportHTML(r){
-  return `<div class="report">
-    <div class="stat-row"><div class="stat"><b>${r.studied}일</b><span>공부한 날</span></div><div class="stat"><b>${r.mins}분</b><span>공부 시간</span></div><div class="stat"><b>${r.fullDays}일</b><span>다 끝낸 날</span></div></div>
-    <div class="list">${r.subj.map(x => `<div class="li" style="flex-wrap:wrap"><span class="grow"><b class="disp" style="font-weight:400">${x.name}</b> · ${esc(x.now)}</span><span class="pill ok">통과 ${x.passed}</span>${x.rate !== null ? `<span class="pill ${x.rate >= 70 ? 'ok' : 'wait'}">${x.rate}%</span>` : ''}${x.medals ? `<span class="pill ok">🏅 ${x.medals}</span>` : ''}${x.lec.length ? `<span class="pill">📺 ${x.lec.length}편</span>` : ''}</div>`).join('')}</div>
-    <p style="font-size:15px">받아쓰기 ${r.dict.length ? `${r.dict.length}번 · 평균 ${Math.round(r.dict.reduce((a, b) => a + b, 0) / r.dict.length * 10) / 10}점` : '채점 없음'} · 직접 쓴 글 ${r.writes}편${r.weak.length ? `<br>자주 틀리는 것: ${r.weak.map(esc).join(' / ')}` : ''}</p>
-    <div class="bubble" style="font-family:var(--f-body);font-size:16px;line-height:1.6">💬 ${r.notes.map(esc).join(' ')}</div>
-  </div>`;
-}
 function mailHTML(r){
   return `<div style="font-family:sans-serif;max-width:560px;line-height:1.6;color:#5B3A4A"><h2 style="color:#EE5F8D">📊 ${esc(reportTitle(r))}</h2>${esc(reportText(r)).split('\n').slice(1).map(l => `<p style="margin:6px 0">${l}</p>`).join('')}<p style="color:#9B7C8B;font-size:13px">재윤이 공부방에서 자동으로 보낸 메일이에요. 자세한 내용은 앱의 엄마·오빠 메뉴에서 볼 수 있어요.</p></div>`;
 }
@@ -74,15 +66,49 @@ function maybeWeeklyReport(){
   sendReportMail(r);
   save();
 }
-let REP_SEL = null;
+/* 11/5 오빠 "주간 리포트 보기 너무 안 좋아. 엄마가 자주 눌러 볼 수 있게 핵심만" →
+   이번 주부터 ◀ ▶로 넘겨 보기, 큰 한 줄 · 요일 동그라미 · 과목별 얼굴 · 칭찬 한 줄 · 챙길 것 한 줄 */
+let REP_W = 0;   // 0 = 이번 주, -1 = 지난주 …
+const REP_FACE = r => r == null ? ['·', '아직 없음', 'none'] : r >= 85 ? ['😀', '잘해요', 'good'] : r >= 70 ? ['🙂', '괜찮아요', 'ok'] : ['😥', '어려워해요', 'hard'];
+function repMinutes(m){ return m >= 60 ? `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ''}` : `${m}분`; }
+function repLines(r, live){
+  const good = [], care = [];
+  const rated = r.subj.filter(x => x.rate != null).sort((a, b) => b.rate - a.rate);
+  if (r.fullDays >= 5) good.push(`하루 공부를 ${r.fullDays}일이나 끝까지 했어요`);
+  if (rated.length && rated[0].rate >= 85) good.push(`${josa(rated[0].name, '을', '를')} 아주 잘해요 (한 번에 정답 ${rated[0].rate}%)`);
+  const moved = r.subj.filter(x => x.passed).map(x => `${x.name} ${x.passed}차시`);
+  if (moved.length) good.push(`새로 배운 것: ${moved.join(' · ')}`);
+  const hard = rated.filter(x => x.rate < 70).pop();
+  if (hard) care.push(`${josa(hard.name, '을', '를')} 조금 어려워해요. 오답노트를 같이 풀어 주세요`);
+  const again = r.subj.find(x => x.failed.length);
+  if (!hard && again) care.push(`${again.name} "${again.failed[0]}" 차시를 다시 연습하는 중이에요`);
+  const past = live ? Math.min(7, Math.round((new Date(todayKey()) - new Date(r.mon)) / 86400000) + 1) : 7;
+  if (r.studied < past - 2) care.push(`${past}일 중 ${r.studied}일만 공부했어요. 공부 시간을 정해 두면 좋아요`);
+  return { good:good[0] || (r.studied ? '꾸준히 하고 있어요' : ''), care:care[0] || '' };
+}
+function reportHTML(r, live){
+  const keys = Array.from({ length:7 }, (_, i) => addDays(r.mon, i)), t = todayKey();
+  const dot = k => { const dy = S.days[k], full = dy && dy.done, part = dy && Object.values(dy.boards || {}).some(b => b && b.done);
+    const st = k > t ? 'future' : full ? 'full' : part ? 'part' : 'none';
+    return `<span class="rep-dot ${st}"><i>${st === 'full' ? '✓' : st === 'part' ? '½' : ''}</i><small>${DOW[new Date(k).getDay()]}</small></span>`; };
+  const L = repLines(r, live), head = r.studied ? `${r.studied}일 공부했어요<small>모두 ${repMinutes(r.mins)} (EBS 강의 포함)</small>` : (live ? '이번 주는 아직 공부 전이에요' : '이 주에는 공부 기록이 없어요');
+  const dict = r.dict.length ? Math.round(r.dict.reduce((a, b) => a + b, 0) / r.dict.length * 10) / 10 : null;
+  return `<div class="report rep2">
+    <div class="rep-big">${r.studied >= 5 ? '🌟' : r.studied >= 3 ? '😊' : r.studied ? '🙂' : '🌙'} ${head}</div>
+    <div class="rep-days">${keys.map(dot).join('')}</div>
+    <div class="rep-subj">${r.subj.map(x => { const f = REP_FACE(x.rate); return `<div class="rep-s ${f[2]}"><b>${x.name}</b><span class="face">${f[0]}</span><span>${f[1]}${x.rate != null ? ` <small>${x.rate}%</small>` : ''}</span></div>`; }).join('')}
+      ${dict != null ? `<div class="rep-s ${dict >= 8 ? 'good' : dict >= 6 ? 'ok' : 'hard'}"><b>받아쓰기</b><span class="face">✏️</span><span>평균 ${dict}점 <small>${r.dict.length}번</small></span></div>` : ''}</div>
+    ${L.good ? `<p class="rep-line good">👍 ${esc(L.good)}</p>` : ''}${L.care ? `<p class="rep-line care">👀 ${esc(L.care)}</p>` : ''}
+  </div>`;
+}
 function reportPanel(){
-  const list = Object.keys(S.reports || {}).sort().reverse();
-  const sel = REP_SEL && S.reports[REP_SEL] ? REP_SEL : list[0];
-  const r = sel ? S.reports[sel] : buildWeekReport(mondayOf(todayKey()));
-  return `<div class="panel"><h3>📊 주간 리포트</h3>
-    ${list.length > 1 ? `<div class="field"><select data-ch="repsel" aria-label="리포트 고르기">${list.map(k => `<option value="${k}" ${k === sel ? 'selected' : ''}>${shortDate(k)} ~ ${shortDate(addDays(k, 6))}</option>`).join('')}</select></div>` : ''}
-    <p class="muted" style="font-size:14px">${sel ? `${shortDate(r.mon)} ~ ${shortDate(r.end)} 리포트` : `아직 지난주 리포트가 없어서 이번 주(${shortDate(r.mon)}~) 지금까지를 보여 드려요. 매주 월요일에 지난주 리포트가 와요.`}</p>
-    ${reportHTML(r)}
-    <button class="btn sky small" data-a="repshare" data-v="${sel || ''}" style="justify-self:start">카톡으로 보내기 · 복사</button>
+  const first = [S.firstDay || todayKey(), ...Object.keys(S.days || {})].sort()[0], minW = Math.min(0, Math.round((new Date(mondayOf(first)) - new Date(mondayOf(todayKey()))) / (7 * 86400000)));
+  REP_W = clamp(REP_W, minW, 0);
+  const mon = addDays(mondayOf(todayKey()), REP_W * 7), r = buildWeekReport(mon), live = REP_W === 0;
+  return `<div class="panel rep-panel"><div class="rep-nav"><button class="icon-btn" data-a="repweek" data-v="-1" ${REP_W <= minW ? 'disabled' : ''} aria-label="지난주">◀</button>
+      <b>${live ? '이번 주' : REP_W === -1 ? '지난주' : `${-REP_W}주 전`} <small>${shortDate(r.mon)}~${shortDate(r.end)}</small></b>
+      <button class="icon-btn" data-a="repweek" data-v="1" ${live ? 'disabled' : ''} aria-label="다음 주">▶</button></div>
+    ${reportHTML(r, live)}
+    <button class="btn ghost small" data-a="repshare" data-v="${mon}" style="justify-self:start">카톡으로 보내기 · 복사</button>
   </div>`;
 }

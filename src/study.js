@@ -272,7 +272,7 @@ function glancePanel(){
   let head, tone;
   if (dy && dy.done) { head = '✅ 오늘 공부를 다 했어요'; tone = 'ok'; }
   else if (started) { head = `✏️ 공부하는 중 (${doneN}/${BOARDS.length}판)`; tone = 'doing'; }
-  else if (al && al.late) { head = `⏰ 아직 시작 안 했어요 (알림 ${al.time})`; tone = 'late'; }
+  else if (al && al.late) { head = `⏰ 아직 시작 안 했어요 (공부 시간 ${al.time})`; tone = 'late'; }
   else { head = '🌙 아직 시작 안 했어요'; tone = 'idle'; }
   const chip = b => { const bo = boards[b.k], st = !bo ? 'todo' : bo.done ? 'done' : 'doing';
     return `<span class="gl-chip ${st}">${st === 'done' ? '✓ ' : st === 'doing' ? '… ' : ''}${b.k === 'eng' ? '영어' : b.name}</span>`; };

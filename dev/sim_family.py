@@ -68,11 +68,11 @@ async def main():
         # 3) 오빠가 선물 이름·칭찬, 엄마가 수학 강의 주소 → 태블릿에 보이나
         await oppa.adult('oppa'); await oppa.p.fill('#gname', '토끼 인형'); await oppa.click('[data-a="savegift"]')
         await oppa.p.fill('#ptext', '재윤아 오늘도 최고였어!'); await oppa.click('[data-a="savepraise"]')
-        await mom.adult('mom'); await mom.p.select_option('#pace', 'slow'); await mom.p.wait_for_timeout(300)
+        await oppa.adult('oppa'); await oppa.p.select_option('#pace', 'slow'); await oppa.p.wait_for_timeout(300)   # 11/5: 진도 설정은 오빠 탭에만
         await asyncio.sleep(2.5)
         g = await kid.ev('S.gift.name'); kid.expect(g == '토끼 인형', f'선물 이름이 태블릿에 안 옴: {g}')
         pc = await kid.ev('S.pace'); kid.expect(pc == 'slow', f'진도 속도가 태블릿에 안 옴: {pc}')
-        await mom.p.select_option('#pace', 'normal'); await asyncio.sleep(2.5)
+        await oppa.p.select_option('#pace', 'normal'); await asyncio.sleep(2.5)
         # 4) 재윤이 하루 공부 (수학 강의 날: 거리 안내 → EBS → 다 봤어요 → 눈 쉬기 → 개념 카드)
         await kid.click('[data-k="math"]'); await kid.p.wait_for_timeout(400); await kid.shot('math_intro')
         kid.expect(await kid.p.locator('.lec-box').count() == 1, '오늘의 강의 안내가 없음')
@@ -143,8 +143,8 @@ async def main():
         kid.expect(await kid.ev("S.notes.length") == nbefore, '오빠 폰 미리보기 알림이 가족에게 감')
         await oppa.ev("S.dayOffset = 0; go('home')")
         # 6-2) 엄마가 진도 옮기기 → 태블릿에 반영
-        await mom.adult('mom'); await mom.p.select_option('#cjump-eng', '1|0|0'); await asyncio.sleep(3)
-        kid.expect(await kid.ev("curr('eng').unit") == 1, '엄마가 옮긴 영어 진도가 태블릿에 안 옴')
+        await oppa.adult('oppa'); await oppa.p.select_option('#cjump-eng', '1|0|0'); await asyncio.sleep(3)   # 11/5: 진도 옮기기는 오빠 탭에만
+        kid.expect(await kid.ev("curr('eng').unit") == 1, '오빠가 옮긴 영어 진도가 태블릿에 안 옴')
         print('미리보기 문제 수:', n, '| 엄마 진도 옮기기 반영:', await kid.ev("currLabel('eng')"))
         # 7) 오빠 화면: 알림·통계, 세 기기 기록이 같은지
         await asyncio.sleep(2)

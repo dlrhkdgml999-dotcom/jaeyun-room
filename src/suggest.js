@@ -136,29 +136,31 @@ function sugQHTML(q, showAns = true){
     ${q.opts && q.opts.length ? `<div class="sug-q-opts">${q.opts.map(o => `<span class="${showAns && o === q.ans ? 'ok' : ''} ${(q.wrongs || []).includes(o) ? 'no' : ''}">${esc(o)}</span>`).join('')}</div>` : ''}
     ${showAns ? `<div class="muted" style="font-size:13px">정답 ${esc(q.ans)}${q.wrongs && q.wrongs.length ? ` · 재윤이가 고른 답 ${q.wrongs.map(esc).join(', ')}` : ''}</div>` : ''}</div>`;
 }
+/* 11/5: 엄마 화면에서는 "오빠" 대신 "아들" */
+const sonWord = who => who === 'mom' ? '아들' : '오빠', sonSubj = who => who === 'mom' ? '아들이' : '오빠가';
 function sugStatusPill(x){
-  const s = Suggest.status(x.id);
+  const s = Suggest.status(x.id), O = sonWord(x.who);
   if (s && s.st === 'done') return `<span class="pill ok">고쳤어요 ✓</span>`;
-  if (s && s.st === 'seen') return `<span class="pill">오빠가 봤어요 👀</span>`;
+  if (s && s.st === 'seen') return `<span class="pill">${sonSubj(x.who)} 봤어요 👀</span>`;
   if (x.pending) return `<span class="pill wait">${linked() ? '보내는 중…' : '이 기기에만 저장'}</span>`;
-  return `<span class="pill wait">오빠한테 갔어요</span>`;
+  return `<span class="pill wait">${O}한테 갔어요</span>`;
 }
 
 /* ---------- 쓰는 화면 ---------- */
 VIEWS.suggest = arg => {
   if (arg && arg.who) sugNew(arg.who, arg.from || 'home', arg.q);
   if (!SUG) sugNew('kid', 'home');
-  const P = SUG, kid = P.who === 'kid', kinds = SUG_KINDS[kid ? 'kid' : 'adult'];
+  const P = SUG, kid = P.who === 'kid', kinds = SUG_KINDS[kid ? 'kid' : 'adult'], O = sonWord(P.who);
   const mine = Suggest.all().filter(x => x.who === P.who).slice(0, 8);
   const can = P.text.trim() || P.imgs.length || P.aud || P.q;
   const isTab = isTabletDev();
   const shotHelp = isTab ? '태블릿 화면 캡처: <b>전원 버튼 + 소리 줄이기 버튼</b>을 같이 꾹 누르면 사진첩에 저장돼요' : '폰 화면 캡처: <b>전원 버튼 + 소리 줄이기 버튼</b>을 같이 누르면 사진첩에 저장돼요';
   app().innerHTML = `<section class="screen sug">
-    <div class="row"><button class="icon-btn" data-a="sugback" aria-label="돌아가기">${ICON.back}</button><h2 style="flex:1">${kid ? '💌 오빠에게 말하기' : '💌 오빠에게 건의하기'}</h2></div>
-    ${P.sent ? `<div class="sug-done">${stageHTML(150, { expr:'love', size:110, cls:'hop' })}<b class="disp">${kid ? '고마워! 오빠한테 보냈어 💌' : '오빠에게 보냈어요 💌'}</b>
-        <span class="muted">${linked() ? (P.sent.ok === false ? '사진이 커서 이 기기에 다 못 담았어요. 앱을 끄기 전에 인터넷을 연결해 주세요.' : '오빠 폰으로 알림이 가요. 오빠가 보면 여기에 표시돼요.') : '체험판이라 이 기기에만 저장했어요.'}</span>
+    <div class="row"><button class="icon-btn" data-a="sugback" aria-label="돌아가기">${ICON.back}</button><h2 style="flex:1">${kid ? '💌 오빠에게 말하기' : P.who === 'oppa' ? '✏️ 오빠 메모' : `💌 ${O}에게 말하기`}</h2></div>
+    ${P.sent ? `<div class="sug-done">${stageHTML(150, { expr:'love', size:110, cls:'hop' })}<b class="disp">${kid ? '고마워! 오빠한테 보냈어 💌' : `${O}에게 보냈어요 💌`}</b>
+        <span class="muted">${linked() ? (P.sent.ok === false ? '사진이 커서 이 기기에 다 못 담았어요. 앱을 끄기 전에 인터넷을 연결해 주세요.' : `${O} 폰 건의함으로 가요. ${sonSubj(P.who)} 보면 여기에 표시돼요.`) : '체험판이라 이 기기에만 저장했어요.'}</span>
         <div class="row" style="justify-content:center;flex-wrap:wrap">${P.from === 'q' ? `<button class="btn big" data-a="sugback">문제로 돌아가기</button>` : `<button class="btn" data-a="sugback">돌아가기</button>`}<button class="btn ghost" data-a="sugagain">하나 더 말하기</button></div></div>`
-    : `${kid ? `<div class="hero" style="min-height:0">${stageHTML(120, { expr:'think', size:92 })}<div class="bubble left">${P.q ? '어떤 게 이상했어? 말로 해도 돼!' : '오빠한테 하고 싶은 말이 있어? 말로 해도 되고, 사진을 보내도 돼!'}</div></div>` : `<p class="muted" style="font-size:15px">불편한 점, 이상한 문제, 있으면 좋겠는 것을 적어 주세요. 화면을 캡처해서 같이 보내면 오빠가 바로 알아볼 수 있어요.</p>`}
+    : `${kid ? `<div class="hero" style="min-height:0">${stageHTML(120, { expr:'think', size:92 })}<div class="bubble left">${P.q ? '어떤 게 이상했어? 말로 해도 돼!' : '오빠한테 하고 싶은 말이 있어? 말로 해도 되고, 사진을 보내도 돼!'}</div></div>` : `<p class="muted" style="font-size:15px">불편한 점, 이상한 문제, 있으면 좋겠는 것을 적어 주세요. 화면을 캡처해서 같이 보내면 ${sonSubj(P.who)} 바로 알아볼 수 있어요.</p>`}
     ${P.q ? `<div class="panel">${sugQHTML(P.q, !kid)}<button class="btn ghost small" data-a="sugdropq" style="justify-self:start">이 문제 빼기</button></div>` : ''}
     <div class="panel"><h3>${kid ? '어떤 이야기야?' : '어떤 내용인가요?'}</h3>
       <div class="sug-kinds">${kinds.map(([k, ic, l]) => `<button class="sug-kind ${P.kind === k ? 'on' : ''}" data-a="sugkind" data-v="${k}"><span class="ic">${ic}</span>${l}</button>`).join('')}</div></div>
@@ -172,9 +174,9 @@ VIEWS.suggest = arg => {
       ${P.imgs.length ? `<div class="sug-thumbs">${P.imgs.map((s, i) => `<div class="sug-thumb"><img src="${s}" alt="올린 사진 ${i + 1}"><button data-a="sugdelimg" data-v="${i}" aria-label="사진 빼기">✕</button></div>`).join('')}</div>` : ''}
       ${P.imgs.length < SUG_MAX_IMG ? `<label class="btn ${P.imgs.length ? 'ghost' : 'sky'} file-btn">${P.imgs.length ? '사진 더 올리기' : '사진첩에서 고르기'}<input type="file" accept="image/*" multiple id="sugImg"></label>` : ''}
       <p class="muted" style="font-size:13px">${shotHelp}. 그다음 여기서 "사진첩에서 고르기"를 눌러요.</p></div>
-    <button class="btn big ${can ? '' : 'off'}" data-a="sugsend" ${can ? '' : 'aria-disabled="true"'}>${kid ? '오빠한테 보내기 💌' : '오빠에게 보내기'}</button>`}
+    <button class="btn big ${can ? '' : 'off'}" data-a="sugsend" ${can ? '' : 'aria-disabled="true"'}>${kid ? '오빠한테 보내기 💌' : `${O}에게 보내기`}</button>`}
     ${mine.length ? `<div class="panel"><h3>${kid ? '내가 보낸 이야기' : '보낸 건의'}</h3><div class="list">${mine.map(x => { const s = Suggest.status(x.id), k = sugKind(x.who, x.kind);
-      return `<div class="li" style="flex-wrap:wrap"><span class="grow" style="flex:1;min-width:60%">${k[1]} ${esc(x.text || (x.q ? '이 문제가 이상해요' : x.aud ? '(목소리)' : x.imgs ? `(사진 ${x.imgs}장)` : ''))}<br><span class="muted" style="font-size:13px">${agoText(x.at)}</span>${s && s.reply ? `<br><span class="sug-reply">🎁 오빠: ${esc(s.reply)}</span>` : ''}</span>${sugStatusPill(x)}</div>`; }).join('')}</div></div>` : ''}
+      return `<div class="li" style="flex-wrap:wrap"><span class="grow" style="flex:1;min-width:60%">${k[1]} ${esc(x.text || (x.q ? '이 문제가 이상해요' : x.aud ? '(목소리)' : x.imgs ? `(사진 ${x.imgs}장)` : ''))}<br><span class="muted" style="font-size:13px">${agoText(x.at)}</span>${s && s.reply ? `<br><span class="sug-reply">🎁 ${O}: ${esc(s.reply)}</span>` : ''}</span>${sugStatusPill(x)}</div>`; }).join('')}</div></div>` : ''}
   </section>`;
   if (!P.sent && kid && arg && arg.who) speak(P.q ? '어떤 게 이상했어? 말로 해도 돼!' : '오빠한테 하고 싶은 말이 있어? 말로 해도 되고, 사진을 보내도 돼!');
 };

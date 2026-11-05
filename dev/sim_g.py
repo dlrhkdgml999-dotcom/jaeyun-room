@@ -25,7 +25,7 @@ async def main():
         await s.ev("S.level={kor:1,math:1,eng:0}; go('home')")
         await p.set_viewport_size({'width': 384, 'height': 832})
         # 엄마가 드롭다운으로 바꾸기
-        await s.adult('mom')
+        await s.adult('oppa')   # 11/5: 진도 방식은 오빠 탭 진도·강의 칸
         for sj in ['math','kor','eng']: await p.select_option(f'#mode-{sj}', 'free'); await p.wait_for_timeout(200)
         await s.adult('set')   # 11/5: 난이도는 설정 탭 → 공부 설정
         await p.select_option('#lv_math', '4'); await p.wait_for_timeout(200)

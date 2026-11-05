@@ -376,6 +376,7 @@ function cheersPanel(who){
     <p class="muted" style="font-size:15px">여러 개 남겨 두면 재윤이가 판을 끝낼 때 가끔 하나씩 무작위로 나와요. "재윤아, 받아쓰기 연습한 거 다 봤어!"처럼 짧게.</p>
     <div class="row" style="justify-content:center;gap:16px"><button class="rec-btn ${RECORDING === recKey ? 'on' : ''}" data-a="rec" data-v="${recKey}">${RECORDING === recKey ? '멈추기' : '녹음'}</button>
       <label class="btn ghost small file-btn">파일 올리기<input type="file" accept="audio/*,.m4a,.mp3" data-ch="audio" data-v="${recKey}"></label></div>
+    ${cheerIdeasHTML(who)}
     <div class="field"><label for="cheertxt_${who}">글로 남기는 응원</label><input type="text" id="cheertxt_${who}" maxlength="60" placeholder="재윤아, 오늘도 화이팅!"></div>
     <button class="btn sky small" data-a="cheertext" data-v="${who}" style="justify-self:start">응원 글 저장</button>
     ${L.length ? `<div class="list">${L.map(c => `<div class="li"><span class="grow">${c.audio ? '🎤 녹음' : '✏️'} ${esc(c.text || '')} <span class="muted" style="font-size:12px">${shortDate(keyOf(new Date(c.at)))}</span></span>${c.audio ? `<button class="btn ghost small" data-a="cheerplay" data-v="${c.id}">듣기</button>` : ''}<button class="btn ghost small" data-a="cheerdel" data-v="${c.id}">지우기</button></div>`).join('')}</div>` : ''}</div>`;
