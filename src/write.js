@@ -58,7 +58,7 @@ function saveWrite(img, skipped){
   d.writes = d.writes || {};
   d.writes[RUN.k] = { lesson:b.cur.lesson, prompt:w.prompt, img:img || null, skipped:!!skipped, at:Date.now() };
   if (!skipped) notify('mom', `✏️ 재윤이가 쓴 글이 왔어요: "${w.prompt}" 엄마 메뉴에서 보고 한마디 남겨 주세요`);
-  else notify('mom', `✏️ 재윤이가 오늘 쓰기("${w.prompt}")를 다음으로 미뤘어요`);
+  else notify('mom', `✏️ 재윤이가 오늘 쓰기("${w.prompt}")를 다음으로 미뤘어요`, 'write');
 }
 /* 엄마 반응을 재윤이 태블릿에서 한 번만 알려 준다 */
 function applyWriteFb(){

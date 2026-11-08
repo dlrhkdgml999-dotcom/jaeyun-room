@@ -1,7 +1,7 @@
 """오답노트 '엄마랑 같이 풀기' + 간단해진 엄마 화면 (2026-10-29)
 - 재윤이가 닷새 공부(정답률 낮게) → 오답노트 → 같이 풀기: 보기 문제 맞힘 → 다음으로, 두 번 틀림 → 정답 보여 주고 다음, 숫자 문제, 엄마 판정(⭕/❌) 문제
 - 맞힌 문제는 "다시 맞혔어요"로 옮겨 가고, 복습 줄(S.wrong)도 같이 바뀌는지, 끝 화면
-- 엄마 탭: 바로가기 4칸, 접힌 칸, 바로가기로 펼치기, 다시 그려도 열린 채, 폰·태블릿 가로 넘침 없음, 할 일(받아쓰기 채점)이 맨 위"""
+- 엄마 탭: 바로가기 3칸(11/9), 접힌 칸, 바로가기로 펼치기, 다시 그려도 열린 채, 폰·태블릿 가로 넘침 없음, 할 일(받아쓰기 채점)이 맨 위"""
 import asyncio, sys
 sys.path.insert(0, '.')
 from harness import Sim
@@ -85,11 +85,11 @@ async def main():
             m = await s.ev("""(() => ({ quick:document.querySelectorAll('.mom-quick .mq').length, folds:[...document.querySelectorAll('details.mom-fold')].map(d => d.dataset.k + (d.open ? '+' : '')),
               panelsOpen:[...document.querySelectorAll('.screen > .panel')].map(x => (x.querySelector('h3')||x).textContent.trim().slice(0, 12)), height:document.documentElement.scrollHeight }))()""")
             print(f'[{tag}] 엄마 탭:', m)
-            s.expect(m['quick'] == 4, '엄마 탭 바로가기 4칸이 아님')
+            s.expect(m['quick'] == 3, '엄마 탭 바로가기 3칸(오답노트·공부 기록·아들에게 말하기)이 아님')   # 11/9 주간 리포트는 접는 칸에만
             s.expect(set(['report', 'prog', 'dict', 'cheer']) <= set(x.rstrip('+') for x in m['folds']), f"접힌 칸이 모자람 {m['folds']}")
             await s.overflow(f'엄마 탭 {tag}'); await s.shot(f'mom_{tag}')
-            await s.click('.mq[data-v="report"]'); await p.wait_for_timeout(300)
-            s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=report]').open"), '주간 리포트 바로가기가 칸을 안 펼침')
+            await s.click('details.mom-fold[data-k="report"] > summary'); await p.wait_for_timeout(300)
+            s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=report]').open"), '주간 리포트 칸이 안 펼쳐짐')
             await s.click('details.mom-fold[data-k="prog"] > summary'); await p.wait_for_timeout(100)
             await s.ev("refreshIfIdle()"); await p.wait_for_timeout(100)
             s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=prog]').open && document.querySelector('details.mom-fold[data-k=report]').open"), '화면을 다시 그리니 열어 둔 칸이 닫힘')

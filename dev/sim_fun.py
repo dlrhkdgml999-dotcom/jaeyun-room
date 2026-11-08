@@ -1,8 +1,8 @@
 """2026-11-04 재미 더하기 (fun.js) — 한 기기
 A) 게임처럼: 한 번에 맞히면 당근·콤보(🔥 n연속), 틀리면 콤보 0, 진행 막대 당근, 판 끝 보상 화면에 최고 콤보·당근·물뿌리개
 B) 단원 평가 = 당근 탑 보스전: 탑·체력 막대가 맞힐 때마다 줄어듦
-C) 매일 깜짝 이벤트: 60일 동안 이틀 연속 같은 이벤트 없음·6가지 다 나옴 / 스티커 2배 / 숨은 황금 당근 3개 → 보너스 / 콤보 5연속 보너스 / 단비 물 2배 / 친구 방문
-D) 토리 텃밭: 심기 → 물 주기(물뿌리개 줄어듦) → 수확 → 바구니 → 토리에게 주기, 새 씨앗 열림, 당근 20개 → 황금 씨앗 → 도감 친구
+C) 매일 깜짝 이벤트: 60일 동안 이틀 연속 같은 이벤트 없음·(11/9) ⭐2배·친구·오빠 퀴즈 셋만 / 스티커 2배 / 숨은 황금 당근 3개 → 보너스 / 콤보 5연속 보너스 / 단비 물 2배 / 친구 방문
+D) 토리 텃밭: 심기 → 물 주기(물뿌리개 줄어듦) → 수확하면 바로 ⭐ (11/9), 새 씨앗 열림, 전에 받은 황금 씨앗 → 도감 친구, 모아 둔 당근·열매 → ⭐ 한 번
 E) 깜짝 응원: 오빠가 남긴 응원이 판 끝 보상 화면에 가끔 나옴
 F) 화면 넘침 (폰)"""
 import asyncio, sys, os, json
@@ -29,7 +29,10 @@ async def main():
         same = [i for i in range(1, 60) if evs[i] == evs[i - 1]]
         print('60일 이벤트:', {e: evs.count(e) for e in set(evs)})
         s.expect(not same, f'이틀 연속 같은 이벤트 {same[:3]}')
-        s.expect(len(set(evs)) >= 5, f'이벤트 종류가 적음 {set(evs)}')   # 친구 방문은 도감 친구가 없으면 스티커 2배로 바뀜
+        # 11/9 보상 하나로 모으기(FUN_LITE): 이벤트는 ⭐ 2배 · 친구 방문 · 오빠 퀴즈 날 셋만 (숨은 당근·콤보 도전·단비 없음)
+        s.expect(set(evs) == {'double', 'quiz'}, f'도감 친구가 없을 때 이벤트 이상 {set(evs)}')
+        evs2 = await s.ev("(() => { const o = S.collect; S.collect = { c05:1 }; EV_MEMO.clear(); const r = Array.from({ length:60 }, (_, i) => dayEvent(addDays('2026-11-04', i)).id); S.collect = o; EV_MEMO.clear(); return r; })()")
+        s.expect(set(evs2) == {'double', 'quiz', 'friend'} and not [i for i in range(1, 60) if evs2[i] == evs2[i - 1]], f'친구가 있을 때 이벤트 이상 {set(evs2)}')
         # ---------- A) 콤보 · 당근 ----------
         await s.ev("window.__ev = 'combo'")
         await s.ev("go('home')"); await p.wait_for_timeout(100)
@@ -62,7 +65,7 @@ async def main():
         print('보상 화면:', rw.replace('\n', ' ')[:160])
         s.expect('연속' in rw and '당근' in rw and '물뿌리개' in rw, '보상 화면에 콤보·당근·물뿌리개 없음')
         g = await s.ev("({cans:S.garden.cans, car:S.garden.carrots})"); print('텃밭:', g)
-        s.expect(g['cans'] == 1 and g['car'] >= 5, f'판 끝 물뿌리개·당근 이상 {g}')
+        s.expect(g['cans'] == 1 and not g['car'], f'판 끝 물뿌리개 이상 / 당근이 따로 쌓임(11/9부터 안 쌓임) {g}')
         # ---------- C) 스티커 2배 · 단비 ----------
         await s.ev("window.__ev = 'double'"); st0 = await s.ev("S.stickers.length")
         await open_board(s, 'kor')
@@ -103,10 +106,10 @@ async def main():
         for _ in range(3): await s.click('[data-a="plot"][data-v="0"]'); await p.wait_for_timeout(120)
         s.expect(await s.ev("plotStage(S.garden.plots[0])") == 'ready', '물 3번 줬는데 당근이 안 자람')
         s.expect(await s.ev("S.garden.cans") == 9, '물뿌리개가 안 줄어듦')
+        st1 = await s.ev("S.stickers.length")
         await s.click('[data-a="plot"][data-v="0"]'); await p.wait_for_timeout(150)
-        s.expect(await s.ev("S.garden.basket.carrot") == 1 and await s.ev("S.garden.plots[0]") is None, '수확이 안 됨')
-        await s.click('[data-a="feed"][data-v="carrot"]'); await p.wait_for_timeout(150)
-        s.expect(await s.ev("S.garden.fed") == 1 and await s.ev("S.garden.basket.carrot") == 0, '토리에게 주기가 안 됨')
+        s.expect(await s.ev("S.stickers.length") == st1 + 1 and await s.ev("S.garden.plots[0]") is None, '수확하면 바로 ⭐가 안 나옴 (11/9 바구니 단계 없앰)')
+        s.expect(await p.locator('[data-a="feed"]').count() == 0 and await p.locator('[data-a="goldseed"]').count() == 0, '없앤 바구니·황금 씨앗 버튼이 남아 있음')
         # 두 번째 수확 → 딸기 씨앗 열림
         await s.ev("S.garden.plots[1] = { s:'carrot', w:3, at:todayKey() }; save(); VIEWS.garden()"); await s.click('[data-a="plot"][data-v="1"]'); await p.wait_for_timeout(120)
         await s.click('[data-a="plot"][data-v="1"]'); await p.wait_for_timeout(120)
@@ -114,14 +117,19 @@ async def main():
         await s.click('[data-a="plantcancel"]')
         # 황금 씨앗 → 도감 친구
         own0 = await s.ev("Object.keys(S.collect).length")
-        await s.click('[data-a="goldseed"]'); await p.wait_for_timeout(120)
-        s.expect(await s.ev("S.garden.gold") == 1 and await s.ev("S.garden.carrots") == 0, '황금 씨앗 바꾸기 안 됨')
+        await s.ev("S.garden.gold = 1; save(); VIEWS.garden()")   # 11/9 전에 바꿔 둔 황금 씨앗은 그대로 심을 수 있음
         await s.click('[data-a="plot"][data-v="2"]'); await s.click('[data-a="plant"][data-v="gold"]'); await p.wait_for_timeout(100)
         await s.ev("S.garden.cans = 6; save(); VIEWS.garden()")
         for _ in range(6): await s.click('[data-a="plot"][data-v="2"]'); await p.wait_for_timeout(80)
         await s.click('[data-a="plot"][data-v="2"]'); await p.wait_for_timeout(150)
         s.expect(await s.ev("Object.keys(S.collect).length") == own0 + 1, '황금 씨앗 수확했는데 도감 친구가 안 늘어남')
         await s.shot('fun_garden')
+        # 11/9 예전에 모아 둔 당근 45개(⭐2) + 바구니 열매 3개(⭐3) → 별 5개로 한 번만
+        st2 = await s.ev("S.stickers.length")
+        await s.ev("Object.assign(S.garden, { lite:0, carrots:45, basket:{ carrot:2, straw:1 } }); save(); go('home')"); await p.wait_for_timeout(150)
+        await s.ev("go('home')"); await p.wait_for_timeout(100)
+        mg = await s.ev("({ st:S.stickers.length, car:S.garden.carrots, bas:Object.keys(S.garden.basket).length, lite:S.garden.lite })"); print('별로 바꾸기:', mg, '(전', st2, ')')
+        s.expect(mg['st'] == st2 + 5 and not mg['car'] and not mg['bas'] and mg['lite'], f'당근·열매 → 별 바꾸기 이상 {mg}')
         # ---------- E) 깜짝 응원 ----------
         await s.adult('oppa')
         await p.fill('#cheertxt_oppa', '재윤아 받아쓰기 연습한 거 다 봤어!'); await s.click('[data-a="cheertext"][data-v="oppa"]'); await p.wait_for_timeout(150)

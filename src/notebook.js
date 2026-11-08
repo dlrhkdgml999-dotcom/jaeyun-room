@@ -23,7 +23,10 @@ function notebookItems(){
 }
 /* 듣기 문제·받아쓰기는 문제 글에 정답이 들어 있어서, 화면에는 "🔊 듣기"로 가리고 버튼을 누르면 읽어 준다 */
 function noteListen(x){ if (x.subj === 'dict') return x.a; const m = String(x.t).match(/🔊 ([^·\[]+)/); return m ? m[1].trim() : ''; }
-function noteShow(x){ return x.subj === 'dict' ? '받아쓰기 · 🔊 들어 보고 써 보기' : String(x.t).replace(/🔊 [^·\[]+/, '🔊 듣기 '); }
+/* 11/9 기록 형식("· 🔊 … · [보기 …]")이 재윤이 화면에 그대로 보이던 것 → 문제 글만, 보기는 따로 칩으로 */
+function noteShow(x){ if (x.subj === 'dict') return '받아쓰기 · 들어 보고 써 보기';
+  return String(x.t).replace(/^🔭\s*/, '').replace(/\s*·?\s*🔊 [^·\[]+/, '').replace(/\s*·?\s*\[보기[^\]]*\]/g, '').replace(/\s*·\s*$/, '').trim(); }
+function noteOpts(x){ const m = String(x.t).match(/\[보기 ([^\]]*)\]/); return m ? m[1].split(' · ').filter(Boolean) : []; }
 /* 같이 풀기에서 푼 기록: 그날 d.nb = [[문제, 정답, 재윤이 답, 결과 1·0, 과목]] (공부 시간·정답률 통계에는 안 들어감) */
 function nbLogs(k){ const dy = S.days[k]; return ((dy && dy.nb) || []).map(x => ({ k, board:'nb', t:x[0], a:x[1], w:x[2], r:x[3], subj:x[4] })); }
 /* 오답노트 한 장 → 원래 문제(보기·그림 포함). 복습 줄(S.wrong)에 남아 있는 것만 원래 모양을 알 수 있다 */
@@ -48,7 +51,7 @@ VIEWS.notebook = (o) => {
     const times = x.miss ? `${x.miss}번 틀림` : '힌트 보고 맞힘';
     html += `<div class="nb-card ${x.fixed ? 'fixed' : ''}">
       <div class="nb-top"><span class="nb-subj s-${x.subj}">${sn}</span><span class="muted">${times}${x.miss && x.hint ? ` · 힌트 ${x.hint}번` : ''}</span><span class="spacer"></span></div>
-      <div class="nb-q"><span>${esc(noteShow(x))}</span><button class="speak-btn" data-a="nbsay" data-i="${i}" aria-label="문제 읽어 주기">${ICON.speak}</button></div>
+      <div class="nb-q"><span>${esc(noteShow(x))}${noteListen(x) && x.subj !== 'dict' ? ' <small class="nb-listen">🔊 소리를 듣고 풀어요</small>' : ''}${noteOpts(x).length ? `<span class="nb-opts">${noteOpts(x).map(o => `<i>${esc(o)}</i>`).join('')}</span>` : ''}</span><button class="speak-btn" data-a="nbsay" data-i="${i}" aria-label="문제 읽어 주기">${ICON.speak}</button></div>
       ${open ? `<div class="nb-a">정답 <b>${esc(x.a)}</b>${x.wrongs.length ? `<span class="nb-w">재윤이 답 ${x.wrongs.slice(0, 3).map(w => `<s>${esc(w)}</s>`).join(' ')}</span>` : ''}</div>`
         : `<button class="btn ghost small nb-show" data-a="nbopen" data-i="${i}">정답 보기</button>`}
     </div>`;
@@ -100,7 +103,7 @@ function nbRecord(x, ok, w){
 /* 같이 풀기에서 재윤이가 답을 넣는 모양 (10/30). 원래 문제(S.wrong)는 바꾸지 않고 얕은 복사본을 쓴다 */
 function nbInputQ(x){
   const a = String(x.a), pen = penMode();
-  const shown = String(noteShow(x)).replace(/\s*·?\s*\[보기[^\]]*\]/g, '').replace(/\s*·\s*$/, '').trim();
+  const shown = noteShow(x) + (noteListen(x) && x.subj !== 'dict' ? ' 🔊' : '');
   if (x.subj === 'dict') return { input: pen ? 'pen' : 'mom', prompt: pen ? '잘 듣고 펜으로 써 봐요' : '불러 주는 낱말을 써 봐요' };
   const o = nbQ(x);
   if (o && ['choice', 'numpad', 'build'].includes(o.input) && (o.input !== 'choice' || (o.opts || []).map(String).includes(a))) return Object.assign({}, o, { orig:o });

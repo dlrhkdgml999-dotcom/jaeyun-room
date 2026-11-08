@@ -4,7 +4,8 @@ B) 주간 리포트: 이번 주 ◀ 지난주 넘기기, 큰 한 줄 · 요일 �
 C) 재윤이 진도: 과목마다 게이지(학기 칸 · 🐰 자리 · %), 진도를 옮기면 %·토끼가 따라감, 진도 옮기기 같은 오빠용 칸은 엄마 칸에 없음
 D) 받아쓰기: 채점 끝난 건 "11/4 받아쓰기 · 채점 완료 n/10점" 한 줄, 누르면 펼쳐지고 다시 누르면 접힘 / 채점할 것은 위 할 일에만
 E) 깜짝 응원 멘트 추천: 누르면 칸에 들어가고 저장하면 응원 목록에
-F) 오빠 탭 바로가기 6칸(재윤이 문제 포함) → 누르면 문제 칸이 열림 (풀 문제가 있을 때 · 없을 때)
+H) (11/9) 확인할 일 카드: EBS 못 엶·선물 적음 → 엄마·오빠 탭 위, ✓ 확인
+F) 오빠 탭 바로가기 2칸(오답노트·공부 기록) + 접는 칸 중복 없음, 재윤이 문제 칸 열기 (풀 문제가 있을 때 · 없을 때) — 11/9
 G) 엄마 폰 맨 위 연결 줄에 기술 글자(가족방·앱 버전) 없음 — sim_kq 쪽 가족 연결은 sim_family가 봄, 여기선 함수로 확인
 폰·태블릿 가로에서 가로 넘침 없음, 캡처: out/shots3/mom2_*.png"""
 import asyncio, sys, os, re
@@ -17,7 +18,7 @@ async def main():
         p = s.p
         await s.click('[data-a="start"]'); await s.ev(FAST)
         # 9일 공부 (지난주 · 이번 주 걸치게), 받아쓰기 채점 몇 개
-        await s.ev("S.dayOffset = -9; saveLocal(); go('home')")
+        await s.ev("S.dayOffset = -8; saveLocal(); go('home')")   # 11/9: 오늘까지 (월요일엔 이번 주가 비어서 리포트 검사가 늘 실패했음)
         for d in range(9):
             log = await p.evaluate(f"({DAY})(0.88)")
             if log['errs']: s.issues.append(('공부 오류', d, log['errs'][:2]))
@@ -37,7 +38,7 @@ async def main():
                 s.expect('아들에게' in txt and '오빠' not in txt, '엄마 건의 화면에 "오빠"가 남아 있음')
                 await s.ev("SUG = null; go('adult')"); await p.wait_for_timeout(150)
             # ---- B 주간 리포트
-            await s.click('.mq[data-v="report"]'); await p.wait_for_timeout(250)
+            await s.click('details.mom-fold[data-k="report"] summary'); await p.wait_for_timeout(250)   # 11/9 바로가기 중복 없앰 → 접는 칸에서 열기
             rep = await s.ev("""(() => { const r = document.querySelector('.rep-panel'); return { nav:r.querySelector('.rep-nav b').innerText, big:r.querySelector('.rep-big').innerText,
               dots:[...r.querySelectorAll('.rep-dot')].map(d => d.className.replace('rep-dot ', '')), subj:[...r.querySelectorAll('.rep-s')].map(x => x.innerText.replace(/\\n/g, ' ')), lines:[...r.querySelectorAll('.rep-line')].map(x => x.innerText), h:r.getBoundingClientRect().height }; })()""")
             print(f'  리포트:', rep)
@@ -88,19 +89,32 @@ async def main():
             await s.overflow(f'엄마 탭 펼침 {tag}'); await s.shot(f'mom2_mom_{tag}')
             # ---- F 오빠 탭
             await s.ev("MOM_OPEN.clear()"); await s.click('[data-a="atab"][data-v="oppa"]'); await p.wait_for_timeout(200)
+            # 11/9: 바로가기는 따로 열리는 화면(오답노트·공부 기록)만, 나머지는 "더 보기" 칸 하나씩 (같은 메뉴가 두 번 나오지 않게)
             t6 = await s.ev("[...document.querySelectorAll('.mom-quick .mq b')].map(x => x.textContent)"); print('  오빠 바로가기:', t6)
-            s.expect(len(t6) == 6 and '재윤이 문제' in t6, f'오빠 바로가기에 재윤이 문제가 없음 {t6}')
-            await s.click('.mq[data-v="kq"]'); await p.wait_for_timeout(300)
-            s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=kq]').open"), '재윤이 문제 바로가기가 칸을 안 엶')
+            s.expect(t6 == ['오답노트', '공부 기록'], f'오빠 바로가기 이상 {t6}')
+            folds = await s.ev("[...document.querySelectorAll('details.mom-fold')].map(d => d.dataset.k)"); print('  오빠 접는 칸:', folds)
+            s.expect(len(folds) == len(set(folds)) and {'report', 'sug', 'kq', 'play'} <= set(folds), f'오빠 접는 칸 이상 {folds}')
+            await s.click('details.mom-fold[data-k="kq"] summary'); await p.wait_for_timeout(300)
+            s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=kq]').open"), '재윤이 문제 칸이 안 열림')
             await s.overflow(f'오빠 탭 {tag}'); await s.ev("scrollTo(0,0)"); await p.screenshot(path=f'out/shots3/mom2_oppatop_{tag}.png')
         # 풀 문제가 있을 때: 위에 문제 칸, 바로가기는 그 칸으로
         await p.set_viewport_size({'width': 384, 'height': 832})
         await s.ev("go('kq')"); await s.click('[data-a="kqtype"][data-v="riddle"]'); await p.fill('#kqText', '나는 누구일까요?'); await p.fill('#kqAns', '토리'); await s.click('[data-a="kqsend"]'); await p.wait_for_timeout(300)
         await s.adult('oppa'); await s.ev("MOM_OPEN.clear(); go('adult')"); await p.wait_for_timeout(150)
-        sub = await s.ev("document.querySelector('.mq[data-v=kq] small').textContent"); s.expect('풀 문제 1' in sub, f'바로가기에 풀 문제 수가 없음 {sub}')
         s.expect(await p.locator('.kq-box [id^="kqg_"]').count() == 1, '풀 문제가 오빠 탭 위에 없음')
-        await s.ev("scrollTo(0, 0)"); await s.click('.mq[data-v="kq"]'); await p.wait_for_timeout(500)
-        s.expect(await s.ev("Math.abs(document.querySelector('.kq-box').getBoundingClientRect().top) < 120"), '풀 문제가 있을 때 바로가기가 문제 칸으로 안 감')
+        s.expect(await s.ev("document.querySelector('.kq-box').getBoundingClientRect().top < 900"), '풀 문제가 오빠 탭 첫 화면 근처에 없음')
+        # H (11/9) 알림함을 없앤 뒤 갈 곳 없던 "확인할 일" → 엄마·오빠 탭 위 카드, ✓ 확인하면 사라짐, 예전 글(act 없음)도 글로 알아봄
+        await s.ev("notify('mom', '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿에 EBS 초등 앱이 깔려 있고 로그인돼 있는지 확인해 주세요', 'ebs'); S.notes.unshift({ to:'oppa', text:'🎁 재윤이가 30일 선물로 \"토끼 인형\"을 적었어요', at:Date.now(), d:todayKey() }); notify('mom', '재윤이가 오늘 공부를 시작했어요'); save()")
+        await s.adult('mom'); await s.ev("go('adult')"); await p.wait_for_timeout(150)
+        td = await s.ev("[...document.querySelectorAll('.note-todo .li')].map(x => x.innerText.replace(/\\s+/g, ' '))"); print('H 엄마 확인할 일:', td)
+        s.expect(any('EBS' in x for x in td) and not any('시작했어요' in x for x in td), f'엄마 탭 확인할 일 이상 {td}')
+        s.expect(await s.ev("document.querySelector('.note-todo').getBoundingClientRect().top < 832"), '확인할 일이 첫 화면에 없음')
+        n0 = len(td); await s.click('.note-todo [data-a="notedone"]'); await p.wait_for_timeout(150)
+        s.expect(await p.locator('.note-todo .li').count() == n0 - 1, '✓ 확인을 눌러도 안 사라짐')
+        await s.adult('oppa'); await s.ev("go('adult')"); await p.wait_for_timeout(150)
+        td2 = await s.ev("[...document.querySelectorAll('.note-todo .li')].map(x => x.innerText.replace(/\\s+/g, ' '))"); print("H 오빠 확인할 일:", td2)
+        s.expect(any('토끼 인형' in x for x in td2), f'오빠 탭 확인할 일 이상(선물) {td2}')
+        await s.overflow('확인할 일 (폰)')
         # G 엄마 폰 연결 줄: 기술 글자 없음 (가짜로 엄마 역할 + 태블릿 소식)
         g = await s.ev("""(() => { const o = { l:S.local, r:Sync.ready, k:Sync.kid, last:Sync.last }; Sync.last = { s:{ stickers:JSON.stringify(S.stickers) }, days:{} }; S.local = { fid:'testfamilytestfamily22', role:'mom' }; Sync.ready = true; Sync.kid = { at:Date.now(), ver:'20261105150000', via:'rest' };
             const a = syncAlert(); S.local = Object.assign({}, o.l, { role:'oppa', fid:'testfamilytestfamily22' }); const b = syncAlert(); S.local = o.l; Sync.ready = o.r; Sync.kid = o.k; Sync.last = o.last; return [a, b]; })()""")

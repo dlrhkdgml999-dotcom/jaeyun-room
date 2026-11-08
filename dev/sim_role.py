@@ -64,7 +64,7 @@ async def main():
           const ids = new Set(wrongLogs.map(x => x.subj + '|' + x.t + '|' + x.a));
           return { screen:SCREEN, items:items.length, uniq:ids.size, todo:items.filter(x => !x.fixed).length, cards:document.querySelectorAll('.nb-card').length,
             answersShown:document.querySelectorAll('.nb-a').length, showBtns:document.querySelectorAll('[data-a=nbopen]').length,
-            leak:[...document.querySelectorAll('.nb-card')].filter((c, i) => { const x = VIEWS.notebook.list[i]; const ls = noteListen(x); return ls && ls === x.a && c.querySelector('.nb-q').textContent.replace(/\[보기[^\]]*\]/g, '').includes(ls); }).length }; })()""")
+            leak:[...document.querySelectorAll('.nb-card')].filter((c, i) => { const x = VIEWS.notebook.list[i]; const ls = noteListen(x); return ls && ls === x.a && (() => { const q = c.querySelector('.nb-q').cloneNode(true); q.querySelectorAll('.nb-opts').forEach(o => o.remove()); return q.textContent; })().replace(/\[보기[^\]]*\]/g, '').includes(ls)   /* 11/9 보기는 칩(.nb-opts)으로 — 보기에 정답이 있는 건 당연 */; }).length }; })()""")
         print('N1 오답노트:', nb)
         tab.expect(nb['screen'] == 'notebook', 'N1: 첫 화면에서 오답노트가 안 열림')
         tab.expect(nb['items'] == nb['uniq'] and nb['items'] > 0, f"N1: 오답노트 문제 수({nb['items']})가 기록의 틀린 문제({nb['uniq']})와 다름")

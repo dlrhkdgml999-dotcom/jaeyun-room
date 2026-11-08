@@ -877,3 +877,17 @@ section.screen{position:relative}
 .cheer-ideas{display:flex;flex-wrap:wrap;gap:6px}.cheer-ideas>span{width:100%}
 .cheer-ideas .chip{padding:7px 11px;border-radius:999px;background:var(--pink-pale);font-size:14px;text-align:left}
 .cheer-ideas .chip:active{transform:translateY(1px)}
+
+/* 11/9 오답노트 보기 칩 */
+.nb-q .nb-opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.nb-q .nb-opts i{font-style:normal;background:#fff;border:2px solid var(--pink-pale);border-radius:12px;padding:4px 12px;font-size:17px}
+.nb-q .nb-listen{display:block;color:var(--ink-soft);font-size:14px;margin-top:4px}
+.note-todo .li{align-items:center}
+/* 11/9 판 시작 화면: 태블릿 가로(높이 800)에서 시작 버튼이 화면 밖(869px)으로 밀리던 것 → 토리를 버튼 옆으로, 버튼은 늘 화면 안 */
+.intro-go{display:flex;flex-direction:column;align-items:center;gap:8px;align-self:stretch}
+.intro-go .btn{position:sticky;bottom:12px;align-self:stretch}
+@media (orientation:landscape) and (max-height:900px){
+  .intro-go{flex-direction:row;gap:18px}.intro-go .stage{flex:none;height:100px!important;width:120px;overflow:visible}.intro-go .stage svg{width:84px;height:auto}.intro-go .btn{flex:1}
+}
+.unit-card.slim{padding-top:10px;padding-bottom:10px}.unit-card.course-line{display:flex;align-items:center;gap:10px;padding:12px 18px}.unit-card.course-line.next{opacity:.7}
+/* 11/9 엄마 탭 바로가기 3칸 */
+.mom-quick.three{grid-template-columns:repeat(3,1fr);gap:8px}.mom-quick.three .mq{padding:12px 8px}.mom-quick.three .mq .ic{font-size:26px}.mom-quick.three .mq b{font-size:16px}.mom-quick.three .mq small{font-size:12px}

@@ -487,7 +487,7 @@ function boardState(k, d = day()){
 function nextBoard(d = day()){ return orderedBoards(d).find(b => boardState(b.k, d) !== 'done'); }
 
 /* ---------- 알림(체험판에선 화면 안 알림함) ---------- */
-function notify(to, text){ const n = { to, text, at:Date.now(), d:todayKey() }; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); if (USE_FCM) Relay.send(n); } S.notes.unshift(n); trimNotes(); }
+function notify(to, text, act){ const n = { to, text, at:Date.now(), d:todayKey() }; if (act) n.act = act; if (!(linked() && role() !== 'kid' && SCREEN !== 'adult')) { Sync.addNote(n); if (USE_FCM) Relay.send(n); } S.notes.unshift(n); trimNotes(); }
 function trimNotes(){ const cnt = {}; S.notes = S.notes.filter(x => (cnt[x.to] = (cnt[x.to] || 0) + 1) <= 60); }
 /* 11/5 오빠: 태블릿 "공부할 시간!" 안내(엄마 목소리 #2)도 알림이라 없앰 → 늘 null (S.alarms 값은 남아 있어도 안 씀) */
 function alarmInfo(){
@@ -608,6 +608,7 @@ VIEWS.home = () => {
   const g = S.gift, gd = giftDays().length, won = giftAch();
   /* 11/4 첫 화면 간단하게 (오빠: "재윤이 화면이 너무 복잡해"): 토리 → 오늘 할 공부 4개 → 선물 한 줄 → 놀거리 아이콘 한 줄.
      알림(엄마 한마디·오빠 답장·캡슐 등)은 한 번에 하나만, 날짜·진도 지도·스티커 막대·바탕화면 놓기는 첫 화면에서 뺌 */
+  if (typeof funLiteMigrate === 'function') funLiteMigrate();
   const gs = gardenState(), gReady = gs.plots.filter(p => plotStage(p) === 'ready').length;
   const tile = (cls, act, v, ic, name, dot) => `<button class="nav-tile ${cls}" data-a="${act}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><span class="nm">${name}</span>${dot ? `<span class="dot">${dot}</span>` : ''}</button>`;
   app().innerHTML = `<section class="screen home">
@@ -696,8 +697,8 @@ VIEWS.intro = k => {
     ${Object.values(day().boards).filter(x => x.intro || x.done).length <= 1 && !resume ? `<p class="eye-tip">👀 태블릿은 팔 길이만큼 떨어뜨리고, 허리 펴고 앉아요!</p>` : ''}
     ${b.cur ? lessonIntroHTML(b) : b.waitLec ? waitLecHTML(k) : ''}
     <p class="muted">${k === 'eng' ? `영어 ${b.qs.length}문제 + 받아쓰기 10개` : k === 'rev' ? (dueCnt ? `전에 틀린 문제 ${dueCnt}개를 다시 풀어요` : `여러 과목을 골고루 ${b.qs.length}문제 풀어요`) : `${b.qs.length}문제`}</p>
-    ${stageHTML(160, { expr:'happy', size:120 })}
-    <button class="btn big" data-a="begin">${resume ? '이어서 하기' : b.cur && !b.cur.test && !b.cardsSeen ? (boardHasLecture(b) && !b.lecSkip ? '📺 강의 보러 가기' : '개념 배우러 가기') : '시작!'}</button>
+    <div class="intro-go">${stageHTML(160, { expr:'happy', size:120 })}
+    <button class="btn big" data-a="begin">${resume ? '이어서 하기' : b.cur && !b.cur.test && !b.cardsSeen ? (boardHasLecture(b) && !b.lecSkip ? '📺 강의 보러 가기' : '개념 배우러 가기') : '시작!'}</button></div>
   </section>`;
   if (!resume && !b.intro) {
     b.intro = true; save();
@@ -1023,7 +1024,7 @@ VIEWS.gift = () => {
       <div class="field"><input type="text" id="giftWishIn" maxlength="30" value="${esc(g.name || '')}" placeholder="예: 토끼 인형, 색연필 세트"></div>
       <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" data-a="giftwishsave">이걸로 할래! 🎁</button><button class="btn ghost small" data-a="giftwishcancel">안 바꿀래</button></div>
       <p class="muted" style="font-size:14px">적으면 오빠 폰으로 알려 줘요. ${g.goal}일을 다 하기 전까지는 언제든 고칠 수 있어요.</p></div>` : ''}
-    <p class="disp" style="font-size:20px;text-align:center">${giftAch() ? `${g.goal}일 모두 성공!` : `${n}일 했어! ${g.goal - n}일만 더 하면 선물!`}</p>
+    <p class="disp" style="font-size:20px;text-align:center">${giftAch() ? `${g.goal}일 모두 성공!` : `다 한 날 ${n}일! ${g.goal - n}일만 더 하면 선물!`}</p>
     <div class="gpath">${path}</div>
     <p class="muted" style="text-align:center;font-size:15px">4판을 다 한 날마다 발바닥 도장이 하나씩 찍혀요.<br>하루 쉬어도 괜찮아. 다음 날 이어서 하면 돼!</p>
   </section>`;
@@ -1035,12 +1036,12 @@ let CAL = null;
 VIEWS.cal = () => {
   const t = now(); if (!CAL) CAL = { y:t.getFullYear(), m:t.getMonth() };
   const first = new Date(CAL.y, CAL.m, 1), last = new Date(CAL.y, CAL.m + 1, 0).getDate();
-  let cells = '', full = 0;
+  let cells = '', full = 0, half = 0;
   for (let i = 0; i < first.getDay(); i++) cells += '<span class="d blank"></span>';
   for (let dd = 1; dd <= last; dd++) {
     const k = keyOf(new Date(CAL.y, CAL.m, dd)), dy = S.days[k];
     const cnt = dy ? BOARDS.filter(b => dy.boards[b.k] && dy.boards[b.k].done).length : 0;
-    if (dy && dy.done) full++;
+    if (dy && dy.done) full++; else if (cnt) half++;
     cells += `<span class="d ${k === todayKey() ? 'today' : ''} ${cnt && !(dy && dy.done) ? 'half' : ''}">${cnt ? `<span class="stamp">${ICON.paw}</span>` : ''}<span style="position:relative">${dd}</span></span>`;
   }
   app().innerHTML = `<section class="screen">
@@ -1048,7 +1049,7 @@ VIEWS.cal = () => {
     <div class="row" style="justify-content:center;gap:18px"><button class="icon-btn" data-a="calmove" data-v="-1" aria-label="지난달">${ICON.back}</button><span class="disp" style="font-size:24px">${CAL.y}년 ${CAL.m + 1}월</span><button class="icon-btn" data-a="calmove" data-v="1" aria-label="다음 달" style="transform:scaleX(-1)">${ICON.back}</button></div>
     <div class="cal">${DOW.map(x => `<span class="dow">${x}</span>`).join('')}${cells}</div>
     <div class="legend"><span>진한 발바닥: 다 했어요</span><span>연한 발바닥: 조금 했어요</span></div>
-    <div class="bubble" style="text-align:center">이번 달에 ${full}일 동안 공부를 다 했어!</div>
+    <div class="bubble" style="text-align:center">이번 달에 다 한 날 <b>${full}일</b>${half ? ` · 조금 한 날 ${half}일` : ''}! 🐾<br><span class="muted" style="font-size:15px">오빠 선물은 다 한 날(진한 발바닥)만 세요</span></div>
   </section>`;
 };
 
@@ -1206,6 +1207,16 @@ function studySetPanels(){
         <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
 <div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
         <p class="muted" style="font-size:13px">강의를 볼 때는 "팔 길이만큼 떨어져서 보기" 안내가 먼저 나와요.</p></div>`; }
+/* 11/9 알림함을 없앤 뒤 갈 곳이 없던 "확인이 필요한 소식"(EBS 못 엶·강의 확인·다른 강의·선물 적음·쓰기 미룸)
+   → 엄마·오빠 탭 "할 일"에 카드로. ✓ 확인은 이 폰에만 기억(localStorage jaeyun-notedone). 7일 지나면 저절로 안 보임 */
+const NOTE_ACT_RX = [['ebs', /EBS 강의를 열지 못했어요/], ['lec', /봤는지 잘 모르겠대요|강 대신 \d+강을 봤어요/], ['gift', /선물로 ".*"[을를] (골랐어요|적었어요)/], ['write', /쓰기\(".*"\)를 다음으로 미뤘어요/]];
+const noteKey = n => n.id || `${n.to}|${n.at}|${String(n.text || '').slice(0, 12)}`;
+const noteAct = n => n.act || (NOTE_ACT_RX.find(([, rx]) => rx.test(n.text || '')) || [])[0];
+function noteDoneSet(){ try { return new Set(JSON.parse(localStorage.getItem('jaeyun-notedone') || '[]')); } catch (e) { return new Set(); } }
+function todoNotes(to){ const done = noteDoneSet(), lim = Date.now() - 7 * 86400000;
+  return S.notes.filter(n => n.to === to && n.at > lim && noteAct(n) && !done.has(noteKey(n))).slice(0, 6); }
+function noteTodoPanel(to){ const L = todoNotes(to); if (!L.length) return '';
+  return `<div class="panel note-todo"><h3>확인할 일 <span class="pill wait">${L.length}</span></h3><div class="list">${L.map(n => `<div class="li"><span class="grow">${esc(n.text)}<br><span class="muted" style="font-size:13px">${agoText(n.at)}</span></span><button class="btn ghost small" data-a="notedone" data-v="${esc(noteKey(n))}">✓ 확인</button></div>`).join('')}</div></div>`; }
 function adultTabs(){ const r = linked() ? role() : 'all'; return r === 'mom' ? ['mom','set'] : r === 'oppa' ? ['oppa','mom','set'] : ['mom','oppa','set']; }
 VIEWS.adult = () => {
   if (!adultTabs().includes(S.adultTab)) S.adultTab = adultTabs()[0];
@@ -1221,9 +1232,9 @@ VIEWS.adult = () => {
     const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
     const writesTodo = Object.entries(S.days).some(([dk, dy]) => Object.entries(dy.writes || {}).some(([k, w]) => w && w.img && !(S.writeFb || {})[`${dk}|${k}`]));
     const dictTodo = pend.filter(([k]) => !gradeOf(k).graded), dictDone = pend.length - dictTodo.length, oppaHere = role() === 'oppa';
-    body = glancePanel()
+    body = glancePanel() + noteTodoPanel('mom')
       + (gradeTodo ? dictGradePanel(dictTodo) : '') + (writesTodo ? writesPanel(true) : '') + (kqTodo ? kqPanel() : '')
-      + quickTiles([tNb, tStudy, tRep, ['sug', oppaHere ? 'oppa' : 'mom', '💌', oppaHere ? '오빠 메모' : '아들에게 말하기', '불편한 점 · 캡처']])
+      + quickTiles([tNb, tStudy, ['sug', oppaHere ? 'oppa' : 'mom', '💌', oppaHere ? '오빠 메모' : '아들에게 말하기', '불편한 점 · 캡처']], 'three')
       + moreHead()
       + momFold('report', '📊 주간 리포트', reportPanel())
       + momFold('prog', `📚 재윤이 진도 <small>${pctLine}</small>`, progressPanel())
@@ -1234,15 +1245,16 @@ VIEWS.adult = () => {
     const fresh = Suggest.all().filter(x => !Suggest.status(x.id) && x.who !== 'oppa').length, g = S.gift, kqN = kqAll().filter(x => !kqAns(x.id)).length;
     if (fresh) SUG_VIEW.top = true;   // 새 건의를 위에서 처리하는 동안은 "고쳤어요"를 눌러도 위에 그대로 (접는 칸으로 숨지 않게)
     const sugTop = fresh || SUG_VIEW.top;
-    body = glancePanel()
+    body = glancePanel() + noteTodoPanel('oppa')
       + (sugTop ? suggestPanel() : '') + (kqTodo ? kqPanel() : '') + (giftAch() ? giftPanel() : '')
-      + quickTiles([tNb, tStudy, tRep, ['momfold', 'kq', '🎲', '재윤이 문제', kqN ? `풀 문제 ${kqN}개` : '새 문제 없음'], ['momfold', 'sug', '💌', '건의함', fresh ? `새 건의 ${fresh}개` : '새 건의 없음'], ['momfold', 'gift', '🎁', '선물 약속', `${giftDays().length}/${g.goal}일`]], 'six')
+      + quickTiles([tNb, tStudy])
       + moreHead()
       + momFold('report', '📊 주간 리포트', reportPanel())
-      + (sugTop ? '' : momFold('sug', '💌 건의함', suggestPanel()))
+      + (sugTop ? '' : momFold('sug', `💌 건의함 <small>${fresh ? `새 건의 ${fresh}개` : '새 건의 없음'}</small>`, suggestPanel()))
       + (giftAch() ? '' : momFold('gift', `🎁 선물 약속 <small>${giftDays().length}/${g.goal}일${g.name ? ` · ${esc(g.name)}` : ''}</small>`, giftPanel()))
       + momFold('voice', '🎙️ 목소리 <small>오늘의 칭찬 · 깜짝 응원 · 엄마 목소리</small>', praisePanel() + cheersPanel('oppa') + momVoicesPanel())
       + (kqTodo ? '' : momFold('kq', `🎲 재윤이가 낸 문제 <small>${kqAll().length}개</small>`, kqPanel()))
+      + momFold('play', `🐰 재윤이 놀이 기록 <small>${playLine()}</small>`, playPanel())
       + currFold()
       + momFold('ebs', '📺 EBS 강의 여는 곳', ebsLinkPanel())
       + momFold('rev', '🔍 문제 검토', reviewPanel());
@@ -1302,6 +1314,7 @@ function confetti(){
 
 /* ===================== 동작 연결 ===================== */
 const ACT = {
+  notedone(el){ const d = noteDoneSet(); d.add(el.dataset.v); try { localStorage.setItem('jaeyun-notedone', JSON.stringify([...d].slice(-200))); } catch (e) {} go('adult'); },
   start(){ S.started = true; S.firstDay = S.firstDay || todayKey(); giftStart(); save(); SFX.tap(); go('home'); },
   home(){ go('home'); },
   go(el){ go(el.dataset.v, el.dataset.lesson ? { lesson:el.dataset.lesson } : el.dataset.s ? { s:el.dataset.s } : undefined); },
@@ -1330,7 +1343,7 @@ const ACT = {
     LECW = null; saveLecw(null);
     if (m === w.n || m === 0) {
       markLectureSeen(w.s, w.n, mins);
-      if (m === 0) notify('mom', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강을 봤는지 잘 모르겠대요. 진도 기록에서 확인해 주세요`);
+      if (m === 0) notify('mom', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강을 봤는지 잘 모르겠대요. 진도 기록에서 확인해 주세요`, 'lec');
       SFX.sticker(); return afterLecture(false);
     }
     // 다른 강의를 봤어요: 오늘 강의는 내일 다시, 이번 판은 문제로 넘어감
@@ -1340,8 +1353,8 @@ const ACT = {
     c.missed = [...new Set([...(c.missed || []).filter(x => !c.seen[x]), w.n])];
     const b = RUN && RUN.b; if (b && b.cur) b.lecSkip = true;
     const d = day(); if (d.lec) d.lec.missed = m;
-    notify('mom', `📺 재윤이가 오늘 ${SUBJ_NAME[w.s]} ${li.no}강 대신 ${got.no}강을 봤어요 (${mins}분). ${li.no}강은 내일 다시 나와요`);
-    notify('oppa', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강 대신 ${got.no}강을 봤어요. ${li.no}강은 내일 다시`);
+    notify('mom', `📺 재윤이가 오늘 ${SUBJ_NAME[w.s]} ${li.no}강 대신 ${got.no}강을 봤어요 (${mins}분). ${li.no}강은 내일 다시 나와요`, 'lec');
+    notify('oppa', `📺 재윤이가 ${SUBJ_NAME[w.s]} ${li.no}강 대신 ${got.no}강을 봤어요. ${li.no}강은 내일 다시`, 'lec');
     save();
     app().innerHTML = `<section class="screen" style="justify-content:center;align-items:center;text-align:center">${stageHTML(150, { expr:'happy', size:110 })}
       <div class="bubble" style="font-size:21px">앗, 오늘은 <b>${li.no}강</b>이었어!<br>${m !== w.n ? '그 강의도 잘 봤어! ' : ''}${li.no}강은 내일 같이 보자.<br>오늘은 문제만 풀자!</div>
@@ -1350,7 +1363,7 @@ const ACT = {
   },
   lecafter(){ SFX.tap(); afterLecture(false); },
   lecfail(){ const w = LECW; LECW = null; saveLecw(null);
-    notify('mom', ebsUseApp() ? '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿에 EBS 초등 앱이 깔려 있고 로그인돼 있는지 확인해 주세요' : '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요');
+    { const t = ebsUseApp() ? '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿에 EBS 초등 앱이 깔려 있고 로그인돼 있는지 확인해 주세요' : '📺 재윤이가 EBS 강의를 열지 못했어요. 태블릿 크롬에서 EBS 초등 로그인이 되어 있는지 확인해 주세요'; notify('mom', t, 'ebs'); notify('oppa', t, 'ebs'); }
     const b = RUN && RUN.b; if (b && b.cur) { b.lecSkip = true; save(); }
     speak('괜찮아! 엄마한테 알려 둘게. 오늘은 토리랑 개념을 배우자!');
     if (w && !w.opt && b && b.cur && !b.done && !b.cur.test) return go('cards', { lesson:b.cur.lesson, fromBoard:true });
@@ -1426,7 +1439,7 @@ const ACT = {
   giftwishsave(){ if (giftAch()) return; const v = ($('#giftWishIn') || {}).value; const t = String(v || '').trim();
     if (!t) { toast('받고 싶은 선물을 적어 주세요'); return; }
     const old = S.gift.name; S.gift.name = t; S.gift.wishBy = 'kid'; S.gift.wishAt = Date.now(); GIFT_EDIT = false; save();
-    if (t !== old) notify('oppa', `🎁 재윤이가 ${S.gift.goal}일 선물로 "${t}"${hasBatchim(t) ? '을' : '를'} ${old ? `골랐어요 (전에는 "${old}")` : '적었어요'}`);
+    if (t !== old) notify('oppa', `🎁 재윤이가 ${S.gift.goal}일 선물로 "${t}"${hasBatchim(t) ? '을' : '를'} ${old ? `골랐어요 (전에는 "${old}")` : '적었어요'}`, 'gift');
     SFX.sticker(); VIEWS.gift(); speak(`${t}! 좋아, 오빠한테 알려 줄게!`); },
   giftgiven(){ const g = S.gift, ach = giftAch(); g.history.unshift({ round:g.round, name:g.name, achieved:ach }); S.gift = { name:'', goal:g.goal, round:g.round + 1, start:addDays(ach, 1), achieved:null, history:g.history }; if (S.gift.start > todayKey()) S.gift.start = addDays(todayKey(), day().done ? 1 : 0); save(); toast('다음 선물 약속을 시작했어요'); go('adult'); },
   instbr(el){ INSTALL.br = el.dataset.v; go('install'); },

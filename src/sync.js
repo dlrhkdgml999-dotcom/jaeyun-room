@@ -240,13 +240,13 @@ const Sync = {
   addNote(n){
     if (!linked()) return;
     n.id = n.id || ('n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
-    const q = this.noteQ(); q.push({ id:n.id, to:n.to, text:n.text, at:n.at, d:n.d }); this.setNoteQ(q);
+    const q = this.noteQ(); q.push(Object.assign({ id:n.id, to:n.to, text:n.text, at:n.at, d:n.d }, n.act ? { act:n.act } : {})); this.setNoteQ(q);
     this.flushNotes();
   },
   flushNotes(){
     if (!this.ready) return;
     const q = this.noteQ().filter(x => Date.now() - x.at < 7 * 86400000); this.setNoteQ(q);
-    q.forEach(x => this.write(`${this.base()}/notes/${x.id}`, { to:x.to, text:x.text, at:x.at, d:x.d })
+    q.forEach(x => this.write(`${this.base()}/notes/${x.id}`, Object.assign({ to:x.to, text:x.text, at:x.at, d:x.d }, x.act ? { act:x.act } : {}))
       .then(() => this.setNoteQ(this.noteQ().filter(y => y.id !== x.id)), () => {}));
   },
   /* 큰 데이터(사진·녹음)를 blobs로 빼고 짧은 표시로 바꾼다 */

@@ -23,15 +23,19 @@ const FUN_EVENTS = [
   { id:'friend', ic:'🎈', name:'친구가 놀러 온 날', desc:'도감 친구가 놀러 와서 응원해 줘요!' },
   { id:'quiz', ic:'🎲', name:'오빠 퀴즈 날', desc:'오빠에게 문제를 하나 내면 보너스 스티커!' },
 ];
-function funEventBase(k){ const h = parseInt(hashStr('ev' + k).slice(0, 6), 36); return h % FUN_EVENTS.length; }
+/* 11/9 보상 하나로 모으기(FUN_LITE): 화폐는 ⭐ 하나 → 이벤트도 ⭐·친구·오빠 퀴즈 셋만. 숨은 황금 당근·콤보 도전(콤보는 문제 화면에서 매일 보임)·단비(물뿌리개)는 끔.
+   FUN_LITE = false로 바꾸면 11/4 그대로 돌아옴 */
+const FUN_LITE = true;
+const EV_LIST = () => FUN_LITE ? FUN_EVENTS.filter(e => ['double', 'friend', 'quiz'].includes(e.id)) : FUN_EVENTS;
+function funEventBase(k){ const h = parseInt(hashStr('ev' + k).slice(0, 6), 36); return h % EV_LIST().length; }
 /* 날짜마다 정해짐(모든 기기가 같음). 전날과 같으면 다음 것으로 — 전날도 같은 규칙으로 정해진 값과 비교 (20일 앞까지 따라감) */
 const EV_MEMO = new Map();
 function dayEventId(k, depth = 0){
-  const fr = Object.keys(S.collect || {}).length > 0, mk = k + (fr ? '+' : '-');
+  const fr = Object.keys(S.collect || {}).length > 0, mk = k + (fr ? '+' : '-') + (FUN_LITE ? 'L' : '');
   if (EV_MEMO.has(mk)) return EV_MEMO.get(mk);
   const prev = depth < 20 ? dayEventId(addDays(k, -1), depth + 1) : null;
   let i = funEventBase(k), id = null;
-  for (let t = 0; t < FUN_EVENTS.length; t++) { const c = FUN_EVENTS[(i + t) % FUN_EVENTS.length].id; if (c === prev || (c === 'friend' && !fr)) continue; id = c; break; }   // 아직 도감 친구가 없으면 친구 방문은 건너뜀
+  const L = EV_LIST(); for (let t = 0; t < L.length; t++) { const c = L[(i + t) % L.length].id; if (c === prev || (c === 'friend' && !fr)) continue; id = c; break; }   // 아직 도감 친구가 없으면 친구 방문은 건너뜀
   if (depth === 0) EV_MEMO.set(mk, id);
   return id;
 }
@@ -105,13 +109,13 @@ function funOnFinish(k, b, d, allDone){
   const ev = dayEvent(), out = {};
   if (ev.id === 'double') out.double = funBonusSticker('double');
   const g = gardenState(), w = (ev.id === 'rain' ? 2 : 1) + (allDone ? 1 : 0);
-  g.cans += w; g.carrots = (g.carrots || 0) + (b.carrots || 0); out.cans = w;
+  g.cans += w; if (!FUN_LITE) g.carrots = (g.carrots || 0) + (b.carrots || 0); out.cans = w;
   return out;
 }
 function funRewardHTML(k, b){
   const d = day(), parts = [];
   if (b.maxCombo >= 3) parts.push(`최고 <b>${b.maxCombo}연속</b> 🔥`);
-  if (b.carrots) parts.push(`당근 <b>${b.carrots}개</b> 🥕`);
+  if (b.carrots) parts.push(`${FUN_LITE ? '한 번에 맞힌 당근' : '당근'} <b>${b.carrots}개</b> 🥕`);
   if (b.cur && b.cur.test) parts.push(b.cur.result && b.cur.result.pass ? '<b>당근 탑을 무너뜨렸어! 💥</b>' : '당근 탑이 아직 버티고 있어. 다음엔 무너뜨리자!');
   const e = (d.ev || {}).fin && d.ev.fin[k] || {};
   const more = [];
@@ -132,6 +136,16 @@ function gardenState(){ const g = S.garden = S.garden || {}; g.cans = g.cans || 
   if (g.harvests >= 10 && g.plots.length < 6) while (g.plots.length < 6) g.plots.push(null);
   return g; }
 const seedOf = id => SEEDS.find(s => s.id === id);
+/* 11/9: 예전에 모아 둔 당근(20개 = ⭐1)·바구니 열매(1개 = ⭐1)를 별로 바꿔 줌 — 재윤이 기기에서 한 번만 */
+function funLiteMigrate(){
+  if (!FUN_LITE || (linked() && role() !== 'kid')) return 0;
+  const g = gardenState(); if (g.lite) return 0;
+  const fromC = Math.floor((g.carrots || 0) / GOLD_COST), fromB = Object.values(g.basket || {}).reduce((a, n) => a + (n > 0 ? n : 0), 0), n = fromC + fromB;
+  for (let i = 0; i < n; i++) funBonusSticker('convert');
+  g.carrots = 0; g.basket = {}; g.lite = 1; save();
+  if (n) setTimeout(() => toast(`🥕 모아 둔 당근과 열매를 별 ${n}개로 바꿨어! ⭐`), 400);
+  return n;
+}
 function plotStage(p){ if (!p) return 'empty'; const s = seedOf(p.s), r = p.w / s.need; return r >= 1 ? 'ready' : r >= .67 ? 'bud' : r >= .34 ? 'leaf' : r > 0 ? 'sprout' : 'seed'; }
 const STAGE_E = { seed:'🟤', sprout:'🌱', leaf:'🌿', bud:'🌷' };
 let GARDEN_PICK = null;
@@ -141,6 +155,7 @@ function gardenTileHTML(){
   return `<button class="garden-tile ${ready || g.cans ? 'ping' : ''}" data-a="go" data-v="garden"><span class="plots">${g.plots.slice(0, 4).map(p => `<i>${p ? (plotStage(p) === 'ready' ? seedOf(p.s).e : STAGE_E[plotStage(p)]) : '🟫'}</i>`).join('')}</span><span style="flex:1;display:grid"><b class="disp" style="font-size:20px">토리 텃밭</b><span class="muted" style="font-size:15px">${sub}</span></span>${g.cans ? `<span class="pill">🪣 ${g.cans}</span>` : ''}</button>`;
 }
 VIEWS.garden = () => {
+  funLiteMigrate();
   const g = gardenState(), unlocked = SEEDS.filter(s => s.at >= 0 && g.harvests >= s.at), nextSeed = SEEDS.find(s => s.at > g.harvests);
   const bas = Object.entries(g.basket).filter(([, n]) => n > 0);
   app().innerHTML = `<section class="screen garden">
@@ -150,13 +165,15 @@ VIEWS.garden = () => {
       return `<button class="plot ${st} ${GARDEN_PICK === i ? 'pick' : ''}" data-a="plot" data-v="${i}"><span class="pe">${!p ? '' : st === 'ready' ? s.e : STAGE_E[st]}</span><span class="pl">${!p ? '빈 밭' : st === 'ready' ? '수확!' : `${s.n} ${p.w}/${s.need}`}</span>${p && st !== 'ready' ? `<span class="pw"><i style="width:${Math.round(p.w / s.need * 100)}%"></i></span>` : ''}</button>`; }).join('')}</div>
     ${GARDEN_PICK != null ? `<div class="panel"><h3>씨앗 고르기</h3><div class="seed-row">${unlocked.map(s => `<button class="seed" data-a="plant" data-v="${s.id}"><span>${s.e}</span>${s.n}<small>물 ${s.need}번</small></button>`).join('')}${g.gold ? `<button class="seed gold" data-a="plant" data-v="gold"><span>🌈</span>황금 씨앗<small>${g.gold}개 · 물 6번</small></button>` : ''}</div>
       ${nextSeed ? `<p class="muted" style="font-size:14px">${nextSeed.at - g.harvests}번 더 수확하면 새 씨앗: ${nextSeed.e} ${nextSeed.n}</p>` : ''}<button class="btn ghost small" data-a="plantcancel">안 심을래</button></div>` : ''}
+    ${FUN_LITE ? `<div class="panel"><p class="muted" style="font-size:16px;margin:0">🪣 공부 한 판 끝내면 물뿌리개가 생겨요 → 💧 물을 주면 쑥쑥 → 다 자라면 수확! ${esc(S.bunnyName)}${hasBatchim(S.bunnyName) ? '이' : '가'} 냠냠 먹고 ⭐ 별을 줘요.</p>
+      <p class="muted" style="font-size:14px;margin:6px 0 0">지금까지 ${g.harvests}번 수확했어요${nextSeed ? ` · ${nextSeed.at - g.harvests}번 더 하면 새 씨앗 ${nextSeed.e}` : ''}</p></div>` : `
     <div class="panel"><h3>🧺 수확 바구니 <small class="muted">누르면 토리에게 줘요</small></h3>
       ${bas.length ? `<div class="seed-row">${bas.map(([id, n]) => `<button class="seed" data-a="feed" data-v="${id}"><span>${seedOf(id).e}</span>${seedOf(id).n}<small>${n}개</small></button>`).join('')}</div>` : '<p class="muted">아직 비어 있어요. 다 자라면 수확해요!</p>'}
       <p class="muted" style="font-size:14px">토리에게 ${g.fed}번 줬어요${g.fed % 10 ? ` · ${10 - g.fed % 10}번 더 주면 토리가 스티커를 줘요` : ''}</p></div>
     <div class="panel"><h3>🥕 문제 풀며 주운 당근 <b>${g.carrots}</b>개</h3>
       <p class="muted" style="font-size:15px">한 번에 맞힐 때마다 당근을 하나 주워요. ${GOLD_COST}개를 모으면 황금 씨앗! 황금 씨앗을 키우면 도감 친구가 와요.</p>
       <div class="meter"><i style="width:${Math.min(100, Math.round(g.carrots / GOLD_COST * 100))}%"></i></div>
-      ${g.carrots >= GOLD_COST ? `<button class="btn" data-a="goldseed">당근 ${GOLD_COST}개 → 황금 씨앗 바꾸기 ✨</button>` : ''}</div>
+      ${g.carrots >= GOLD_COST ? `<button class="btn" data-a="goldseed">당근 ${GOLD_COST}개 → 황금 씨앗 바꾸기 ✨</button>` : ''}</div>`}
   </section>`;
 };
 function gSay(t, expr){ const b = $('#gSay'); if (b) b.textContent = t; speak(t); const st = $('#gTori'); if (st && expr) st.innerHTML = stageHTML(120, { expr, size:92, cls:'hop' }); }
@@ -172,10 +189,11 @@ Object.assign(ACT, {
       const s = seedOf(p.s); g.plots[i] = null; g.harvests++;
       let msg = `${s.n} 수확! 바구니에 쏙!`;
       if (s.id === 'gold') { const c = gardenFriend(); msg = `무지개 꽃이 피었어! ${c.e} ${josa(c.n, '이', '가')} 도감 친구가 됐어!`; }
+      else if (FUN_LITE) { const st = funBonusSticker('harvest'); g.fed++; msg = `${s.n} 수확! ${josa(S.bunnyName, '이', '가')} 냠냠 먹고 별을 줬어! ${st}`; }
       else g.basket[s.id] = (g.basket[s.id] || 0) + 1;
       const nw = SEEDS.find(x => x.at === g.harvests); if (nw) msg += ` 새 씨앗 ${nw.e} ${josa(nw.n, '이', '가')} 생겼어!`;
       if (g.harvests === 10) msg += ' 밭도 두 칸 넓어졌어!';
-      save(); SFX.sticker(); confetti(); VIEWS.garden(); gSay(msg, 'wow'); return;
+      save(); SFX.sticker(); confetti(); VIEWS.garden(); gSay(msg, FUN_LITE && s.id !== 'gold' ? 'love' : 'wow'); return;
     }
     if (!g.cans) { SFX.tap(); gSay('물뿌리개가 없어! 공부 한 판 끝내면 생겨.'); return; }
     g.cans--; p.w++; save(); SFX.water(); VIEWS.garden();
@@ -389,3 +407,22 @@ Object.assign(ACT, {
 });
 window.addEventListener('online', () => kqFlush());
 document.addEventListener('visibilitychange', () => { if (!document.hidden) kqFlush(); });
+
+/* ---------- 11/9 오빠 탭 "재윤이 놀이 기록": 재윤이가 놀거리를 실제로 쓰는지 (어떤 걸 줄이거나 키울지 정할 때) ---------- */
+function playStats(){
+  const g = gardenState(), own = Object.keys(S.collect || {}).length, eq = Object.values(S.equipped || {}).filter(Boolean).length;
+  const items = typeof ITEMS !== 'undefined' ? ITEMS.filter(it => S.stickers.length >= it.need).length : 0;
+  const kidSug = typeof Suggest !== 'undefined' ? Suggest.all().filter(x => x.who === 'kid').length : 0;
+  const planted = g.plots.filter(Boolean).length;
+  return { stars:S.stickers.length, items, eq, own, total:COLLECT.length, harv:g.harvests, cans:g.cans, planted, kq:kqAll().length, kidSug };
+}
+function playLine(){ const p = playStats(); return `⭐ ${p.stars} · 수확 ${p.harv} · 문제 ${p.kq}`; }
+function playPanel(){ const p = playStats();
+  const row = (ic, t, v, warn) => `<div class="li"><span class="grow">${ic} ${t}</span><span class="pill ${warn ? 'wait' : 'ok'}">${v}</span></div>`;
+  return `<div class="panel"><h3>🐰 재윤이 놀이 기록</h3><p class="muted" style="font-size:14px">재윤이가 놀거리를 실제로 쓰는지 봐요. 노란 칸은 잘 안 쓰는 것 같다는 뜻이에요.</p><div class="list">
+    ${row('🎀', '꾸미기: 입고 있는 것', `${p.eq}개 (열린 것 ${p.items}개)`, p.items >= 2 && !p.eq)}
+    ${row('🌱', '텃밭: 수확', `${p.harv}번 · 심은 밭 ${p.planted} · 남은 물뿌리개 ${p.cans}`, p.cans >= 8)}
+    ${row('🦄', '도감 친구', `${p.own} / ${p.total}`, false)}
+    ${row('🎲', '오빠에게 낸 문제', `${p.kq}개`, !p.kq)}
+    ${row('💌', '재윤이가 보낸 건의', `${p.kidSug}개`, false)}
+  </div></div>`; }

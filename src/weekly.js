@@ -32,7 +32,7 @@ function buildWeekReport(mon){
   const avail = keys.filter(k => k >= (S.firstDay || mon)).length;
   if (avail < 7 && studied >= avail - 1) notes.push(`${shortDate(S.firstDay)}에 시작해서 ${studied}일 공부했어요. 좋은 출발이에요!`);
   else if (studied >= 6) notes.push('거의 매일 공부했어요. 정말 꾸준해요!'); else if (studied >= 4) notes.push(`${studied}일 공부했어요.`); else notes.push(`이번 주는 ${studied}일만 공부했어요. 공부 시간 알람을 확인해 주세요.`);
-  subj.forEach(x => { if (x.rate !== null && x.rate >= 90) notes.push(`${x.name} 정답률 ${x.rate}%로 아주 잘하고 있어요.`); if (x.rate !== null && x.rate < 65) notes.push(`${x.name}는 ${x.rate}%로 조금 어려워해요. 같이 한 번 봐 주세요.`); if (x.failed.length) notes.push(`${x.name} "${x.failed[0]}" 차시를 다시 연습하고 있어요.`); });
+  subj.forEach(x => { if (x.rate !== null && x.rate >= 90) notes.push(`${x.name} 정답률 ${x.rate}%로 아주 잘하고 있어요.`); if (x.rate !== null && x.rate < 65) notes.push(`${josa(x.name, "은", "는")} ${x.rate}%로 조금 어려워해요. 같이 한 번 봐 주세요.`); if (x.failed.length) notes.push(`${x.name} "${x.failed[0]}" 차시를 다시 연습하고 있어요.`); });
   const shortLec = subj.flatMap(x => x.lec.filter(l => l.mins && l.mins < 20).map(l => `${x.name} ${l.n}강`));
   if (shortLec.length) notes.push(`${shortLec.join(', ')}은 20분보다 짧게 봤어요.`);
   return { mon, end, studied, fullDays, mins, subj, rev:acc.rev[1] ? Math.round(acc.rev[0] / acc.rev[1] * 100) : null, dict, writes, weak, notes, gift:{ name:S.gift.name, done:giftDays().length, goal:S.gift.goal }, at:Date.now() };

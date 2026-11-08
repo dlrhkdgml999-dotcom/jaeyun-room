@@ -30,8 +30,9 @@ function waitLecHTML(k){
   const C = CURRS[k], c = curr(k), last = C.all.filter(x => x.ui < c.unit || (x.ui === c.unit && x.li < c.lesson)).pop();
   const nx = currentLesson(k), lec = day().lec, other = lec && lec.s && lec.s !== k ? lectInfo(lec.s, lec.n) : null;
   // 11/3: "영상이 더 없대" → 강의가 끝난 게 아니라 오늘은 다른 과목 강의 날이라는 걸 분명하게
-  const why = other ? `오늘 강의는 ${SUBJ_NAME[lec.s]} ${other.no}강${lec.done ? '을 봤어요' : '이에요'}. 강의는 하루에 한 편만!` : '강의는 하루에 한 편만 봐요.';
-  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 연습 + 미리 맛보기</span><span class="disp" style="font-size:21px">${last ? `"${esc(last.title)}" 연습하고` : `${SUBJ_NAME[k]} 몸풀기 하고`}${nx ? `, "${esc(nx.title)}" 미리 맛보기 🔭` : ''}</span><span class="muted" style="font-size:15px">${why} ${nx ? `${SUBJ_NAME[k]} 강의 "${esc(nx.title)}"는 내일 봐요 📺 오늘은 🔭 문제로 살짝 먼저 만나 봐요.` : `${SUBJ_NAME[k]} 새 강의는 내일 📺`}</span></div>`;
+  // 11/9: 초1이 읽기에 안내가 너무 길었음(네 문장) → 제목 한 줄 + 짧은 두 마디
+  const why = other ? `오늘 강의는 ${SUBJ_NAME[lec.s]} ${other.no}강${lec.done ? '을 봤어요' : '이에요'}.` : '강의는 하루에 한 편!';
+  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 연습 + 미리 맛보기</span><span class="disp" style="font-size:21px">${nx ? `"${esc(nx.title)}" 미리 맛보기 🔭` : `${last ? `"${esc(last.title)}"` : SUBJ_NAME[k]} 연습`}</span><span class="muted" style="font-size:16px">${why} ${SUBJ_NAME[k]} 영상은 내일 봐요 📺</span></div>`;
 }
 function lessonResultHTML(r0){
   const s = r0.subj || 'math', C = CURRS[s];
@@ -78,19 +79,29 @@ VIEWS.map = (o) => {
   app().innerHTML = `<section class="screen">
     <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">진도 지도</h2><span class="sticker-chip">🏅 ${SUBJS.reduce((n, x) => n + curr(x).medals.length, 0)}</span></div>
     <div class="seg">${on.map(x => `<button class="${x === s ? 'on' : ''}" data-a="go" data-v="map" data-s="${x}">${SUBJ_NAME[x]}</button>`).join('')}</div>
-    <div class="bubble" style="display:flex;gap:10px;align-items:center">${bunnySVG({ size:56, expr:'happy' })}<span>${C.units[c.unit] ? `${SUBJ_NAME[s]}는 지금 ${esc(currLabel(s))}! 재윤이 진짜 잘하고 있어!` : `${esc(josa(C.title, '을', '를'))} 다 끝냈어! 최고야!`}</span></div>
-    ${C.units.map((u, ui) => {
-      const head = C.courses.length > 1 && (ui === 0 || C.units[ui - 1].course !== u.course) ? `<h3 class="disp course-head">${esc(u.course.grade)}${u.course.ebs ? ` · ${esc(u.course.ebs.name)}` : ''}</h3>` : '';
-      const state = ui < c.unit ? 'past' : ui === c.unit ? 'now' : 'next';
-      return `${head}<div class="unit-card ${state}">
-        <div class="row"><span class="unit-no">${u.n}</span><span class="disp" style="font-size:21px;flex:1">${esc(u.name)}</span>${medal(ui) ? '<span style="font-size:30px">🏅</span>' : state === 'next' ? `<span class="muted">${ICON.lock.replace('<svg', '<svg style="width:20px;height:20px"')}</span>` : ''}</div>
+    <div class="bubble" style="display:flex;gap:10px;align-items:center">${bunnySVG({ size:56, expr:'happy' })}<span>${C.units[c.unit] ? `${josa(SUBJ_NAME[s], '은', '는')} 지금 ${esc(currLabel(s))}! 재윤이 진짜 잘하고 있어!` : `${esc(josa(C.title, '을', '를'))} 다 끝냈어! 최고야!`}</span></div>
+    ${(() => {   /* 11/9 태블릿에서 3.7화면 길이 → 지금 학기만 펼치고, 잠긴 단원은 한 줄, 다른 학기는 한 줄씩 */
+      const curCo = (C.units[c.unit] || C.units[C.units.length - 1]).course;
+      let out = '', lastCo = null;
+      C.units.forEach((u, ui) => {
+        const state = ui < c.unit ? 'past' : ui === c.unit ? 'now' : 'next';
+        if (u.course !== curCo) {
+          if (u.course !== lastCo) { const doneCo = state === 'past'; out += `<div class="unit-card course-line ${doneCo ? 'past' : 'next'}"><span class="disp" style="font-size:19px;flex:1">${esc(u.course.grade)}${u.course.ebs ? ` · ${esc(u.course.ebs.name)}` : ''}</span><span>${doneCo ? '다 했어! 🏅' : `${ICON.lock.replace('<svg', '<svg style="width:18px;height:18px"')} 다음에 열려요`}</span></div>`; }
+          lastCo = u.course; return;
+        }
+        if (u.course !== lastCo && C.courses.length > 1) out += `<h3 class="disp course-head">${esc(u.course.grade)}${u.course.ebs ? ` · ${esc(u.course.ebs.name)}` : ''}</h3>`;
+        lastCo = u.course;
+        if (state === 'next') { out += `<div class="unit-card next slim"><div class="row"><span class="unit-no">${u.n}</span><span class="disp" style="font-size:19px;flex:1">${esc(u.name)}</span><span class="muted">${ICON.lock.replace('<svg', '<svg style="width:18px;height:18px"')}</span></div></div>`; return; }
+        out += `<div class="unit-card ${state}">
+        <div class="row"><span class="unit-no">${u.n}</span><span class="disp" style="font-size:21px;flex:1">${esc(u.name)}</span>${medal(ui) ? '<span style="font-size:30px">🏅</span>' : ''}</div>
         <div class="lesson-dots">${u.lessons.map((l, li) => {
           const d = c.done[l.id], cur = ui === c.unit && li === c.lesson && !c.test, ok = d && d.pass;
           const can = ui < c.unit || (ui === c.unit && (li <= c.lesson || c.test));
           return `<button class="ldot ${ok ? 'ok' : ''} ${cur ? 'cur' : ''}" ${can ? `data-a="go" data-v="cards" data-lesson="${l.id}"` : 'disabled'} title="${esc(l.title)}">${li + 1}</button>`; }).join('')}
           <span class="ldot test ${medal(ui) ? 'ok' : ''} ${ui === c.unit && c.test ? 'cur' : ''}">평가</span></div>
         ${state === 'now' && !c.test ? `<span class="muted" style="font-size:15px">지금: ${esc(u.lessons[c.lesson].title)}</span>` : ''}
-      </div>`; }).join('')}
+      </div>`; });
+      return out; })()}
   </section>`;
 };
 

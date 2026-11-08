@@ -64,8 +64,11 @@ function gradeCard(k, dy){
 function dictGradePanel(pend){
   const todo = pend.filter(([k]) => !gradeOf(k).graded), done = pend.filter(([k]) => gradeOf(k).graded);
   return `<div class="panel" id="gradePanel"><h3>받아쓰기 채점${todo.length ? ` <span class="pill wait" style="vertical-align:middle">${todo.length}개 기다려요</span>` : ''}</h3>
-    ${pend.length ? [...todo, ...done].map(([k, dy]) => gradeCard(k, dy)).join('') : '<p class="muted">재윤이가 받아쓰기를 끝내면 여기에 와요.</p>'}</div>`;
+    ${pend.length ? [...todo, ...done].map(([k, dy], i) => i === 0 || GRADE_OPEN.has(k) ? gradeCard(k, dy) : `<button class="li grade-more" data-a="gradeopen" data-v="${k}"><span class="grow">${shortDate(k)} 받아쓰기 · ${gradeOf(k).graded ? '채점 완료' : '채점 기다려요'}</span><span>펼치기 ▾</span></button>`).join('') : '<p class="muted">재윤이가 받아쓰기를 끝내면 여기에 와요.</p>'}</div>`;
 }
+/* 11/9 채점할 받아쓰기가 여러 개면 가장 최근 것만 펼치고 나머지는 한 줄 (엄마 탭이 10줄씩 길어지지 않게) */
+const GRADE_OPEN = new Set();
+Object.assign(ACT, { gradeopen(el){ GRADE_OPEN.add(el.dataset.v); const y = scrollY; go('adult'); scrollTo(0, y); } });
 /* O · X를 누르면 화면 전체를 다시 그리지 않고 그 줄만 바꾼다 (스크롤 그대로) */
 function markRefresh(k){
   const card = document.querySelector(`.grade-card[data-k="${k}"]`); if (!card) { const y = scrollY; go('adult'); scrollTo(0, y); return; }
@@ -282,7 +285,7 @@ function glancePanel(){
     <span class="gl-chips">${BOARDS.map(chip).join('')}</span>
     <span class="gl-stats"><span><b>${fmtMin(dm.total)}</b>공부 시간</span><span><b>${logs.length ? `${firstOk}/${logs.length}` : '-'}</b>한 번에 정답</span><span><b class="${wrongs.length ? 'bad' : ''}">${wrongs.length}</b>틀린 문제</span></span>
     ${lecs.length ? `<span class="gl-line">📺 ${lecs.map(x => esc(`${{ math:'수학', kor:'국어', eng:'영어' }[x.s] || ''} ${x.info ? `${x.info.no}강 ${x.info.title}` : `${x.n}강`}`)).join(' · ')} 봤어요</span>` : ''}
-    ${wrongs.length ? `<span class="gl-line">❌ 틀린 문제 정답: ${wrongs.slice(0, 4).map(x => esc(wtext(x))).join(' · ')}${wrongs.length > 4 ? ` 외 ${wrongs.length - 4}개` : ''}</span>` : ''}
+    ${wrongs.length ? wrongs.slice(0, 2).map(x => { const q = (typeof noteShow === 'function' ? noteShow(x) : String(x.t)) || '문제'; return `<span class="gl-line">❌ ${esc(q.length > 24 ? q.slice(0, 23) + '…' : q)} → <b>${esc(wtext(x))}</b></span>`; }).join('') + (wrongs.length > 2 ? `<span class="gl-line muted">틀린 문제 ${wrongs.length - 2}개 더</span>` : '') : ''}
     <span class="gl-more">자세히 보기 →</span>
   </button>`;
 }
