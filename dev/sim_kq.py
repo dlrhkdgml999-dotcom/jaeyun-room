@@ -36,8 +36,11 @@ async def main():
         await tab.click('[data-a="joinrole"][data-v="kid"]'); await tab.p.wait_for_timeout(1500)
         mom = await Device('엄마폰', br, link).open(); await mom.click('[data-a="joinrole"][data-v="mom"]'); await mom.p.wait_for_timeout(1500)
         await tab.ev("window.__ev = 'quiz'; go('home')"); await tab.p.wait_for_timeout(200)
-        tab.expect(await tab.p.locator('.kq-tile').is_visible(), '첫 화면에 "오빠에게 문제 내기"가 없음')
-        await tab.click('.kq-tile'); await tab.p.wait_for_timeout(200)
+        # 11/9 문제 내기는 놀이터 안 (한 판 끝내야 열림 → 판 하나를 끝낸 걸로)
+        await tab.ev("(() => { const d = day(); d.boards.rev = d.boards.rev || makeBoard('rev'); d.boards.rev.done = true; save(); go('home'); })()"); await tab.p.wait_for_timeout(150)
+        tab.expect(await tab.p.locator('.play-tile').is_visible(), '첫 화면에 놀이터가 없음')
+        await tab.click('.play-tile'); await tab.p.wait_for_timeout(200)
+        await tab.click('.play-card.c-kq'); await tab.p.wait_for_timeout(200)
         tab.expect(await tab.screen() == 'kq', '문제 내기 화면이 안 열림')
         await tab.overflow('문제 내기 첫 화면 (태블릿)')
         # A) 뺄셈 작은 수 − 큰 수 → 막힘

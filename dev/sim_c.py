@@ -78,9 +78,9 @@ async def main():
         await s.click('[data-k="kor"]'); await p.wait_for_timeout(200); await s.click('[data-a="home"]')
 
         # 7) 꾸미기 잠긴 아이템 누르기, 달력 앞뒤 넘기기
-        await s.click('[data-v="room"]'); await s.ev("document.querySelector('[data-v=tiara]').click()")
+        await s.ev("go('room')"); await s.ev("document.querySelector('[data-v=tiara]').click()")   # 11/9 꾸미기는 놀이터 안
         s.expect(await s.ev('S.equipped.head') != 'tiara', '잠긴 아이템이 입혀짐')
-        await s.click('[data-a="home"]'); await s.click('[data-v="cal"]')
+        await s.ev("go('home')"); await s.click('[data-v="cal"]')
         for _ in range(3): await s.click('[data-a="calmove"][data-v="1"]')
         for _ in range(14): await s.click('[data-a="calmove"][data-v="-1"]')
         print('달력:', await s.ev("document.querySelector('.disp').textContent"))

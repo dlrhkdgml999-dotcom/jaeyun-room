@@ -95,24 +95,32 @@ async def main():
         s.expect(all('다 했어' in x for x in done_state) and await s.ev("document.querySelectorAll('.board-card .tag').length") == 0, f'다 끝낸 판 표시 이상 {done_state}')
         await fit(s, '다 한 날')
 
-        # ---------- E) 텃밭 점 ----------
+        # ---------- E) 놀이터 점 (11/9: 텃밭은 놀이터 안으로 — 할 게 있으면 놀이터 아이콘에 점) ----------
         await s.ev("gardenState().cans = 3; go('home')")
-        g = await s.ev("(() => { const t = document.querySelector('.home-nav .garden-tile'); return { dot: (t.querySelector('.dot') || {}).textContent, ping: t.classList.contains('ping') }; })()")
+        g = await s.ev("(() => { const t = document.querySelector('.home-nav .play-tile'); return { dot: (t.querySelector('.dot') || {}).textContent, ping: t.classList.contains('ping') }; })()")
         s.expect(g['dot'] == '🪣3' and g['ping'], f'물뿌리개 점 이상 {g}')
         await s.ev("const g = gardenState(); g.cans = 0; g.plots[0] = { s:'carrot', w:99 }; go('home')")
-        g = await s.ev("(document.querySelector('.home-nav .garden-tile .dot') || {}).textContent")
+        g = await s.ev("(document.querySelector('.home-nav .play-tile .dot') || {}).textContent")
         s.expect(g == '수확!', f'수확 점 이상 {g}'); await s.ev("gardenState().plots[0] = null; save()")
 
-        # ---------- F) 아이콘마다 제 화면 ----------
+        # ---------- F) 아이콘마다 제 화면 (11/9: 8개 → 5개, 놀이 4개는 놀이터 안) ----------
         tiles = await s.ev("[...document.querySelectorAll('.home-nav .nav-tile')].map(t => t.querySelector('.nm').textContent)")
-        print('  아이콘:', tiles); s.expect(len(tiles) == 8, f'아이콘 수 {len(tiles)}')
-        want = {'텃밭':'garden', '꾸미기':'room', '도감':'book', '달력':'cal', '진도 지도':'map', '오답노트':'notebook', '문제 내기':'kq', '오빠에게 말하기':'suggest'}
+        print('  아이콘:', tiles); s.expect(len(tiles) == 5, f'아이콘 수 {len(tiles)}')
+        want = {'놀이터':'play', '달력':'cal', '진도 지도':'map', '오답노트':'notebook', '오빠에게 말하기':'suggest'}
         for name, scr in want.items():
             for w, h, _ in SIZES[:2]:
                 await p.set_viewport_size({'width': w, 'height': h}); await s.ev("go('home')"); await p.wait_for_timeout(120)
                 await p.locator('.home-nav .nav-tile', has_text=name).first.click(); await p.wait_for_timeout(200)
                 got = await s.screen(); s.expect(got == scr, f'"{name}" → {got} (기대 {scr})')
                 await s.overflow(f'{name} 화면 {w}x{h}')
+        for name, scr in {'텃밭':'garden', '꾸미기':'room', '도감':'book', '오빠에게 문제 내기':'kq'}.items():
+            for w, h, _ in SIZES[:2]:
+                await p.set_viewport_size({'width': w, 'height': h}); await s.ev("go('play')"); await p.wait_for_timeout(120)
+                await p.locator('.play-card', has_text=name).first.click(); await p.wait_for_timeout(200)
+                got = await s.screen(); s.expect(got == scr, f'놀이터 "{name}" → {got} (기대 {scr})')
+                await s.overflow(f'{name} 화면 {w}x{h}')
+                await p.locator('section .row .icon-btn').first.click(); await p.wait_for_timeout(150)
+                s.expect(await s.screen() == 'play', f'{name}에서 ← 가 놀이터로 안 감 ({await s.screen()})')
         await p.set_viewport_size({'width': 1280, 'height': 800})
 
         # ---------- G) 선물 한 줄 ----------

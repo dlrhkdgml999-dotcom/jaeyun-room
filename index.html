@@ -910,6 +910,21 @@ section.screen{position:relative}
 .unit-card.slim{padding-top:10px;padding-bottom:10px}.unit-card.course-line{display:flex;align-items:center;gap:10px;padding:12px 18px}.unit-card.course-line.next{opacity:.7}
 /* 11/9 엄마 탭 바로가기 3칸 */
 .mom-quick.three{grid-template-columns:repeat(3,1fr);gap:8px}.mom-quick.three .mq{padding:12px 8px}.mom-quick.three .mq .ic{font-size:26px}.mom-quick.three .mq b{font-size:16px}.mom-quick.three .mq small{font-size:12px}
+/* 11/9 🎮 놀이터 — 첫 화면 아이콘 5개, 놀이터 안 큰 카드 4장 */
+.home .home-nav{grid-template-columns:repeat(5,1fr)!important}
+.home .home-nav .nav-tile.play-tile{background:linear-gradient(160deg,#FFF6D8,#FFE3EE);border-color:var(--pink)}
+.home .home-nav .nav-tile.play-tile.locked{background:var(--paper);border-color:var(--line);opacity:.85}
+.play .play-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.play .play-card{position:relative;display:grid;justify-items:center;gap:6px;padding:22px 12px 18px;background:var(--paper);border:3px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);font-family:var(--f-display);color:var(--ink);text-align:center}
+.play .play-card:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.play .play-card .pic{font-size:54px;line-height:1.1}
+.play .play-card b{font-weight:400;font-size:24px}
+.play .play-card small{font-family:var(--f-body);font-size:15px;color:var(--ink-soft);word-break:keep-all}
+.play .play-card.ping{animation:glow 1.6s infinite;border-color:var(--pink)}
+.play .play-card .dot{position:absolute;top:-9px;right:-6px;background:var(--pink);color:#fff;font-family:var(--f-body);font-size:13px;line-height:1;border-radius:999px;padding:5px 9px}
+.play .c-garden{background:#F2FBEF}.play .c-room{background:#FFF0F5}.play .c-book{background:#F3EFFF}.play .c-kq{background:#EAF5FE}
+@media (min-width:960px) and (orientation:landscape){ .play .play-grid{grid-template-columns:repeat(4,1fr)} .play .play-card{padding:30px 12px 24px} .play .play-card .pic{font-size:64px} }
+@media (min-width:960px) and (orientation:landscape){ .play .play-card{min-height:300px;align-content:center} .play .play-card .pic{font-size:78px} .play .play-card b{font-size:27px} .play .play-card small{font-size:16px} }
 
 </style>
 </head>
@@ -931,7 +946,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261109022956";
+window.APP_VERSION = "20261109031249";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -1815,13 +1830,10 @@ VIEWS.home = () => {
       ${won ? `<span class="gt"><b>오빠 선물 받는 날! 🎉</b>${g.name ? ` <span class="gn">${esc(g.name)}</span>` : ''}</span>`
         : `<span class="gt">${g.name ? `<span class="gn">${esc(g.name)}</span>까지` : '오빠 선물까지'} <b>${g.goal - gd}일</b> 남았어!${g.name ? '' : ' <span class="gw">✏️ 받고 싶은 선물 적기</span>'}</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span>`}</button>
     <div class="home-nav">
-      ${tile('garden-tile' + (gReady || gs.cans ? ' ping' : ''), 'go', 'garden', gReady ? '🧺' : '🌱', '텃밭', gReady ? '수확!' : gs.cans ? `🪣${gs.cans}` : '')}
-      ${tile('', 'go', 'room', '🎀', '꾸미기')}
-      ${tile('', 'go', 'book', '🦄', '도감')}
+      ${tile('play-tile' + (playDot() ? ' ping' : '') + (playOpen() ? '' : ' locked'), 'play', '', playOpen() ? '🎮' : '🔒', '놀이터', playDot())}
       ${tile('', 'go', 'cal', '📅', '달력')}
       ${SUBJS.some(currOn) ? tile('', 'go', 'map', '🗺️', '진도 지도') : ''}
       ${tile('', 'notebook', '', '📒', '오답노트')}
-      ${tile('kq-tile', 'kq', '', '🎲', '문제 내기')}
       ${tile('sug-kid', 'sug', 'kid', '💌', '오빠에게 말하기')}
     </div>
     ${kidSyncNote()}
@@ -2166,7 +2178,7 @@ VIEWS.alldone = () => {
 let ROOM_TAB = 'dress';
 VIEWS.room = () => {
   const total = S.stickers.length;
-  const head = `<div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">${ROOM_TAB === 'dress' ? `${esc(S.bunnyName)} 꾸미기` : '스티커북'}</h2><span class="sticker-chip">⭐ ${total}</span></div>
+  const head = `<div class="row"><button class="icon-btn" ${playBack()} aria-label="뒤로">${ICON.back}</button><h2 style="flex:1">${ROOM_TAB === 'dress' ? `${esc(S.bunnyName)} 꾸미기` : '스티커북'}</h2><span class="sticker-chip">⭐ ${total}</span></div>
     <div class="tabs"><button class="${ROOM_TAB === 'dress' ? 'on' : ''}" data-a="roomtab" data-v="dress">꾸미기</button><button class="${ROOM_TAB === 'book' ? 'on' : ''}" data-a="roomtab" data-v="book">스티커북</button></div>`;
   if (ROOM_TAB === 'book') {
     const list = [...S.stickers].reverse();
@@ -10452,7 +10464,7 @@ function openCapsule(){
 VIEWS.book = () => {
   const own = S.collect || {}, fr = S.friends || [], total = COLLECT.filter(x => own[x.id]).length;
   app().innerHTML = `<section class="screen">
-    <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">토리 친구 도감</h2><span class="sticker-chip">${total} / ${COLLECT.length}</span></div>
+    <div class="row"><button class="icon-btn" ${playBack()} aria-label="뒤로">${ICON.back}</button><h2 style="flex:1">토리 친구 도감</h2><span class="sticker-chip">${total} / ${COLLECT.length}</span></div>
     <div class="bubble" style="font-size:18px">공부를 다 끝낸 날마다 캡슐에서 친구가 나와요. 친구를 누르면 ${esc(S.bunnyName)} 옆에 같이 놀 수 있어요 (세 명까지)!</div>
     ${[3, 2, 1].map(r => `<h3 class="disp" style="font-weight:400;margin:4px 0 0"><span class="rare-tag ${RARE[r].cls}">${RARE[r].name}</span></h3>
       <div class="book-grid">${COLLECT.filter(c => c.r === r).map(c => own[c.id]
@@ -10630,7 +10642,7 @@ VIEWS.garden = () => {
   const g = gardenState(), unlocked = SEEDS.filter(s => s.at >= 0 && g.harvests >= s.at), nextSeed = SEEDS.find(s => s.at > g.harvests);
   const bas = Object.entries(g.basket).filter(([, n]) => n > 0);
   app().innerHTML = `<section class="screen garden">
-    <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">${esc(S.bunnyName)} 텃밭</h2><span class="pill">🪣 물뿌리개 ${g.cans}</span></div>
+    <div class="row"><button class="icon-btn" ${playBack()} aria-label="뒤로">${ICON.back}</button><h2 style="flex:1">${esc(S.bunnyName)} 텃밭</h2><span class="pill">🪣 물뿌리개 ${g.cans}</span></div>
     <div class="hero" style="min-height:0"><div class="stage-btn tori-stage" id="gTori">${stageHTML(120, { expr:'happy', size:92 })}</div><div class="bubble left" id="gSay">${GARDEN_PICK != null ? '어떤 씨앗을 심을까?' : g.cans ? '밭을 누르면 물을 줄 수 있어!' : g.plots.some(p => !p) ? '빈 밭을 누르면 씨앗을 심어요!' : '공부 한 판 끝내면 물뿌리개가 생겨!'}</div></div>
     <div class="plots-grid">${g.plots.map((p, i) => { const st = plotStage(p), s = p && seedOf(p.s);
       return `<button class="plot ${st} ${GARDEN_PICK === i ? 'pick' : ''}" data-a="plot" data-v="${i}"><span class="pe">${!p ? '' : st === 'ready' ? s.e : STAGE_E[st]}</span><span class="pl">${!p ? '빈 밭' : st === 'ready' ? '수확!' : `${s.n} ${p.w}/${s.need}`}</span>${p && st !== 'ready' ? `<span class="pw"><i style="width:${Math.round(p.w / s.need * 100)}%"></i></span>` : ''}</button>`; }).join('')}</div>
@@ -10783,7 +10795,7 @@ function kqSubmit(){
 Object.assign(ACT, {
   kq(){ KQP = null; go('kq'); },
   kqtype(el){ kqStart(el.dataset.v); SFX.tap(); VIEWS.kq(); },
-  kqback(){ if (KQP && !KQP.sent) { KQP = null; VIEWS.kq(); return; } KQP = null; go('home'); },
+  kqback(){ if (KQP && !KQP.sent) { KQP = null; VIEWS.kq(); return; } KQP = null; go(playOpen() ? 'play' : 'home'); },
   kqnew(){ KQP = null; VIEWS.kq(); },
   kqfocus(el){ KQP.focus = el.dataset.v; VIEWS.kq(); },
   kqop(){ KQP.op = KQP.op === '+' ? '-' : '+'; SFX.tap(); VIEWS.kq(); },
@@ -10836,7 +10848,7 @@ function kqPanel(){
       ${x.type === 'draw' && x.img ? `<img src="${x.img}" alt="재윤이 그림" style="max-width:100%;max-height:220px;object-fit:contain;background:#fff;border-radius:10px;border:2px solid var(--line)">` : x.type === 'draw' ? `<span class="muted">🎨 그림은 재윤이 태블릿에서 오는 중이에요. 태블릿에서 공부방 앱을 열면 와요.</span>` : `<span class="disp" style="font-size:22px">${esc(kqQText(x))}</span>`}
       ${x.hint ? `<span class="muted">힌트: ${esc(x.hint)}</span>` : ''}
       <div class="row" style="gap:6px;flex-wrap:wrap"><input type="${x.type === 'calc' ? 'number' : 'text'}" id="kqg_${x.id}" placeholder="답" style="flex:1;min-width:90px;border:2px solid var(--line);border-radius:12px;padding:8px"><input type="text" id="kqm_${x.id}" placeholder="재윤이에게 한마디" maxlength="60" style="flex:2;min-width:140px;border:2px solid var(--line);border-radius:12px;padding:8px"><button class="btn small" data-a="kqguess" data-id="${x.id}">답하기</button></div></div>`).join('')
-      : `<p class="muted">${all.length ? '다 풀었어요 ✓' : '아직 재윤이가 낸 문제가 없어요. 재윤이 첫 화면 "🎲 오빠에게 문제 내기"에서 낼 수 있어요.'}</p>`}
+      : `<p class="muted">${all.length ? '다 풀었어요 ✓' : '아직 재윤이가 낸 문제가 없어요. 재윤이 첫 화면 "🎮 놀이터 → 🎲 오빠에게 문제 내기"에서 낼 수 있어요.'}</p>`}
     ${done.length ? `<div class="list">${done.map(x => { const a = kqAns(x.id); return `<div class="li"><span class="grow">${x.type === 'draw' ? '🎨' : esc(kqQText(x))} → ${esc(a.guess)}</span><span class="pill ${a.right ? '' : 'ok'}">${a.right ? '맞힘' : '재윤이 승'}</span></div>`; }).join('')}</div>` : ''}</div>`;
 }
 /* 재윤이 첫 화면: 오빠가 풀었으면 결과 보러 가기 */
@@ -10897,6 +10909,45 @@ function playPanel(){ const p = playStats();
     ${row('🎲', '오빠에게 낸 문제', `${p.kq}개`, !p.kq)}
     ${row('💌', '재윤이가 보낸 건의', `${p.kidSug}개`, false)}
   </div></div>`; }
+
+/* ---------- 11/9 🎮 놀이터: 텃밭·꾸미기·도감·문제 내기를 한 칸으로 (오빠: "게임들을 게임 목록으로") ----------
+   첫 화면 아이콘 8개 → 5개(놀이터·달력·진도 지도·오답노트·오빠에게 말하기). 오늘 공부 한 판을 끝내야 열림(오빠가 3번 고름).
+   놀이터 안 카드 4장에 지금 상태, 할 게 있으면 놀이터 아이콘에 빨간 점. 놀이터에서 들어간 화면의 ← 는 놀이터로 */
+function playOpen(){ const d = S.days[todayKey()]; return !!(d && d.boards && BOARDS.some(b => d.boards[b.k] && d.boards[b.k].done)); }
+const playBack = () => playOpen() ? 'data-a="go" data-v="play"' : 'data-a="home"';
+function kqNews(){ let seen = 0; try { seen = +localStorage.getItem('jaeyun-kqseen') || 0; } catch (e) {} return kqAll().filter(x => { const a = kqAns(x.id); return a && a.at > seen; }).length; }
+function playInfo(){
+  const g = gardenState(), ready = g.plots.filter(p => plotStage(p) === 'ready').length, empty = g.plots.filter(p => !p).length;
+  const stars = S.stickers.length, nextIt = typeof ITEMS !== 'undefined' ? ITEMS.filter(i => i.need > stars).sort((a, b) => a.need - b.need)[0] : null;
+  const own = Object.keys(S.collect || {}).length, sc = kqScore(), news = kqNews();
+  return {
+    garden:{ dot: ready ? '수확!' : g.cans ? `🪣${g.cans}` : '', sub: ready ? `다 자란 게 ${ready}개! 수확하자` : g.cans ? `물뿌리개 ${g.cans}개가 기다려요` : empty === g.plots.length ? '씨앗을 심어 볼까?' : '한 판 끝내면 물뿌리개가 생겨요' },
+    room:{ dot:'', sub: nextIt ? `⭐ ${stars}개 · ${nextIt.need - stars}개 더 모으면 새 꾸미기` : `⭐ ${stars}개 · 다 모았어!` },
+    book:{ dot:'', sub:`친구 ${own} / ${COLLECT.length}` },
+    kq:{ dot: news ? '새 답!' : '', sub: news ? '오빠가 답했어! 보러 가자' : `재윤이 ${sc.kid} : ${sc.op} 오빠` },
+  };
+}
+function playDot(){ if (!playOpen()) return ''; const I = playInfo(); return I.garden.dot || I.kq.dot || ''; }
+VIEWS.play = () => {
+  if (!playOpen()) { go('home'); return; }
+  const I = playInfo();
+  const card = (k, act, v, ic, name, cls) => `<button class="play-card ${cls || ''} ${I[k].dot ? 'ping' : ''}" data-a="${act}"${v ? ` data-v="${v}"` : ''}><span class="pic">${ic}</span><b>${name}</b><small>${esc(I[k].sub)}</small>${I[k].dot ? `<span class="dot">${esc(I[k].dot)}</span>` : ''}</button>`;
+  app().innerHTML = `<section class="screen play">
+    <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">🎮 놀이터</h2><span class="sticker-chip">⭐ ${S.stickers.length}</span></div>
+    <div class="hero" style="min-height:0"><div class="stage-btn tori-stage">${stageHTML(120, { expr:'happy', size:92 })}</div><div class="bubble left">${esc(pick(['공부 잘했으니까 신나게 놀자!', '오늘은 뭐 하고 놀까?', '나랑 같이 놀자! 뭐부터 할래?']))}</div></div>
+    <div class="play-grid">
+      ${card('garden', 'go', 'garden', '🌱', '텃밭', 'c-garden')}
+      ${card('room', 'go', 'room', '🎀', '꾸미기', 'c-room')}
+      ${card('book', 'go', 'book', '🦄', '도감', 'c-book')}
+      ${card('kq', I.kq.dot ? 'kqseen' : 'kq', '', '🎲', '오빠에게 문제 내기', 'c-kq')}
+    </div>
+  </section>`;
+};
+Object.assign(ACT, {
+  play(){ if (playOpen()) { SFX.tap(); go('play'); return; }
+    SFX.tap(); const t = '공부 한 판 끝내면 놀이터가 열려! 조금만 힘내자!'; toast('🔒 ' + t); speak(t);
+    const b = $('#heroBubble'); if (b) b.textContent = t; },
+});
 
 /* ===================== 엄마가 보기 쉬운 화면 (11/5 오빠 요청) =====================
    - 진도: 과목마다 게이지 하나 (1-2 → 2-1 → 2-2 칸, 토끼가 지금 자리). 진도 옮기기·EBS 설정 같은 것은 오빠 탭에만

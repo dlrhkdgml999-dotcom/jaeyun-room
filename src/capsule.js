@@ -68,7 +68,7 @@ function openCapsule(){
 VIEWS.book = () => {
   const own = S.collect || {}, fr = S.friends || [], total = COLLECT.filter(x => own[x.id]).length;
   app().innerHTML = `<section class="screen">
-    <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">토리 친구 도감</h2><span class="sticker-chip">${total} / ${COLLECT.length}</span></div>
+    <div class="row"><button class="icon-btn" ${playBack()} aria-label="뒤로">${ICON.back}</button><h2 style="flex:1">토리 친구 도감</h2><span class="sticker-chip">${total} / ${COLLECT.length}</span></div>
     <div class="bubble" style="font-size:18px">공부를 다 끝낸 날마다 캡슐에서 친구가 나와요. 친구를 누르면 ${esc(S.bunnyName)} 옆에 같이 놀 수 있어요 (세 명까지)!</div>
     ${[3, 2, 1].map(r => `<h3 class="disp" style="font-weight:400;margin:4px 0 0"><span class="rare-tag ${RARE[r].cls}">${RARE[r].name}</span></h3>
       <div class="book-grid">${COLLECT.filter(c => c.r === r).map(c => own[c.id]

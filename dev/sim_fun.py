@@ -37,7 +37,7 @@ async def main():
         await s.ev("window.__ev = 'combo'")
         await s.ev("go('home')"); await p.wait_for_timeout(100)
         s.expect(await p.locator('.ev-banner').count() == 1 and '콤보' in await p.locator('.ev-banner').inner_text(), '첫 화면 이벤트 알림 없음')
-        s.expect(await p.locator('.garden-tile').count() == 1, '첫 화면 텃밭 칸 없음')
+        s.expect(await p.locator('.play-tile').count() == 1, '첫 화면 놀이터 칸 없음')
         await open_board(s, 'math')
         s.expect(await s.screen() == 'q', f'수학 판이 문제로 안 감 {await s.screen()}')
         n = await s.ev("RUN.b.qs.length"); marks = await p.locator('.track .cmark').count()

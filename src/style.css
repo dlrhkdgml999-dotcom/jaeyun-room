@@ -891,3 +891,18 @@ section.screen{position:relative}
 .unit-card.slim{padding-top:10px;padding-bottom:10px}.unit-card.course-line{display:flex;align-items:center;gap:10px;padding:12px 18px}.unit-card.course-line.next{opacity:.7}
 /* 11/9 엄마 탭 바로가기 3칸 */
 .mom-quick.three{grid-template-columns:repeat(3,1fr);gap:8px}.mom-quick.three .mq{padding:12px 8px}.mom-quick.three .mq .ic{font-size:26px}.mom-quick.three .mq b{font-size:16px}.mom-quick.three .mq small{font-size:12px}
+/* 11/9 🎮 놀이터 — 첫 화면 아이콘 5개, 놀이터 안 큰 카드 4장 */
+.home .home-nav{grid-template-columns:repeat(5,1fr)!important}
+.home .home-nav .nav-tile.play-tile{background:linear-gradient(160deg,#FFF6D8,#FFE3EE);border-color:var(--pink)}
+.home .home-nav .nav-tile.play-tile.locked{background:var(--paper);border-color:var(--line);opacity:.85}
+.play .play-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.play .play-card{position:relative;display:grid;justify-items:center;gap:6px;padding:22px 12px 18px;background:var(--paper);border:3px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);font-family:var(--f-display);color:var(--ink);text-align:center}
+.play .play-card:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.play .play-card .pic{font-size:54px;line-height:1.1}
+.play .play-card b{font-weight:400;font-size:24px}
+.play .play-card small{font-family:var(--f-body);font-size:15px;color:var(--ink-soft);word-break:keep-all}
+.play .play-card.ping{animation:glow 1.6s infinite;border-color:var(--pink)}
+.play .play-card .dot{position:absolute;top:-9px;right:-6px;background:var(--pink);color:#fff;font-family:var(--f-body);font-size:13px;line-height:1;border-radius:999px;padding:5px 9px}
+.play .c-garden{background:#F2FBEF}.play .c-room{background:#FFF0F5}.play .c-book{background:#F3EFFF}.play .c-kq{background:#EAF5FE}
+@media (min-width:960px) and (orientation:landscape){ .play .play-grid{grid-template-columns:repeat(4,1fr)} .play .play-card{padding:30px 12px 24px} .play .play-card .pic{font-size:64px} }
+@media (min-width:960px) and (orientation:landscape){ .play .play-card{min-height:300px;align-content:center} .play .play-card .pic{font-size:78px} .play .play-card b{font-size:27px} .play .play-card small{font-size:16px} }

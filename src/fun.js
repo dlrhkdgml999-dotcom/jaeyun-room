@@ -159,7 +159,7 @@ VIEWS.garden = () => {
   const g = gardenState(), unlocked = SEEDS.filter(s => s.at >= 0 && g.harvests >= s.at), nextSeed = SEEDS.find(s => s.at > g.harvests);
   const bas = Object.entries(g.basket).filter(([, n]) => n > 0);
   app().innerHTML = `<section class="screen garden">
-    <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">${esc(S.bunnyName)} 텃밭</h2><span class="pill">🪣 물뿌리개 ${g.cans}</span></div>
+    <div class="row"><button class="icon-btn" ${playBack()} aria-label="뒤로">${ICON.back}</button><h2 style="flex:1">${esc(S.bunnyName)} 텃밭</h2><span class="pill">🪣 물뿌리개 ${g.cans}</span></div>
     <div class="hero" style="min-height:0"><div class="stage-btn tori-stage" id="gTori">${stageHTML(120, { expr:'happy', size:92 })}</div><div class="bubble left" id="gSay">${GARDEN_PICK != null ? '어떤 씨앗을 심을까?' : g.cans ? '밭을 누르면 물을 줄 수 있어!' : g.plots.some(p => !p) ? '빈 밭을 누르면 씨앗을 심어요!' : '공부 한 판 끝내면 물뿌리개가 생겨!'}</div></div>
     <div class="plots-grid">${g.plots.map((p, i) => { const st = plotStage(p), s = p && seedOf(p.s);
       return `<button class="plot ${st} ${GARDEN_PICK === i ? 'pick' : ''}" data-a="plot" data-v="${i}"><span class="pe">${!p ? '' : st === 'ready' ? s.e : STAGE_E[st]}</span><span class="pl">${!p ? '빈 밭' : st === 'ready' ? '수확!' : `${s.n} ${p.w}/${s.need}`}</span>${p && st !== 'ready' ? `<span class="pw"><i style="width:${Math.round(p.w / s.need * 100)}%"></i></span>` : ''}</button>`; }).join('')}</div>
@@ -312,7 +312,7 @@ function kqSubmit(){
 Object.assign(ACT, {
   kq(){ KQP = null; go('kq'); },
   kqtype(el){ kqStart(el.dataset.v); SFX.tap(); VIEWS.kq(); },
-  kqback(){ if (KQP && !KQP.sent) { KQP = null; VIEWS.kq(); return; } KQP = null; go('home'); },
+  kqback(){ if (KQP && !KQP.sent) { KQP = null; VIEWS.kq(); return; } KQP = null; go(playOpen() ? 'play' : 'home'); },
   kqnew(){ KQP = null; VIEWS.kq(); },
   kqfocus(el){ KQP.focus = el.dataset.v; VIEWS.kq(); },
   kqop(){ KQP.op = KQP.op === '+' ? '-' : '+'; SFX.tap(); VIEWS.kq(); },
@@ -365,7 +365,7 @@ function kqPanel(){
       ${x.type === 'draw' && x.img ? `<img src="${x.img}" alt="재윤이 그림" style="max-width:100%;max-height:220px;object-fit:contain;background:#fff;border-radius:10px;border:2px solid var(--line)">` : x.type === 'draw' ? `<span class="muted">🎨 그림은 재윤이 태블릿에서 오는 중이에요. 태블릿에서 공부방 앱을 열면 와요.</span>` : `<span class="disp" style="font-size:22px">${esc(kqQText(x))}</span>`}
       ${x.hint ? `<span class="muted">힌트: ${esc(x.hint)}</span>` : ''}
       <div class="row" style="gap:6px;flex-wrap:wrap"><input type="${x.type === 'calc' ? 'number' : 'text'}" id="kqg_${x.id}" placeholder="답" style="flex:1;min-width:90px;border:2px solid var(--line);border-radius:12px;padding:8px"><input type="text" id="kqm_${x.id}" placeholder="재윤이에게 한마디" maxlength="60" style="flex:2;min-width:140px;border:2px solid var(--line);border-radius:12px;padding:8px"><button class="btn small" data-a="kqguess" data-id="${x.id}">답하기</button></div></div>`).join('')
-      : `<p class="muted">${all.length ? '다 풀었어요 ✓' : '아직 재윤이가 낸 문제가 없어요. 재윤이 첫 화면 "🎲 오빠에게 문제 내기"에서 낼 수 있어요.'}</p>`}
+      : `<p class="muted">${all.length ? '다 풀었어요 ✓' : '아직 재윤이가 낸 문제가 없어요. 재윤이 첫 화면 "🎮 놀이터 → 🎲 오빠에게 문제 내기"에서 낼 수 있어요.'}</p>`}
     ${done.length ? `<div class="list">${done.map(x => { const a = kqAns(x.id); return `<div class="li"><span class="grow">${x.type === 'draw' ? '🎨' : esc(kqQText(x))} → ${esc(a.guess)}</span><span class="pill ${a.right ? '' : 'ok'}">${a.right ? '맞힘' : '재윤이 승'}</span></div>`; }).join('')}</div>` : ''}</div>`;
 }
 /* 재윤이 첫 화면: 오빠가 풀었으면 결과 보러 가기 */
@@ -426,3 +426,42 @@ function playPanel(){ const p = playStats();
     ${row('🎲', '오빠에게 낸 문제', `${p.kq}개`, !p.kq)}
     ${row('💌', '재윤이가 보낸 건의', `${p.kidSug}개`, false)}
   </div></div>`; }
+
+/* ---------- 11/9 🎮 놀이터: 텃밭·꾸미기·도감·문제 내기를 한 칸으로 (오빠: "게임들을 게임 목록으로") ----------
+   첫 화면 아이콘 8개 → 5개(놀이터·달력·진도 지도·오답노트·오빠에게 말하기). 오늘 공부 한 판을 끝내야 열림(오빠가 3번 고름).
+   놀이터 안 카드 4장에 지금 상태, 할 게 있으면 놀이터 아이콘에 빨간 점. 놀이터에서 들어간 화면의 ← 는 놀이터로 */
+function playOpen(){ const d = S.days[todayKey()]; return !!(d && d.boards && BOARDS.some(b => d.boards[b.k] && d.boards[b.k].done)); }
+const playBack = () => playOpen() ? 'data-a="go" data-v="play"' : 'data-a="home"';
+function kqNews(){ let seen = 0; try { seen = +localStorage.getItem('jaeyun-kqseen') || 0; } catch (e) {} return kqAll().filter(x => { const a = kqAns(x.id); return a && a.at > seen; }).length; }
+function playInfo(){
+  const g = gardenState(), ready = g.plots.filter(p => plotStage(p) === 'ready').length, empty = g.plots.filter(p => !p).length;
+  const stars = S.stickers.length, nextIt = typeof ITEMS !== 'undefined' ? ITEMS.filter(i => i.need > stars).sort((a, b) => a.need - b.need)[0] : null;
+  const own = Object.keys(S.collect || {}).length, sc = kqScore(), news = kqNews();
+  return {
+    garden:{ dot: ready ? '수확!' : g.cans ? `🪣${g.cans}` : '', sub: ready ? `다 자란 게 ${ready}개! 수확하자` : g.cans ? `물뿌리개 ${g.cans}개가 기다려요` : empty === g.plots.length ? '씨앗을 심어 볼까?' : '한 판 끝내면 물뿌리개가 생겨요' },
+    room:{ dot:'', sub: nextIt ? `⭐ ${stars}개 · ${nextIt.need - stars}개 더 모으면 새 꾸미기` : `⭐ ${stars}개 · 다 모았어!` },
+    book:{ dot:'', sub:`친구 ${own} / ${COLLECT.length}` },
+    kq:{ dot: news ? '새 답!' : '', sub: news ? '오빠가 답했어! 보러 가자' : `재윤이 ${sc.kid} : ${sc.op} 오빠` },
+  };
+}
+function playDot(){ if (!playOpen()) return ''; const I = playInfo(); return I.garden.dot || I.kq.dot || ''; }
+VIEWS.play = () => {
+  if (!playOpen()) { go('home'); return; }
+  const I = playInfo();
+  const card = (k, act, v, ic, name, cls) => `<button class="play-card ${cls || ''} ${I[k].dot ? 'ping' : ''}" data-a="${act}"${v ? ` data-v="${v}"` : ''}><span class="pic">${ic}</span><b>${name}</b><small>${esc(I[k].sub)}</small>${I[k].dot ? `<span class="dot">${esc(I[k].dot)}</span>` : ''}</button>`;
+  app().innerHTML = `<section class="screen play">
+    <div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">🎮 놀이터</h2><span class="sticker-chip">⭐ ${S.stickers.length}</span></div>
+    <div class="hero" style="min-height:0"><div class="stage-btn tori-stage">${stageHTML(120, { expr:'happy', size:92 })}</div><div class="bubble left">${esc(pick(['공부 잘했으니까 신나게 놀자!', '오늘은 뭐 하고 놀까?', '나랑 같이 놀자! 뭐부터 할래?']))}</div></div>
+    <div class="play-grid">
+      ${card('garden', 'go', 'garden', '🌱', '텃밭', 'c-garden')}
+      ${card('room', 'go', 'room', '🎀', '꾸미기', 'c-room')}
+      ${card('book', 'go', 'book', '🦄', '도감', 'c-book')}
+      ${card('kq', I.kq.dot ? 'kqseen' : 'kq', '', '🎲', '오빠에게 문제 내기', 'c-kq')}
+    </div>
+  </section>`;
+};
+Object.assign(ACT, {
+  play(){ if (playOpen()) { SFX.tap(); go('play'); return; }
+    SFX.tap(); const t = '공부 한 판 끝내면 놀이터가 열려! 조금만 힘내자!'; toast('🔒 ' + t); speak(t);
+    const b = $('#heroBubble'); if (b) b.textContent = t; },
+});

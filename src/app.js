@@ -636,13 +636,10 @@ VIEWS.home = () => {
       ${won ? `<span class="gt"><b>오빠 선물 받는 날! 🎉</b>${g.name ? ` <span class="gn">${esc(g.name)}</span>` : ''}</span>`
         : `<span class="gt">${g.name ? `<span class="gn">${esc(g.name)}</span>까지` : '오빠 선물까지'} <b>${g.goal - gd}일</b> 남았어!${g.name ? '' : ' <span class="gw">✏️ 받고 싶은 선물 적기</span>'}</span><span class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></span>`}</button>
     <div class="home-nav">
-      ${tile('garden-tile' + (gReady || gs.cans ? ' ping' : ''), 'go', 'garden', gReady ? '🧺' : '🌱', '텃밭', gReady ? '수확!' : gs.cans ? `🪣${gs.cans}` : '')}
-      ${tile('', 'go', 'room', '🎀', '꾸미기')}
-      ${tile('', 'go', 'book', '🦄', '도감')}
+      ${tile('play-tile' + (playDot() ? ' ping' : '') + (playOpen() ? '' : ' locked'), 'play', '', playOpen() ? '🎮' : '🔒', '놀이터', playDot())}
       ${tile('', 'go', 'cal', '📅', '달력')}
       ${SUBJS.some(currOn) ? tile('', 'go', 'map', '🗺️', '진도 지도') : ''}
       ${tile('', 'notebook', '', '📒', '오답노트')}
-      ${tile('kq-tile', 'kq', '', '🎲', '문제 내기')}
       ${tile('sug-kid', 'sug', 'kid', '💌', '오빠에게 말하기')}
     </div>
     ${kidSyncNote()}
@@ -987,7 +984,7 @@ VIEWS.alldone = () => {
 let ROOM_TAB = 'dress';
 VIEWS.room = () => {
   const total = S.stickers.length;
-  const head = `<div class="row"><button class="icon-btn" data-a="home" aria-label="처음으로">${ICON.back}</button><h2 style="flex:1">${ROOM_TAB === 'dress' ? `${esc(S.bunnyName)} 꾸미기` : '스티커북'}</h2><span class="sticker-chip">⭐ ${total}</span></div>
+  const head = `<div class="row"><button class="icon-btn" ${playBack()} aria-label="뒤로">${ICON.back}</button><h2 style="flex:1">${ROOM_TAB === 'dress' ? `${esc(S.bunnyName)} 꾸미기` : '스티커북'}</h2><span class="sticker-chip">⭐ ${total}</span></div>
     <div class="tabs"><button class="${ROOM_TAB === 'dress' ? 'on' : ''}" data-a="roomtab" data-v="dress">꾸미기</button><button class="${ROOM_TAB === 'book' ? 'on' : ''}" data-a="roomtab" data-v="book">스티커북</button></div>`;
   if (ROOM_TAB === 'book') {
     const list = [...S.stickers].reverse();
