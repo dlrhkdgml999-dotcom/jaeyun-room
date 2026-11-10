@@ -34,7 +34,7 @@ SIGHT['e5-2'].sents.push(['I ___ the moon.','see',['my','can'],'나는 달을 �
 SIGHT['e5-3'].sents.push(['___ is my sister.','She',['He','We'],'그녀는 우리 언니예요.','👧'],['___ is my grandpa.','He',['She','We'],'그는 우리 할아버지예요.','👴'],['We ___ to bed.','go',['he','and'],'우리는 자러 가요.','🛌'],['I like milk ___ bread.','and',['go','she'],'나는 우유와 빵을 좋아해요.','🥛🍞']);
 SIGHT['e5-3'].sents.push(['___ is my dad.','He',['She','We'],'그는 우리 아빠예요.','👨'],['___ is my grandma.','She',['He','We'],'그녀는 우리 할머니예요.','👵'],['___ go to the park.','We',['He','She'],'우리는 공원에 가요.','🏞️'],["Let's ___ to the zoo.",'go',['she','and'],'동물원에 가자.','🦁'],['I like red ___ blue.','and',['go','he'],'나는 빨강과 파랑을 좋아해요.','🎨'],['We ___ home.','go',['he','and'],'우리는 집에 가요.','🏠']);
 const SENT6 = {
-  'e6-1':{ frame:w => `It is a ${w}.`, ko:k => `그것은 ${k}${hasBatchim(k) ? '이에요' : '예요'}.`, items:PH_ALL.filter(x => !/^\d+$/.test(x.e) && !['hot','red','hug'].includes(x.w)).map(x => [x.w, x.k, x.e]) },
+  'e6-1':{ frame:w => `It is a ${w}.`, ko:k => `그것은 ${k}${hasBatchim(k) ? '이에요' : '예요'}.`, items:PH_ALL.filter(x => !/^\d+$/.test(x.e) && !['hot','red','hug','lip'].includes(x.w)).map(x => [x.w, x.k, x.e]) },
   'e6-2':{ frame:w => `I like ${w}.`, ko:k => `나는 ${k}${hasBatchim(k) ? '을' : '를'} 좋아해요.`, items:[['apples','사과','🍎'],['bananas','바나나','🍌'],['grapes','포도','🍇'],['strawberries','딸기','🍓'],['cookies','쿠키','🍪'],['carrots','당근','🥕'],['cats','고양이','🐱'],['dogs','강아지','🐶']] },
   'e6-3':{ frame:w => `I can ${w}.`, ko:k => `나는 ${k} 수 있어요.`, items:[['swim','수영할','🏊'],['run','달릴','🏃'],['dance','춤출','💃'],['sing','노래할','🎤'],['read','책을 읽을','📖'],['draw','그림을 그릴','🎨']] },
 };
@@ -125,7 +125,7 @@ function qMagic(id){ const [w, k, e, short] = pick(MAGIC[id]); const v = w.match
   return eq_({ key:`e:mg:${w}`, type:'magic', prompt:'그림에 맞는 낱말을 골라요', say:'잘 듣고 그림에 맞는 낱말을 골라 봐요', listen:w, vis:{ k:'html', html:phPic(e, true) }, opts:[w, short, other], ans:w, sayOpts:true, hint:`끝에 e가 붙으면 ${v}가 "${{ a:'에이', i:'아이', o:'오우', u:'유' }[v]}" 하고 이름 소리를 내요`, explain:`${w} = ${k}` }); }
 function qMagicPic(id){ const pool = MAGIC[id], x = pick(pool), others = shuffle(pool.filter(y => y !== x)).slice(0, 2), all = [x, ...others];
   return eq_({ key:`e:mgp:${x[0]}${others.map(o => o[0])}`, type:'magic', prompt:'잘 듣고 알맞은 그림을 골라요', say:'잘 듣고 알맞은 그림을 골라 봐요', listen:x[0], vis:{ k:'listen' }, opts:all.map(y => y[0]), ans:x[0], pic:true, optHtml:Object.fromEntries(all.map(y => [y[0], phPic(y[2], false)])), hint:`${x[0]}... 다시 들어 봐요`, explain:`${x[0]} = ${x[1]}` }); }
-const QA_ITEMS = PH_ALL.filter(x => !/^\d+$/.test(x.e) && !['hot','red','hug'].includes(x.w));
+const QA_ITEMS = PH_ALL.filter(x => !/^\d+$/.test(x.e) && !['hot','red','hug','lip'].includes(x.w));
 const NUMW = ['zero','one','two','three','four','five','six','seven','eight','nine','ten'];
 function qWhat(){ const x = pick(QA_ITEMS), others = shuffle(QA_ITEMS.filter(y => y.w !== x.w)).slice(0, 2); const right = `It is a ${x.w}.`;
   return eq_({ key:`e:wh:${x.w}`, type:'qa', prompt:'"What is it?" 알맞은 대답을 골라요', say:'왓 이즈 잇? 알맞은 대답을 골라 봐요', listen:'What is it?', vis:{ k:'html', html:phPic(x.e, true) }, opts:[right, ...others.map(o => `It is a ${o.w}.`)], ans:right, sayOpts:true, cols:1, hint:'그림의 이름을 넣어 대답해요', explain:`${right} = 그것은 ${x.k}${hasBatchim(x.k) ? '이에요' : '예요'}.` }); }

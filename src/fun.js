@@ -16,12 +16,12 @@ function funBonusSticker(why){ const e = pick(STICKERS), d = day(); d.earned.pus
 
 /* ---------- 2. 매일 깜짝 이벤트 ---------- */
 const FUN_EVENTS = [
-  { id:'double', ic:'⭐', name:'스티커 2배 날', desc:'판을 끝낼 때마다 스티커를 하나 더 받아요!' },
-  { id:'hunt', ic:'🥕', name:'숨은 황금 당근 찾기', desc:'문제 화면 어딘가에 황금 당근이 숨어 있어요. 3개 찾으면 보너스 스티커!' },
-  { id:'combo', ic:'🔥', name:'콤보 도전 날', desc:'한 판에서 5개 연속으로 한 번에 맞히면 보너스 스티커!' },
+  { id:'double', ic:'⭐', name:'별 2배 날', desc:'판을 끝낼 때마다 별을 하나 더 받아요!' },
+  { id:'hunt', ic:'🥕', name:'숨은 황금 당근 찾기', desc:'문제 화면 어딘가에 황금 당근이 숨어 있어요. 3개 찾으면 보너스 별!' },
+  { id:'combo', ic:'🔥', name:'콤보 도전 날', desc:'한 판에서 5개 연속으로 한 번에 맞히면 보너스 별!' },
   { id:'rain', ic:'🌧️', name:'단비 오는 날', desc:'텃밭 물뿌리개를 2배로 받아요!' },
   { id:'friend', ic:'🎈', name:'친구가 놀러 온 날', desc:'도감 친구가 놀러 와서 응원해 줘요!' },
-  { id:'quiz', ic:'🎲', name:'오빠 퀴즈 날', desc:'오빠에게 문제를 하나 내면 보너스 스티커!' },
+  { id:'quiz', ic:'🎲', name:'오빠 퀴즈 날', desc:'오빠에게 문제를 하나 내면 보너스 별!' },
 ];
 /* 11/9 보상 하나로 모으기(FUN_LITE): 화폐는 ⭐ 하나 → 이벤트도 ⭐·친구·오빠 퀴즈 셋만. 숨은 황금 당근·콤보 도전(콤보는 문제 화면에서 매일 보임)·단비(물뿌리개)는 끔.
    FUN_LITE = false로 바꾸면 11/4 그대로 돌아옴 */
@@ -68,7 +68,7 @@ function funQHTML(b){
     boss = `<div class="boss" aria-label="당근 탑"><div class="boss-tower">${'<span>🥕</span>'.repeat(Math.max(0, blocks))}${hp ? '' : '<span class="boss-done">💥</span>'}</div>
       <div class="boss-info"><b>당근 탑 무너뜨리기!</b><span class="boss-hp"><i style="width:${Math.round(hp / max * 100)}%"></i></span><small>한 번에 맞히면 쾅! 두 칸, 다시 맞히면 한 칸</small></div></div>`;
   }
-  return `${boss}<div class="fun-row"><span class="carrot-chip" title="한 번에 맞혀서 주운 당근">🥕 ${car}</span>${combo >= 2 ? `<span class="combo-chip ${combo >= 5 ? 'hot' : ''}">🔥 ${combo}연속</span>` : ''}</div>`;
+  return `${boss}<div class="fun-row">${FUN_LITE ? '' : `<span class="carrot-chip" title="한 번에 맞혀서 주운 당근">🥕 ${car}</span>`}${combo >= 2 ? `<span class="combo-chip ${combo >= 5 ? 'hot' : ''}">🔥 ${combo}연속</span>` : ''}</div>`;
 }
 /* 진행 막대에 남은 문제 자리마다 당근 (맞히면 토리가 주워 가요) */
 function funAfterQ(b){
@@ -87,7 +87,7 @@ function funRight(first){
   if (first && b.combo >= 3 && fb) { fb.insertAdjacentHTML('beforeend', ` <b class="combo-pop">🔥 ${b.combo}연속!</b>`); setTimeout(() => SFX.combo(), 250); }
   if (b.cur && b.cur.test && fb) fb.insertAdjacentHTML('beforeend', `<br><b class="combo-pop">${pick(BOSS_LINES)}</b>`);
   const ev = dayEvent(), e = funDay();
-  if (first && b.combo >= 5 && ev.id === 'combo' && !e.combo5) { e.combo5 = true; const st = funBonusSticker('combo'); toast(`🔥 5연속 성공! 보너스 스티커 ${st}`); }
+  if (first && b.combo >= 5 && ev.id === 'combo' && !e.combo5) { e.combo5 = true; const st = funBonusSticker('combo'); toast(`🔥 5연속 성공! 보너스 별 ${st}`); }
   const box = document.querySelector('.fun-row'); if (box) { const tmp = document.createElement('div'); tmp.innerHTML = funQHTML(b); const nb = tmp.querySelector('.fun-row'); if (nb) box.replaceWith(nb); }
   const tw = document.querySelector('.boss'); if (tw) { const tmp = document.createElement('div'); tmp.innerHTML = funQHTML(b); const nb = tmp.querySelector('.boss'); if (nb) { nb.classList.add('shake'); tw.replaceWith(nb); } SFX.hit(); }
 }
@@ -115,11 +115,11 @@ function funOnFinish(k, b, d, allDone){
 function funRewardHTML(k, b){
   const d = day(), parts = [];
   if (b.maxCombo >= 3) parts.push(`최고 <b>${b.maxCombo}연속</b> 🔥`);
-  if (b.carrots) parts.push(`${FUN_LITE ? '한 번에 맞힌 당근' : '당근'} <b>${b.carrots}개</b> 🥕`);
+  if (b.carrots && !FUN_LITE) parts.push(`당근 <b>${b.carrots}개</b> 🥕`);   // 11/11: 당근은 안 쌓이니 숫자는 안 보여 줌 (진행 막대 당근 그림만)
   if (b.cur && b.cur.test) parts.push(b.cur.result && b.cur.result.pass ? '<b>당근 탑을 무너뜨렸어! 💥</b>' : '당근 탑이 아직 버티고 있어. 다음엔 무너뜨리자!');
   const e = (d.ev || {}).fin && d.ev.fin[k] || {};
   const more = [];
-  if (e.double) more.push(`⭐ 스티커 2배 날! 하나 더 ${e.double}`);
+  if (e.double) more.push(`⭐ 별 2배 날! 하나 더 ${e.double}`);
   if (e.cans) more.push(`🪣 텃밭 물뿌리개 ${e.cans}개`);
   const ev = dayEvent(), fr = ev.id === 'friend' ? funFriend() : null;
   return `${parts.length ? `<p class="score-line" style="font-size:18px">${parts.join(' · ')}</p>` : ''}${more.length ? `<p class="muted" style="text-align:center">${more.join(' · ')}</p>` : ''}${fr ? `<div class="bubble" style="display:flex;align-items:center;gap:10px"><span style="font-size:34px">${fr.e}</span><span>${esc(fr.n)}: 재윤아, 진짜 멋져! 다음 판도 응원할게!</span></div>` : ''}`;
@@ -169,7 +169,7 @@ VIEWS.garden = () => {
       <p class="muted" style="font-size:14px;margin:6px 0 0">지금까지 ${g.harvests}번 수확했어요${nextSeed ? ` · ${nextSeed.at - g.harvests}번 더 하면 새 씨앗 ${nextSeed.e}` : ''}</p></div>` : `
     <div class="panel"><h3>🧺 수확 바구니 <small class="muted">누르면 토리에게 줘요</small></h3>
       ${bas.length ? `<div class="seed-row">${bas.map(([id, n]) => `<button class="seed" data-a="feed" data-v="${id}"><span>${seedOf(id).e}</span>${seedOf(id).n}<small>${n}개</small></button>`).join('')}</div>` : '<p class="muted">아직 비어 있어요. 다 자라면 수확해요!</p>'}
-      <p class="muted" style="font-size:14px">토리에게 ${g.fed}번 줬어요${g.fed % 10 ? ` · ${10 - g.fed % 10}번 더 주면 토리가 스티커를 줘요` : ''}</p></div>
+      <p class="muted" style="font-size:14px">토리에게 ${g.fed}번 줬어요${g.fed % 10 ? ` · ${10 - g.fed % 10}번 더 주면 토리가 별을 줘요` : ''}</p></div>
     <div class="panel"><h3>🥕 문제 풀며 주운 당근 <b>${g.carrots}</b>개</h3>
       <p class="muted" style="font-size:15px">한 번에 맞힐 때마다 당근을 하나 주워요. ${GOLD_COST}개를 모으면 황금 씨앗! 황금 씨앗을 키우면 도감 친구가 와요.</p>
       <div class="meter"><i style="width:${Math.min(100, Math.round(g.carrots / GOLD_COST * 100))}%"></i></div>
@@ -206,12 +206,12 @@ Object.assign(ACT, {
   plantcancel(){ GARDEN_PICK = null; VIEWS.garden(); },
   feed(el){ const g = gardenState(), id = el.dataset.v; if (!(g.basket[id] > 0)) return;
     g.basket[id]--; g.fed++; let msg = pick([`냠냠! 재윤이가 키운 ${seedOf(id).n} 최고야!`, `우와, ${seedOf(id).n} 정말 맛있다!`, '배가 든든해! 고마워 재윤아!']);
-    if (g.fed % 10 === 0) { const st = funBonusSticker('feed'); msg += ` 고마워서 스티커 줄게! ${st}`; }
+    if (g.fed % 10 === 0) { const st = funBonusSticker('feed'); msg += ` 고마워서 별 줄게! ${st}`; }
     save(); SFX.tap(); VIEWS.garden(); gSay(msg, 'love'); },
   goldseed(){ const g = gardenState(); if (g.carrots < GOLD_COST) return; g.carrots -= GOLD_COST; g.gold++; save(); SFX.sticker(); VIEWS.garden(); gSay('황금 씨앗이 생겼어! 빈 밭에 심어 봐!', 'wow'); },
   evtell(){ const ev = dayEvent(), fr = ev.id === 'friend' ? funFriend() : null; speak(fr ? `오늘은 ${josa(fr.n, '이', '가')} 놀러 왔어! 같이 공부하자!` : `오늘은 ${ev.name}! ${ev.desc}`); },
   huntc(el){ const e = funDay(); el.remove(); if ((e.found || 0) >= 3) return; e.found = (e.found || 0) + 1; SFX.find();
-    if (e.found >= 3) { const st = funBonusSticker('hunt'); toast(`🥕 황금 당근 3개 다 찾았다! 보너스 스티커 ${st}`); } else toast(`🥕 황금 당근 찾았다! (${e.found}/3)`);
+    if (e.found >= 3) { const st = funBonusSticker('hunt'); toast(`🥕 황금 당근 3개 다 찾았다! 보너스 별 ${st}`); } else toast(`🥕 황금 당근 찾았다! (${e.found}/3)`);
     save(); },
 });
 
@@ -307,7 +307,7 @@ function kqSubmit(){
   const e = funDay(); let st = '';
   if (dayEvent().id === 'quiz' && !e.quiz) { e.quiz = true; st = funBonusSticker('quiz'); }
   save(); P.sent = true; SFX.sticker();
-  VIEWS.kq(); speak('오빠한테 문제를 보냈어! 오빠가 맞힐 수 있을까?'); if (st) toast(`🎲 오빠 퀴즈 날 보너스 스티커 ${st}`);
+  VIEWS.kq(); speak('오빠한테 문제를 보냈어! 오빠가 맞힐 수 있을까?'); if (st) toast(`🎲 오빠 퀴즈 날 보너스 별 ${st}`);
 }
 Object.assign(ACT, {
   kq(){ KQP = null; go('kq'); },
@@ -457,10 +457,14 @@ VIEWS.play = () => {
       ${card('room', 'go', 'room', '🎀', '꾸미기', 'c-room')}
       ${card('book', 'go', 'book', '🦄', '도감', 'c-book')}
       ${card('kq', I.kq.dot ? 'kqseen' : 'kq', '', '🎲', '오빠에게 문제 내기', 'c-kq')}
+      <a class="play-card c-popo" href="${POPO_URL}" data-a="popo"><span class="pic">🦄</span><span class="popo-t"><b>포포의 반짝 모험</b><small>오빠가 만든 달리기 게임!</small></span></a>
     </div>
   </section>`;
 };
+/* 11/11 놀이터에 오빠가 만든 게임 "포포의 반짝 모험"(tori-run 저장소, 같은 github.io) 바로가기 — 같은 창에서 열고, 뒤로 가기로 돌아옴 */
+const POPO_URL = 'https://dlrhkdgml999-dotcom.github.io/tori-run/';
 Object.assign(ACT, {
+  popo(){ SFX.tap(); },
   play(){ if (playOpen()) { SFX.tap(); go('play'); return; }
     SFX.tap(); const t = '공부 한 판 끝내면 놀이터가 열려! 조금만 힘내자!'; toast('🔒 ' + t); speak(t);
     const b = $('#heroBubble'); if (b) b.textContent = t; },

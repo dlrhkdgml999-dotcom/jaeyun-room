@@ -45,7 +45,7 @@ const Tori = (() => {
     const fr = (S.friends || []).map(id => COLLECT.find(c => c.id === id)).filter(Boolean);
     if (fr.length) { const c = pick(fr); out.push(`${c.n}도 재윤이가 좋대!`); }
     const st = streakDays(); if (st >= 2) out.push(`우리 ${st}일 연속 같이 공부했어! 멋지다!`);
-    if (S.stickers.length >= 5) out.push(`스티커를 ${S.stickers.length}개나 모았어! 대단해!`);
+    if (S.stickers.length >= 5) out.push(`별을 ${S.stickers.length}개나 모았어! 대단해!`);
     if (h < 9) out.push('하암~ 아직 조금 졸려~ 재윤이는 잘 잤어?');
     else if (h >= 20) out.push('벌써 깜깜해졌네. 일찍 자야 쑥쑥 커!');
     return out;

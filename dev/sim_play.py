@@ -58,7 +58,7 @@ async def main():
         await s.click('.play-tile'); await p.wait_for_timeout(200)
         s.expect(await s.screen() == 'play', '놀이터가 안 열림')
         cards = await s.ev("[...document.querySelectorAll('.play-card')].map(c => ({ n:c.querySelector('b').textContent, sub:c.querySelector('small').textContent, dot:(c.querySelector('.dot')||{}).textContent || '' }))")
-        print('B 카드:', cards); s.expect([c['n'] for c in cards] == ['텃밭', '꾸미기', '도감', '오빠에게 문제 내기'] and all(c['sub'] for c in cards), f'카드 이상 {cards}')
+        print('B 카드:', cards); s.expect([c['n'] for c in cards] == ['텃밭', '꾸미기', '도감', '오빠에게 문제 내기', '포포의 반짝 모험'] and all(c['sub'] for c in cards), f'카드 이상 {cards}')
         s.expect(cards[0]['dot'].startswith('🪣') and '물뿌리개' in cards[0]['sub'], '텃밭 카드에 물뿌리개 표시 없음')
         s.expect('⭐' in cards[1]['sub'] and '/' in cards[2]['sub'] and ':' in cards[3]['sub'], f'카드 상태 글 이상 {cards}')
         await s.shot('play_tab')

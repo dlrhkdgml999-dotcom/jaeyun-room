@@ -85,14 +85,15 @@ async def main():
             m = await s.ev("""(() => ({ quick:document.querySelectorAll('.mom-quick .mq').length, folds:[...document.querySelectorAll('details.mom-fold')].map(d => d.dataset.k + (d.open ? '+' : '')),
               panelsOpen:[...document.querySelectorAll('.screen > .panel')].map(x => (x.querySelector('h3')||x).textContent.trim().slice(0, 12)), height:document.documentElement.scrollHeight }))()""")
             print(f'[{tag}] 엄마 탭:', m)
-            s.expect(m['quick'] == 3, '엄마 탭 바로가기 3칸(오답노트·공부 기록·아들에게 말하기)이 아님')   # 11/9 주간 리포트는 접는 칸에만
-            s.expect(set(['report', 'prog', 'dict', 'cheer']) <= set(x.rstrip('+') for x in m['folds']), f"접힌 칸이 모자람 {m['folds']}")
+            s.expect(m['quick'] == 1, '엄마 탭 바로가기가 오답노트 한 칸이 아님')   # 11/11 엄마 탭 = 오늘 한눈에·받아쓰기 채점·오답노트
+            s.expect(set(x.rstrip('+') for x in m['folds']) <= {'dict'}, f"엄마 탭 접힌 칸 이상 {m['folds']}")
             await s.overflow(f'엄마 탭 {tag}'); await s.shot(f'mom_{tag}')
+            await s.ev("S.adultTab = 'oppa'; go('adult')"); await p.wait_for_timeout(200)   # 11/11 주간 리포트·진도는 오빠 탭 칸
             await s.click('details.mom-fold[data-k="report"] > summary'); await p.wait_for_timeout(300)
             s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=report]').open"), '주간 리포트 칸이 안 펼쳐짐')
-            await s.click('details.mom-fold[data-k="prog"] > summary'); await p.wait_for_timeout(100)
+            await s.click('details.mom-fold[data-k="curr"] > summary'); await p.wait_for_timeout(100)
             await s.ev("refreshIfIdle()"); await p.wait_for_timeout(100)
-            s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=prog]').open && document.querySelector('details.mom-fold[data-k=report]').open"), '화면을 다시 그리니 열어 둔 칸이 닫힘')
+            s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=curr]').open && document.querySelector('details.mom-fold[data-k=report]').open"), '화면을 다시 그리니 열어 둔 칸이 닫힘')
             await s.adult('set'); s.expect(await s.ev("!document.querySelector('#al1')") , '설정 탭에 없앤 공부 시간 칸이 남음'); await s.adult('mom')
             await s.overflow(f'엄마 탭 펼침 {tag}'); await s.shot(f'mom_open_{tag}')
             await s.ev("document.querySelectorAll('details.mom-fold').forEach(d => d.open = false)"); await p.wait_for_timeout(50)

@@ -20,19 +20,17 @@ function lessonIntroHTML(b){
   const lec = b.cur.lec ? lectInfo(s, b.cur.lec) : null, seenLec = lec && c.seen[b.cur.lec];
   const again = lectureDayUsed() ? null : (l.ebs || []).find(n => c.seen[n]);
   return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[s]} ${unitTag(l.unit)} ${esc(l.unit.name)} · ${l.li + 1}차시</span><span class="disp" style="font-size:24px">${esc(l.title)}</span>
-    ${lec && !seenLec ? `<div class="lec-box"><span class="lec-no">${lec.no}강</span><span style="flex:1;text-align:left"><b class="disp" style="font-size:19px;font-weight:400">오늘의 강의 · EBS ${esc(lec.name)}</b><br><span class="muted" style="font-size:15px">${esc(lec.desc)} · ${lec.mins}분</span></span></div>
-      <span class="muted" style="font-size:15px">강의를 보고 → 개념 정리 → 문제를 풀어요</span>`
-    : `<span class="muted" style="font-size:15px">개념 카드를 보고 → 문제를 풀어요</span>
-      ${again ? `<button class="btn ghost small" data-a="lecopt" data-v="${s}|${again}">📺 ${lectInfo(s, again).no}강 다시 보기 (골라 보기)</button>` : ''}`}
+    ${lec && !seenLec ? `<div class="lec-box"><span class="lec-no">${lec.no}강</span><span style="flex:1;text-align:left"><b class="disp" style="font-size:19px;font-weight:400">오늘의 강의 · EBS ${esc(lec.name)}</b><br><span class="muted" style="font-size:15px">${esc(lec.desc)} · ${lec.mins}분</span></span></div>`
+    : `${again ? `<button class="btn ghost small" data-a="lecopt" data-v="${s}|${again}">📺 ${lectInfo(s, again).no}강 다시 보기 (골라 보기)</button>` : ''}`}
   </div>`;
 }
 function waitLecHTML(k){
   const C = CURRS[k], c = curr(k), last = C.all.filter(x => x.ui < c.unit || (x.ui === c.unit && x.li < c.lesson)).pop();
-  const nx = currentLesson(k), lec = day().lec, other = lec && lec.s && lec.s !== k ? lectInfo(lec.s, lec.n) : null;
+  const nx = currentLesson(k);
   // 11/3: "영상이 더 없대" → 강의가 끝난 게 아니라 오늘은 다른 과목 강의 날이라는 걸 분명하게
   // 11/9: 초1이 읽기에 안내가 너무 길었음(네 문장) → 제목 한 줄 + 짧은 두 마디
-  const why = other ? `오늘 강의는 ${SUBJ_NAME[lec.s]} ${other.no}강${lec.done ? '을 봤어요' : '이에요'}.` : '강의는 하루에 한 편!';
-  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 연습 + 미리 맛보기</span><span class="disp" style="font-size:21px">${nx ? `"${esc(nx.title)}" 미리 맛보기 🔭` : `${last ? `"${esc(last.title)}"` : SUBJ_NAME[k]} 연습`}</span><span class="muted" style="font-size:16px">${why} ${SUBJ_NAME[k]} 영상은 내일 봐요 📺</span></div>`;
+  // 11/11: 그것도 길어서 "📺 영상은 내일!" 한마디만 (오늘 강의 과목 설명 why는 엄마용 boardSub에 남음)
+  return `<div class="lesson-card"><span class="eyebrow">${SUBJ_NAME[k]} · 연습 + 미리 맛보기</span><span class="disp" style="font-size:21px">${nx ? `"${esc(nx.title)}" 미리 맛보기 🔭` : `${last ? `"${esc(last.title)}"` : SUBJ_NAME[k]} 연습`}</span><span class="muted" style="font-size:15px">📺 영상은 내일!</span></div>`;
 }
 function lessonResultHTML(r0){
   const s = r0.subj || 'math', C = CURRS[s];
@@ -105,8 +103,16 @@ VIEWS.map = (o) => {
   </section>`;
 };
 
-/* 엄마 메뉴: 과목별 진도 */
-function currPanel(s){
+/* 11/11 오빠 탭 "진도 옮기기": 과목마다 옮기기 칸 하나 + 진도 속도만 (방식·EBS·최근 차시는 설정 → 진도 방식 · EBS) */
+function currJumpPanel(){
+  const on = SUBJS.filter(currOn); if (!on.length) return '<div class="panel"><p class="muted">지금은 진도 없이 자유 연습만 하고 있어요.</p></div>';
+  const optsOf = s => { const C = CURRS[s], c = curr(s); return C.units.flatMap((u, ui) => [...u.lessons.map((l, li) => `<option value="${ui}|${li}|0" ${c.unit === ui && c.lesson === li && !c.test ? 'selected' : ''}>${unitTag(u)} ${li + 1}차시 · ${esc(l.title)}</option>`), `<option value="${ui}|0|1" ${c.unit === ui && c.test ? 'selected' : ''}>${unitTag(u)} 평가</option>`]).join(''); };
+  return `<div class="panel"><h3>진도 옮기기</h3>
+    ${on.map(s => `<div class="field"><label for="cjump-${s}">${SUBJ_NAME[s]} · ${esc(CURRS[s].title)}</label><select id="cjump-${s}" data-ch="cjump" data-v="${s}">${optsOf(s)}</select></div>`).join('')}
+    <div class="field"><label for="pace">진도 속도 (세 과목 같이)</label><select id="pace" data-ch="pace"><option value="normal" ${S.pace !== 'slow' ? 'selected' : ''}>보통: 차시를 통과하면 다음 날 다음 차시</option><option value="slow" ${S.pace === 'slow' ? 'selected' : ''}>천천히: 한 차시를 이틀 통과해야 다음 차시</option></select></div></div>`;
+}
+/* 설정 → 진도 방식 · EBS: 과목별 방식(진도/자유 연습)·EBS 함께 보기·최근 차시·본 강의 (옮기기는 오빠 탭 currJumpPanel) */
+function currPanel(s, noJump){
   const C = CURRS[s], c = curr(s), on = currOn(s);
   const opts = C.units.flatMap((u, ui) => [...u.lessons.map((l, li) => `<option value="${ui}|${li}|0" ${c.unit === ui && c.lesson === li && !c.test ? 'selected' : ''}>${unitTag(u)} ${li + 1}차시 · ${esc(l.title)}</option>`), `<option value="${ui}|0|1" ${c.unit === ui && c.test ? 'selected' : ''}>${unitTag(u)} 평가</option>`]).join('');
   const recent = Object.entries(c.done).sort((a, b) => b[1].date.localeCompare(a[1].date)).slice(0, 4);
@@ -116,8 +122,8 @@ function currPanel(s){
     <div class="field"><label for="mode-${s}">${SUBJ_NAME[s]} 방식</label><select id="mode-${s}" data-ch="cmode" data-v="${s}"><option value="curr" ${on ? 'selected' : ''}>${modeText[0]}</option><option value="free" ${on ? '' : 'selected'}>${modeText[1]}</option></select></div>
     ${on ? `
     <p><b>${esc(currLabel(s))}</b> · 메달 ${c.medals.length}개</p>
-    ${s === 'math' ? `<div class="field"><label for="pace">진도 속도 (세 과목 같이)</label><select id="pace" data-ch="pace"><option value="normal" ${S.pace !== 'slow' ? 'selected' : ''}>보통: 차시를 통과하면 다음 날 다음 차시</option><option value="slow" ${S.pace === 'slow' ? 'selected' : ''}>천천히: 한 차시를 이틀 통과해야 다음 차시</option></select></div>` : ''}
-    <div class="field"><label for="cjump-${s}">진도 옮기기</label><select id="cjump-${s}" data-ch="cjump" data-v="${s}">${opts}</select></div>
+    ${s === 'math' && !noJump ? `<div class="field"><label for="pace">진도 속도 (세 과목 같이)</label><select id="pace" data-ch="pace"><option value="normal" ${S.pace !== 'slow' ? 'selected' : ''}>보통: 차시를 통과하면 다음 날 다음 차시</option><option value="slow" ${S.pace === 'slow' ? 'selected' : ''}>천천히: 한 차시를 이틀 통과해야 다음 차시</option></select></div>` : ''}
+    ${noJump ? '' : `<div class="field"><label for="cjump-${s}">진도 옮기기</label><select id="cjump-${s}" data-ch="cjump" data-v="${s}">${opts}</select></div>`}
     ${recent.length ? `<div class="list">${recent.map(([id, d]) => { const l = lessonById(id); return `<div class="li"><span class="grow">${unitTag(l.unit)} ${l.li + 1}차시 · ${esc(l.title)}</span><span class="pill ${d.pass ? 'ok' : 'wait'}">${d.rate}%${d.tries > 1 ? ` · ${d.tries}번째` : ''}</span></div>`; }).join('')}</div>` : ''}
     ${C.ebs ? `<div class="row"><span style="flex:1">EBS 강의 함께 보기<br><span class="muted" style="font-size:13px">${esc(C.ebs.name)} · ${esc(C.ebs.teacher)} (무료)</span></span><button class="switch ${ebsOn(s) ? 'on' : ''}" data-a="ebstoggle" data-v="${s}" aria-label="EBS 강의"></button></div>
       ${seen.length ? `<div class="list">${seen.map(([n, v]) => `<div class="li"><span class="grow">📺 ${lectInfo(s, +n).course.short2 || ''} ${lectInfo(s, +n).no}강 · ${esc(lectInfo(s, +n).desc)}</span><span class="pill ${v.mins >= 20 ? 'ok' : 'wait'}">${shortDate(v.d)}${v.mins ? ` · ${v.mins}분` : ''}</span></div>`).join('')}</div>` : ''}

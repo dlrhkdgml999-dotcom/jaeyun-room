@@ -159,8 +159,8 @@ async def main():
 
         # ---------- D) 엄마 폰 ----------
         await mom.adult('mom')
-        mom.expect(await mom.p.locator('.mq[data-a="sug"]').is_visible(), '엄마 탭에 "오빠에게 말하기"가 안 보임')
-        await mom.click('.mq[data-a="sug"]'); await mom.p.wait_for_timeout(300)
+        mom.expect(await mom.p.locator('.son-link[data-a="sug"]').is_visible(), '엄마 탭에 "아들에게 말하기"가 안 보임')
+        await mom.click('.son-link[data-a="sug"]'); await mom.p.wait_for_timeout(300)
         mom.expect(await mom.ev("SUG.who") == 'mom', f'엄마 건의가 엄마로 안 들어감 ({await mom.ev("SUG.who")})')
         await mom.click('[data-a="sugkind"][data-v="content"]'); await mom.p.fill('#sugText', '국어 문제가 너무 쉬워요. 조금 어렵게 해 주세요')
         await mom.overflow('엄마 건의 화면'); await mom.shot('sug_mom_write')

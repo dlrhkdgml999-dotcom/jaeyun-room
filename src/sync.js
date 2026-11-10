@@ -383,7 +383,7 @@ VIEWS.join = (fid) => {
       <button class="role-btn" data-a="joinrole" data-v="mom"><span style="font-size:44px">💗</span><b>엄마</b><span class="muted">채점 · 알림 시간</span></button>
       <button class="role-btn" data-a="joinrole" data-v="oppa"><span style="font-size:44px">🎁</span><b>오빠</b><span class="muted">칭찬 · 기록 · 선물</span></button>
     </div>
-    ${S.started && studyScore(S) > 0 ? `<p class="demo-note">이 기기에 재윤이 공부 기록(스티커 ${S.stickers.length}개)이 있어요. 재윤이 태블릿이면 <b>재윤이</b>를 골라 주세요. 기록은 지워지지 않고 가족 기록으로 올라가요.</p>` : ''}
+    ${S.started && studyScore(S) > 0 ? `<p class="demo-note">이 기기에 재윤이 공부 기록(별 ${S.stickers.length}개)이 있어요. 재윤이 태블릿이면 <b>재윤이</b>를 골라 주세요. 기록은 지워지지 않고 가족 기록으로 올라가요.</p>` : ''}
     <p class="muted" id="joinmsg"></p>
   </section>`;
 };
@@ -424,7 +424,7 @@ function syncAlert(){
   const sc = S.started ? studyScore(S) : 0;
   if (!linked()) {
     if (!sc || !(window.firebase && window.FIREBASE_CONFIG)) return '';
-    return box(`<b>⚠️ 이 기기는 아직 가족과 연결되지 않았어요</b><br>이 기기에서 공부한 기록(스티커 ${S.stickers.length}개)이 엄마·오빠 폰으로 가지 않고 이 기기에만 있어요.<br>재윤이 태블릿이라면: 오빠 폰 <b>설정 → 가족 링크</b>를 이 기기에서 열거나 아래 <b>설정</b> 탭에 붙여넣고 <b>"재윤이"</b>를 고르세요. 이 기기 기록이 그대로 가족 기록으로 올라가요.`);
+    return box(`<b>⚠️ 이 기기는 아직 가족과 연결되지 않았어요</b><br>이 기기에서 공부한 기록(별 ${S.stickers.length}개)이 엄마·오빠 폰으로 가지 않고 이 기기에만 있어요.<br>재윤이 태블릿이라면: 오빠 폰 <b>설정 → 가족 링크</b>를 이 기기에서 열거나 아래 <b>설정</b> 탭에 붙여넣고 <b>"재윤이"</b>를 고르세요. 이 기기 기록이 그대로 가족 기록으로 올라가요.`);
   }
   if (role() === 'kid') {
     if (Sync.status === 'error') return box(`<b>⚠️ 기록을 보내지 못하고 있어요</b><br>${esc(Sync.error || '')}<br>인터넷이 되면 저절로 다시 보내요.`);
@@ -432,13 +432,13 @@ function syncAlert(){
   }
   // 엄마 · 오빠 폰
   let remoteSt = 0; try { remoteSt = (JSON.parse(Sync.last.s.stickers || '[]') || []).length; } catch (e) {}
-  if (Sync.ready && S.stickers.length >= remoteSt + 3) return box(`<b>⚠️ 이 기기는 "${role() === 'mom' ? '엄마' : '오빠'} 폰"으로 연결돼 있어요</b><br>그런데 여기서 공부한 기록(스티커 ${S.stickers.length}개)이 있어요. 엄마·오빠 폰에서 푼 건 미리보기라 재윤이 기록에 안 들어가요.<br>재윤이 태블릿이라면 <b>설정 → 이 기기 역할 바꾸기 → 재윤이</b>를 눌러 주세요. 이 기기 기록이 그대로 올라가요.`);
+  if (Sync.ready && S.stickers.length >= remoteSt + 3) return box(`<b>⚠️ 이 기기는 "${role() === 'mom' ? '엄마' : '오빠'} 폰"으로 연결돼 있어요</b><br>그런데 여기서 공부한 기록(별 ${S.stickers.length}개)이 있어요. 엄마·오빠 폰에서 푼 건 미리보기라 재윤이 기록에 안 들어가요.<br>재윤이 태블릿이라면 <b>설정 → 이 기기 역할 바꾸기 → 재윤이</b>를 눌러 주세요. 이 기기 기록이 그대로 올라가요.`);
   if (!Sync.ready) return '';
   const seen = Sync.kidSeenAt(), kid = Sync.kid || {};
   const have = Object.keys(S.days).length;
   const bad = Object.entries(Sync.devs || {}).find(([id, d]) => id !== devId() && d && d.role !== 'kid' && d.tab && d.study3 > 0 && Date.now() - (d.at || 0) < 3 * 86400000);
   if (bad) { const d = bad[1], who = d.role === 'mom' ? '엄마 폰' : '오빠 폰';
-    return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 스티커 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
+    return box(`<b>⚠️ 재윤이가 공부하는 태블릿이 "${who}"으로 연결돼 있어요</b><br>그래서 재윤이가 푼 게 미리보기로만 남고 엄마·오빠 폰에 안 와요 (그 태블릿 별 ${d.stickers || 0}개, 마지막 ${agoText(d.at)}).<br>태블릿 첫 화면 맨 위의 <b>"재윤이 태블릿으로 바꾸기"</b>를 눌러 주세요. 태블릿 기록은 지워지지 않고 그대로 올라와요.`); }
   // 태블릿이 보낸 상태 한 줄: 앱 버전, 못 보낸 날 수 (원인 찾을 때 오빠가 봄)
   const diag = kid.at && role() === 'oppa' ? `<br><span class="muted" style="font-size:12px">가족방 ${famCode()} · 태블릿 앱 ${kidVer(kid.ver)}${kid.unsent ? ` · 못 보낸 날 ${kid.unsent}일` : ''}${kid.via ? ` · ${kid.via === 'rest' ? '직접 보냄' : 'SDK'}` : ''}${kid.lf ? ` · 지난 강의 시간 ${kid.lf}편 되살림` : ''}${kid.kq ? ` · <b>못 보낸 문제 내기 ${kid.kq}개</b>${kid.kqErr ? ` (${esc(kid.kqErr)})` : ''}` : ''}</span>` : '';
   if (kid.err) return box(`<b>⚠️ 재윤이 태블릿이 공부 기록을 보내지 못하고 있어요</b><br>태블릿 마지막 연결: ${agoText(kid.at)}${kid.okAt ? ` · 마지막으로 보낸 때: ${agoText(kid.okAt)}` : ''}<br><span class="muted" style="font-size:13px">${esc(kid.err)}</span><br>이 화면을 오빠에게 캡처해서 보내 주세요.${diag}`);
@@ -473,7 +473,7 @@ ACT.tokid = async () => {
   toast('바꾸는 중이에요…');
   const ok = await Sync.join(S.local.fid, 'kid').catch(e => { console.warn(e); return false; });
   if (!ok) return toast('바꾸지 못했어요. 인터넷이 되는지 확인하고 다시 눌러 주세요');
-  toast(`재윤이 태블릿이 됐어요! 공부 기록(스티커 ${S.stickers.length}개)을 엄마·오빠 폰으로 보내요`); go('home');
+  toast(`재윤이 태블릿이 됐어요! 공부 기록(별 ${S.stickers.length}개)을 엄마·오빠 폰으로 보내요`); go('home');
 };
 
 /* 지난 강의 시간 되살리기 (10/29): 오빠 역할이던 동안 진도(seen)가 되돌아가서 그날 본 강의가 공부 시간에서 빠졌다.

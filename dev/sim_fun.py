@@ -63,7 +63,7 @@ async def main():
         s.expect(await s.screen() == 'reward', f'보상 화면 아님 {await s.screen()}')
         rw = await p.locator('section.reward').inner_text()
         print('보상 화면:', rw.replace('\n', ' ')[:160])
-        s.expect('연속' in rw and '당근' in rw and '물뿌리개' in rw, '보상 화면에 콤보·당근·물뿌리개 없음')
+        s.expect('연속' in rw and '당근' not in rw and '물뿌리개' in rw, '보상 화면에 콤보·물뿌리개가 없거나 당근 숫자가 남음 (11/11 당근 숫자 뺌)')
         g = await s.ev("({cans:S.garden.cans, car:S.garden.carrots})"); print('텃밭:', g)
         s.expect(g['cans'] == 1 and not g['car'], f'판 끝 물뿌리개 이상 / 당근이 따로 쌓임(11/9부터 안 쌓임) {g}')
         # ---------- C) 스티커 2배 · 단비 ----------

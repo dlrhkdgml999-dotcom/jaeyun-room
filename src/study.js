@@ -267,7 +267,7 @@ function probRowHTML(x){
 }
 
 /* ---------- 오늘 한눈에: 엄마·오빠 메뉴 맨 위 (들어오자마자 오늘 상태 확인) ---------- */
-function glancePanel(){
+function glancePanel(progLine){   // progLine: 엄마 탭은 진도 한 줄 ("수학 1-2 7% · 국어 1-2 0%")도 여기 (11/11)
   const t = todayKey(), dy = S.days[t], boards = (dy && dy.boards) || {};
   const doneN = BOARDS.filter(b => boards[b.k] && boards[b.k].done).length, started = BOARDS.some(b => boards[b.k]);
   const dm = dayMins(t), logs = dayLogs(t), wrongs = logs.filter(x => x.r !== 1), firstOk = logs.length - wrongs.length;
@@ -286,6 +286,7 @@ function glancePanel(){
     <span class="gl-stats"><span><b>${fmtMin(dm.total)}</b>공부 시간</span><span><b>${logs.length ? `${firstOk}/${logs.length}` : '-'}</b>한 번에 정답</span><span><b class="${wrongs.length ? 'bad' : ''}">${wrongs.length}</b>틀린 문제</span></span>
     ${lecs.length ? `<span class="gl-line">📺 ${lecs.map(x => esc(`${{ math:'수학', kor:'국어', eng:'영어' }[x.s] || ''} ${x.info ? `${x.info.no}강 ${x.info.title}` : `${x.n}강`}`)).join(' · ')} 봤어요</span>` : ''}
     ${wrongs.length ? wrongs.slice(0, 2).map(x => { const q = (typeof noteShow === 'function' ? noteShow(x) : String(x.t)) || '문제'; return `<span class="gl-line">❌ ${esc(q.length > 24 ? q.slice(0, 23) + '…' : q)} → <b>${esc(wtext(x))}</b></span>`; }).join('') + (wrongs.length > 2 ? `<span class="gl-line muted">틀린 문제 ${wrongs.length - 2}개 더</span>` : '') : ''}
+    ${progLine ? `<span class="gl-line">📚 진도 ${esc(progLine)}</span>` : ''}
     <span class="gl-more">자세히 보기 →</span>
   </button>`;
 }

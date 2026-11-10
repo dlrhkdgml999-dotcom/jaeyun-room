@@ -45,7 +45,7 @@ VIEWS.capsuleOpen = (id) => {
     <span class="rare-tag ${RARE[c.r].cls}">${RARE[c.r].name}</span>
     <div class="cap-item ${RARE[c.r].cls}">${c.e}</div>
     <h1>${esc(c.n)}</h1>
-    <p class="score-line">${isNew ? '새 친구가 생겼어! 도감에 쏙!' : '이미 있는 친구네! 대신 스티커 하나 더 줄게 ⭐'}<br><span class="muted">도감 ${total} / ${COLLECT.length}</span></p>
+    <p class="score-line">${isNew ? '새 친구가 생겼어! 도감에 쏙!' : '이미 있는 친구네! 대신 별 하나 더 줄게 ⭐'}<br><span class="muted">도감 ${total} / ${COLLECT.length}</span></p>
     <div class="row" style="gap:12px;align-self:stretch"><button class="btn ghost big" data-a="go" data-v="book" style="flex:1">도감 보기</button><button class="btn big" data-a="home" style="flex:1">처음으로</button></div>
   </section>`;
 };
@@ -62,7 +62,7 @@ function openCapsule(){
   save();
   SFX.sticker(); confetti();
   go('capsuleOpen', c.id);
-  speak(isNew ? `우와! ${c.n}! 새 친구가 생겼어!` : `${c.n}! 이미 있는 친구네. 대신 스티커 하나 더!`);
+  speak(isNew ? `우와! ${c.n}! 새 친구가 생겼어!` : `${c.n}! 이미 있는 친구네. 대신 별 하나 더!`);
 }
 /* 도감: 가진 친구는 눌러서 토리 옆에 두기 (세 명까지) */
 VIEWS.book = () => {

@@ -616,7 +616,7 @@ VIEWS.home = () => {
     ${linked() && role() !== 'kid' && !wrongRoleTablet() ? `<button class="adult-peek" data-a="go" data-v="pin">${role() === 'mom' ? '엄마' : '오빠'} 폰에서 보는 재윤이 화면 (여기서 풀어 본 건 재윤이 기록에 안 들어가요) · <b>${role() === 'mom' ? '엄마' : '오빠'} 메뉴로 가기</b></button>` : ''}
     <div class="home-top">
       <span class="nameplate">재윤이 공부방</span><span class="spacer"></span>
-      <span class="sticker-chip" aria-label="모은 스티커">⭐ ${total}</span>
+      <span class="sticker-chip" aria-label="모은 별">⭐ ${total}</span>
     </div>
     <div class="hero">
       <button class="stage-btn tori-stage" data-a="poke" aria-label="${esc(S.bunnyName)} 쓰다듬기">${stageHTML(150, { expr: d.done ? 'happy' : 'normal', size:118 })}${friendsHTML()}</button>
@@ -949,10 +949,10 @@ VIEWS.reward = ({ k, st, allDone }) => {
   app().innerHTML = `<section class="screen reward">
     <h1>${BNAME[k]} 끝!</h1>
     <div class="big-sticker">${st}</div>
-    <p class="score-line">${qn}문제 중 <b style="color:var(--pink-deep)">${b.correct}개</b> 한 번에 맞았어!<br><span class="muted">재윤이 스티커북에 쏙!</span></p>
+    <p class="score-line">${qn}문제 중 <b style="color:var(--pink-deep)">${b.correct}개</b> 한 번에 맞았어!<br><span class="muted">⭐ 별 하나 받았어! 별 모음에 쏙!</span></p>
     ${b.cur && b.cur.result ? lessonResultHTML(b.cur.result) : ''}
     ${funRewardHTML(k, b)}
-    ${allDone ? `<p class="score-line" style="color:var(--mint-deep)">오늘 공부 다 끝! 보너스 스티커도 받았어 ${d.earned[d.earned.length - 1]}</p>` : ''}
+    ${allDone ? `<p class="score-line" style="color:var(--mint-deep)">오늘 공부 다 끝! 보너스 별도 받았어 ${d.earned[d.earned.length - 1]}</p>` : ''}
     ${newItems.length ? `<div class="next-item" style="align-self:stretch;border-color:var(--pink);background:var(--pink-pale)"><span class="disp" style="font-size:20px">새 꾸미기 선물: ${newItems.map(i => esc(i.name)).join(', ')}!</span><button class="btn small" data-a="go" data-v="room" style="justify-self:center">지금 꾸미러 가기</button></div>` : ''}
     ${cheerRewardHTML(cheer)}
     <div class="bubble" style="display:flex;align-items:center;gap:10px"><span style="font-size:28px">💗</span><span>${esc(MOM_LINES[0].text)}</span><button class="speak-btn" style="width:48px;height:48px" data-a="mom" data-v="m1" aria-label="엄마 목소리 다시 듣기">${ICON.speak}</button></div>
@@ -967,7 +967,7 @@ VIEWS.alldone = () => {
   app().innerHTML = `<section class="screen reward">
     <h1>재윤아, 오늘 공부 다 끝!</h1>
     ${giftAch() === todayKey() ? `<div class="gift-card won" style="flex-direction:column;text-align:center">${giftBox(110, 'hop')}<span class="disp" style="font-size:24px">${S.gift.goal}일을 모두 해냈어!</span><span>오빠가 약속한 선물${S.gift.name ? ` "${esc(S.gift.name)}"` : ''}을 받을 수 있어! 오빠한테 자랑하자!</span></div>` : `${stageHTML(220, { expr:'happy', size:160, cls:'hop' })}<p class="score-line">오빠 선물까지 ${Math.max(0, S.gift.goal - giftDays().length)}일 남았어!</p>`}
-    <p class="score-line">오늘 ${totalMin}분 동안 공부했어. 스티커 ${d.earned.length}개!</p>
+    <p class="score-line">오늘 ${totalMin}분 동안 공부했어. 별 ${d.earned.length}개! ⭐</p>
     <div class="bubble" style="display:grid;gap:10px;align-self:stretch;text-align:left">
       <span class="disp" style="font-size:18px;color:var(--lav-deep)">오빠가 남긴 칭찬</span>
       ${pr && pr.text ? `<span>${esc(pr.text)}</span>` : ''}
@@ -980,16 +980,16 @@ VIEWS.alldone = () => {
   if (pr && pr.audio) setTimeout(() => playClip(pr.audio), 600);
 };
 
-/* ----- 꾸미기 · 스티커북 ----- */
+/* ----- 꾸미기 · 별 모음(예전 이름 스티커북, 11/11 "별"로 통일) ----- */
 let ROOM_TAB = 'dress';
 VIEWS.room = () => {
   const total = S.stickers.length;
-  const head = `<div class="row"><button class="icon-btn" ${playBack()} aria-label="뒤로">${ICON.back}</button><h2 style="flex:1">${ROOM_TAB === 'dress' ? `${esc(S.bunnyName)} 꾸미기` : '스티커북'}</h2><span class="sticker-chip">⭐ ${total}</span></div>
-    <div class="tabs"><button class="${ROOM_TAB === 'dress' ? 'on' : ''}" data-a="roomtab" data-v="dress">꾸미기</button><button class="${ROOM_TAB === 'book' ? 'on' : ''}" data-a="roomtab" data-v="book">스티커북</button></div>`;
+  const head = `<div class="row"><button class="icon-btn" ${playBack()} aria-label="뒤로">${ICON.back}</button><h2 style="flex:1">${ROOM_TAB === 'dress' ? `${esc(S.bunnyName)} 꾸미기` : '별 모음'}</h2><span class="sticker-chip">⭐ ${total}</span></div>
+    <div class="tabs"><button class="${ROOM_TAB === 'dress' ? 'on' : ''}" data-a="roomtab" data-v="dress">꾸미기</button><button class="${ROOM_TAB === 'book' ? 'on' : ''}" data-a="roomtab" data-v="book">별 모음</button></div>`;
   if (ROOM_TAB === 'book') {
     const list = [...S.stickers].reverse();
     app().innerHTML = `<section class="screen">${head}
-      <p class="muted">공부를 한 판 끝낼 때마다 스티커가 하나씩 생겨요. 지금까지 ${total}개!</p>
+      <p class="muted">공부를 한 판 끝낼 때마다 별이 하나씩 생겨요. 별마다 그림이 달라요. 지금까지 ${total}개!</p>
       <div class="sticker-grid">${list.map((s, i) => `<span class="stk" style="transform:rotate(${(i * 37 % 17) - 8}deg)" title="${shortDate(s.d)}">${s.e}</span>`).join('')}${'<span class="stk empty">?</span>'.repeat(Math.max(3, 12 - list.length % 12 || 0) % 13)}</div>
     </section>`;
     return;
@@ -1131,11 +1131,12 @@ function levelPanel(){
     return `<div class="lvl-row"><span class="disp" style="font-size:18px">${NAMES[k]}</span><select id="lv_${k}" data-ch="level" data-v="${k}" aria-label="${NAMES[k]} 난이도">${opts}</select></div>
       <p class="muted" style="font-size:13px;margin-top:-6px">${k === 'eng' ? BOARD_SUB.eng[lv('eng')] : BOARD_SUB[k][lv(k)]}</p>`;
   };
-  return `<div class="panel"><h3>난이도 (학년 · 학기)</h3>
+  // 11/11: 세 과목 모두 진도 방식이면 6단계 × 3과목 대신 받아쓰기·기초 복습 단계 한 줄만
+  return `<div class="panel"><h3>${SUBJS.every(currOn) ? '받아쓰기 단계' : '난이도 (학년 · 학기)'}</h3>
     ${adv.map(a => { const max = a.s === 'eng' ? 2 : 5, to = clamp(lv(a.s) + a.dir, 0, max), lab = a.s === 'eng' ? ENG_LEVELS[to].split(' ')[0] : LEVELS[to];
       return `<div class="lvl-tip ${a.dir > 0 ? 'up' : 'down'}"><span style="flex:1">${a.dir > 0 ? `${josa(NAMES[a.s], '을', '를')} 최근 ${Math.round(a.r * 100)}% 한 번에 맞혔어요. 너무 쉬운가 봐요!` : `${josa(NAMES[a.s], '은', '는')} ${Math.round(a.r * 100)}%만 한 번에 맞혔어요. 조금 어려워해요.`}</span><button class="btn small ${a.dir > 0 ? 'mint' : 'ghost'}" data-a="lvlset" data-v="${a.s}|${to}">${esc(lab)}로 ${a.dir > 0 ? '올리기' : '내리기'}</button></div>`; }).join('')}
-    ${['kor','math','eng'].filter(x => !currOn(x)).map(row).join('') || '<p class="muted" style="font-size:15px">세 과목 모두 진도 방식이에요. 기초 복습(30%)은 아래 단계에서 나와요.</p>' + row('kor')}
-    <p class="muted" style="font-size:14px">받아쓰기는 국어 단계를 따라가요. 바꾸면 다음에 시작하는 판부터 적용돼요. 한 번에 90% 넘게 맞히는 날이 이어지면 여기서 올리자고 알려 드려요.</p>
+    ${['kor','math','eng'].filter(x => !currOn(x)).map(row).join('') || `<div class="lvl-row"><span style="font-size:16px;flex:1">받아쓰기 · 기초 복습</span><select id="lv_kor" data-ch="level" data-v="kor" aria-label="받아쓰기 단계">${LEVELS.map((l, i) => `<option value="${i}" ${lv('kor') === i ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`}
+    ${SUBJS.every(currOn) ? '' : `<p class="muted" style="font-size:14px">받아쓰기는 국어 단계를 따라가요. 바꾸면 다음에 시작하는 판부터 적용돼요.</p>`}
   </div>`;
 }
 function minutesOf(dy){ return dy ? Math.round(BOARDS.reduce((s, b) => s + bsecs(dy.boards[b.k]), 0) / 60) : 0; }
@@ -1159,11 +1160,13 @@ function dayGoalPanel(){
 /* 엄마 탭 접는 칸: 열어 둔 칸은 화면을 다시 그려도 열린 채로 */
 const MOM_OPEN = new Set();
 function momFold(k, title, html){ return `<details class="mom-fold" data-k="${k}" ${MOM_OPEN.has(k) ? 'open' : ''}><summary>${title}</summary><div class="mom-fold-body">${html}</div></details>`; }
-document.addEventListener('toggle', e => { const d = e.target; if (d && d.matches && d.matches('details.mom-fold')) { if (d.open) MOM_OPEN.add(d.dataset.k); else MOM_OPEN.delete(d.dataset.k); } }, true);
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.matches && d.matches('details.mom-fold, details.sub-fold')) { if (d.open) MOM_OPEN.add(d.dataset.k); else MOM_OPEN.delete(d.dataset.k); } }, true);
 /* 11/5 오빠 "엄마·오빠 메뉴가 너무 복잡해" → 탭마다: 오늘 한눈에 → 할 일(있을 때만) → 바로가기 4칸 → 나머지는 접는 칸.
    폰 알림(ntfy)·알림함·주간 메일은 안 씀(오빠 결정). 엄마 폰에는 오빠 탭을 안 보여 줌 */
 function quickTiles(list, cls){ return `<div class="mom-quick ${cls || ''}">${list.map(([a, v, ic, t, sub]) => `<button class="mq" data-a="${a}"${v ? ` data-v="${v}"` : ''}><span class="ic">${ic}</span><b>${t}</b><small>${sub}</small></button>`).join('')}</div>`; }
 const moreHead = () => `<p class="more-head">더 보기</p>`;
+/* 11/11 한 줄짜리 접는 칸 (선물 약속 · 지난 낸 문제): 오늘 한눈에 아래 얇은 줄, 누르면 펼침 */
+function slimFold(k, title, html){ return `<details class="mom-fold slim" data-k="${k}" ${MOM_OPEN.has(k) ? 'open' : ''}><summary>${title}</summary><div class="mom-fold-body">${html}</div></details>`; }
 function giftPanel(){ const g = S.gift, gd = giftDays().length;
   return `<div class="panel gift-box"><h3>🎁 한 달 선물 약속 ${g.round > 1 ? `(${g.round}번째)` : ''}</h3>
         ${giftAch() ? `<div class="done-note">🎁 ${shortDate(giftAch())}에 ${g.goal}일을 모두 해냈어요! 선물을 주고 아래 버튼을 눌러 주세요.</div>` : `<p>공부를 다 한 날 <b>${gd}</b> / ${g.goal}일</p><div class="meter"><i style="width:${Math.round(gd / g.goal * 100)}%"></i></div>`}
@@ -1183,19 +1186,17 @@ function praisePanel(){ const pr = S.praise || {};
         <button class="btn sky small" data-a="savepraise" style="justify-self:start">칭찬 저장</button>
       </div>`; }
 function momVoicesPanel(){
-  return `<div class="panel"><h3>엄마 목소리</h3><p class="muted" style="font-size:15px">엄마가 보내 준 녹음 6개가 들어 있어요. 새로 녹음하면 "바꾸기"로 올려요. 카톡 음성(amr)은 폰에서 재생이 안 되니, 녹음 앱에서 m4a나 mp3로 저장한 파일을 올려 주세요.</p>
+  return `<div class="panel"><h3>엄마 목소리</h3><p class="muted" style="font-size:14px">새로 녹음하면 "바꾸기"로 올려요 (m4a·mp3 파일, 카톡 음성 amr은 안 돼요).</p>
         <div class="list">${MOM_LINES.filter(l => l.id !== 'm2').map((l, i) => { const own = !!S.voices[l.id], def = typeof DEFAULT_VOICES !== 'undefined' && !!DEFAULT_VOICES[l.id];
-          return `<div class="li" style="flex-wrap:wrap"><span class="grow"><b class="disp" style="font-weight:400">#${i + 1}</b> ${esc(l.text)}<br><span class="muted" style="font-size:13px">${l.when}</span></span>
+          return `<div class="li" style="flex-wrap:wrap"><span class="grow" style="flex:1 1 100%"><b class="disp" style="font-weight:400">#${i + 1}</b> ${esc(l.text)}<br><span class="muted" style="font-size:13px">${l.when}</span></span>
           ${own || def ? `<span class="pill ok">${own ? '새로 올림' : '엄마 녹음'}</span><button class="btn ghost small" data-a="mom" data-v="${l.id}">듣기</button>${own ? `<button class="btn ghost small" data-a="delvoice" data-v="${l.id}">되돌리기</button>` : ''}` : `<span class="pill no">토끼가 대신</span>`}
           <label class="btn small file-btn ghost">바꾸기<input type="file" accept="audio/*,.m4a,.mp3" data-ch="audio" data-v="${l.id}"></label></div>`; }).join('')}</div>
       </div>`; }
 function ttsPanel(){
   return `<div class="panel"><h3>토리 목소리</h3>
-        <p class="muted" style="font-size:15px">폰에 들어 있는 음성으로 읽어 줘요. 재윤이가 좋아하는 소리로 골라 주세요.</p>
+        <p class="muted" style="font-size:15px">재윤이가 좋아하는 소리로 골라 주세요.</p>
         <div class="list">${Object.entries(TTS_PRESETS).map(([k, pr]) => `<button class="li" style="text-align:left;${S.tts.preset === k ? 'outline:3px solid var(--pink)' : ''}" data-a="ttspreset" data-v="${k}"><span class="grow">${pr.name}</span>${S.tts.preset === k ? '<span class="pill">사용 중</span>' : ''}</button>`).join('')}</div>
-        <div class="field"><label for="ttspitch">목소리 높이 <b id="pv">${S.tts.pitch.toFixed(2)}</b></label><input type="range" id="ttspitch" min="0.8" max="1.8" step="0.05" value="${S.tts.pitch}" data-ch="tts"></div>
-        <div class="field"><label for="ttsrate">말 빠르기 <b id="rv">${S.tts.rate.toFixed(2)}</b></label><input type="range" id="ttsrate" min="0.6" max="1.2" step="0.02" value="${S.tts.rate}" data-ch="tts"></div>
-        ${langVoices('ko').length > 1 ? `<div class="field"><label>한국어 목소리 고르기 (${langVoices('ko').length}개)</label><div class="list">${langVoices('ko').map(v => { const on = pickVoice('ko', S.tts.voice) === v; return `<div class="li" style="${on ? 'outline:3px solid var(--pink)' : ''}"><span class="grow" style="font-size:14px">${esc(v.name)}${v.localService ? '' : ' · 온라인'}</span><button class="btn ghost small" data-a="ttsvoice" data-v="${esc(v.name)}">${on ? '듣기' : '고르기'}</button></div>`; }).join('')}</div></div>` : `<p class="muted" style="font-size:14px">이 폰에서 고를 수 있는 한국어 목소리가 ${langVoices('ko').length ? '하나뿐이에요' : '아직 안 보여요'}. 태블릿(폰) 설정에서 "TTS" 또는 "텍스트 음성"을 검색해 Google 엔진의 한국어 음성을 고르면 그 목소리로 읽어 줘요.</p>`}
+        ${langVoices('ko').length > 1 ? `<details class="sub-fold" data-k="ttsvoices" ${MOM_OPEN.has('ttsvoices') ? 'open' : ''}><summary>폰 음성 엔진 바꾸기 (${langVoices('ko').length}개)</summary><div class="list">${langVoices('ko').map(v => { const on = pickVoice('ko', S.tts.voice) === v; return `<div class="li" style="${on ? 'outline:3px solid var(--pink)' : ''}"><span class="grow" style="font-size:14px">${esc(v.name)}${v.localService ? '' : ' · 온라인'}</span><button class="btn ghost small" data-a="ttsvoice" data-v="${esc(v.name)}">${on ? '듣기' : '고르기'}</button></div>`; }).join('')}</div></details>` : `<p class="muted" style="font-size:14px">이 폰에서 고를 수 있는 한국어 목소리가 ${langVoices('ko').length ? '하나뿐이에요' : '아직 안 보여요'}. 태블릿(폰) 설정에서 "TTS" 또는 "텍스트 음성"을 검색해 Google 엔진의 한국어 음성을 고르면 그 목소리로 읽어 줘요.</p>`}
         <button class="btn sky" data-a="ttstest">들어 보기</button>
       </div>`; }
 function studySetPanels(){
@@ -1220,45 +1221,42 @@ VIEWS.adult = () => {
   const tab = S.adultTab;
   const kqTodo = kqAll().some(x => !kqAns(x.id)), kqAny = kqAll().length > 0;
   const nbTodo = typeof notebookItems === 'function' ? notebookItems().filter(x => !x.fixed).length : 0;
-  const tNb = ['notebook', '', '📒', '오답노트', nbTodo ? `같이 풀 문제 ${nbTodo}개` : '다 맞혔어요 ✓'], tStudy = ['study', '', '📅', '공부 기록', '달력 · 푼 문제'], tRep = ['momfold', 'report', '📊', '주간 리포트', '한 주 한눈에'];
+  const tNb = ['notebook', '', '📒', '오답노트', nbTodo ? `같이 풀 문제 ${nbTodo}개` : '다 맞혔어요 ✓'], tStudy = ['study', '', '📅', '공부 기록', '달력 · 푼 문제'];
   const pctLine = SUBJS.filter(currOn).map(s => { const P = progOf(s); return P.done ? `${SUBJ_NAME[s]} 끝` : `${SUBJ_NAME[s]} ${P.cur.co.short2 || ''} ${P.coursePct}%`; }).join(' · ');
-  const currFold = () => momFold('curr', `📚 진도 · 강의 <small>${pctLine}</small>`, progressPanel() + currPanel('math') + currPanel('kor') + currPanel('eng') + currHelpPanel());
   let body = '';
+  /* 11/11 오빠 "다 고쳐줘"(점검 보고서): 엄마 탭은 오늘 한눈에 · 받아쓰기 채점 · 오답노트 3가지만,
+     오빠 탭 "더 보기"는 주간 리포트 · 건의함 · 진도 옮기기 · 깜짝 응원 4칸 (선물·낸 문제는 위에 한 줄씩).
+     뺀 것: 놀이 기록·문제 검토(코드는 남음), EBS 여는 곳·엄마 목소리·진도 방식은 설정 탭으로. 저장된 기록(S·서버)은 그대로 */
   if (tab === 'mom') {
     const pend = Object.entries(S.days).filter(([k, dy]) => dy.dict && (dy.dict.sent || gradeOf(k).graded)).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
-    const gradeTodo = pend.some(([k]) => !gradeOf(k).graded);
     const writesTodo = Object.entries(S.days).some(([dk, dy]) => Object.entries(dy.writes || {}).some(([k, w]) => w && w.img && !(S.writeFb || {})[`${dk}|${k}`]));
     const dictTodo = pend.filter(([k]) => !gradeOf(k).graded), dictDone = pend.length - dictTodo.length, oppaHere = role() === 'oppa';
-    body = glancePanel() + noteTodoPanel('mom')
-      + (gradeTodo ? dictGradePanel(dictTodo) : '') + (writesTodo ? writesPanel(true) : '') + (kqTodo ? kqPanel() : '')
-      + quickTiles([tNb, tStudy, ['sug', oppaHere ? 'oppa' : 'mom', '💌', oppaHere ? '오빠 메모' : '아들에게 말하기', '불편한 점 · 캡처']], 'three')
-      + moreHead()
-      + momFold('report', '📊 주간 리포트', reportPanel())
-      + momFold('prog', `📚 재윤이 진도 <small>${pctLine}</small>`, progressPanel())
-      + momFold('dict', `📝 받아쓰기 · 쓴 글 <small>${dictDone ? `채점 완료 ${dictDone}개` : ''}</small>`, `<div class="panel"><h3>📝 받아쓰기</h3>${dictDoneList(pend)}</div>` + (writesDoneList() ? `<div class="panel"><h3>✏️ 재윤이가 쓴 글</h3>${writesDoneList()}</div>` : ''))
-      + momFold('cheer', `💌 깜짝 응원 녹음 <small>${cheerList().filter(c => c.who === 'mom').length}개</small>`, cheersPanel('mom'))
-      + (kqTodo || !kqAny ? '' : momFold('kq', '🎲 재윤이가 낸 문제', kqPanel()));
+    const doneLists = (dictDone ? `<div class="panel"><h3>📝 받아쓰기</h3>${dictDoneList(pend)}</div>` : '') + (writesDoneList() ? `<div class="panel"><h3>✏️ 재윤이가 쓴 글</h3>${writesDoneList()}</div>` : '');
+    body = glancePanel(pctLine) + noteTodoPanel('mom')
+      + (dictTodo.length ? dictGradePanel(dictTodo) : '') + (writesTodo ? writesPanel(true) : '')
+      + (doneLists ? momFold('dict', `📝 받아쓰기 채점 <small>${dictTodo.length ? `채점할 것 ${dictTodo.length}개 · ` : ''}채점 완료 ${dictDone}개</small>`, doneLists) : (dictTodo.length || writesTodo ? '' : `<div class="panel slim-note"><span>📝 받아쓰기 채점</span><span class="muted">재윤이가 받아쓰기를 보내면 여기에 떠요</span></div>`))
+      + quickTiles([tNb], 'one')
+      + `<button class="btn ghost small son-link" data-a="sug" data-v="${oppaHere ? 'oppa' : 'mom'}">💌 ${oppaHere ? '오빠 메모 남기기' : '아들에게 말하기'}</button>`;
   } else if (tab === 'oppa') {
-    const fresh = Suggest.all().filter(x => !Suggest.status(x.id) && x.who !== 'oppa').length, g = S.gift, kqN = kqAll().filter(x => !kqAns(x.id)).length;
+    const fresh = Suggest.all().filter(x => !Suggest.status(x.id) && x.who !== 'oppa').length, g = S.gift;
     if (fresh) SUG_VIEW.top = true;   // 새 건의를 위에서 처리하는 동안은 "고쳤어요"를 눌러도 위에 그대로 (접는 칸으로 숨지 않게)
     const sugTop = fresh || SUG_VIEW.top;
+    const myCheers = cheerList().filter(c => (c.who || 'oppa') === 'oppa').length;
     body = glancePanel() + noteTodoPanel('oppa')
       + (sugTop ? suggestPanel() : '') + (kqTodo ? kqPanel() : '') + (giftAch() ? giftPanel() : '')
-      + quickTiles([tNb, tStudy])
+      + (giftAch() ? '' : slimFold('gift', `🎁 선물 ${giftDays().length}/${g.goal}일${g.name ? ` · ${esc(g.name)}` : ' · 아직 안 적음'}`, giftPanel()))
+      + (kqTodo || !kqAny ? '' : slimFold('kq', `🎲 재윤이가 낸 문제 ${kqAll().length}개 · 다 답했어요`, kqPanel()))
+      + quickTiles([tNb, tStudy], 'two')
       + moreHead()
       + momFold('report', '📊 주간 리포트', reportPanel())
       + (sugTop ? '' : momFold('sug', `💌 건의함 <small>${fresh ? `새 건의 ${fresh}개` : '새 건의 없음'}</small>`, suggestPanel()))
-      + (giftAch() ? '' : momFold('gift', `🎁 선물 약속 <small>${giftDays().length}/${g.goal}일${g.name ? ` · ${esc(g.name)}` : ''}</small>`, giftPanel()))
-      + momFold('voice', '🎙️ 목소리 <small>오늘의 칭찬 · 깜짝 응원 · 엄마 목소리</small>', praisePanel() + cheersPanel('oppa') + momVoicesPanel())
-      + (kqTodo ? '' : momFold('kq', `🎲 재윤이가 낸 문제 <small>${kqAll().length}개</small>`, kqPanel()))
-      + momFold('play', `🐰 재윤이 놀이 기록 <small>${playLine()}</small>`, playPanel())
-      + currFold()
-      + momFold('ebs', '📺 EBS 강의 여는 곳', ebsLinkPanel())
-      + momFold('rev', '🔍 문제 검토', reviewPanel());
+      + momFold('curr', `📚 진도 옮기기 <small>${pctLine}</small>`, progressPanel() + currJumpPanel())
+      + momFold('voice', `💌 깜짝 응원 · 칭찬 <small>응원 ${myCheers}개</small>`, praisePanel() + cheersPanel('oppa'));
   } else {
     body = familyPanel()
-      + momFold('studyset', '⚙️ 공부 설정 <small>하루 공부 시간 · 난이도 · 받아쓰기 · 눈 건강</small>', studySetPanels())
-      + momFold('tts', '🔊 토리 목소리', ttsPanel())
+      + momFold('studyset', '⚙️ 공부 설정 <small>하루 공부 시간 · 받아쓰기 · 눈 건강</small>', studySetPanels())
+      + momFold('tts', '🔊 목소리 <small>토리 목소리 · 엄마 목소리</small>', ttsPanel() + momVoicesPanel())
+      + (adultTabs().includes('oppa') ? momFold('currset', '📺 진도 방식 · EBS <small>오빠용</small>', SUBJS.map(x => currPanel(x, true)).join('') + ebsLinkPanel()) : '')
       + momFold('etc', '🐰 토끼 이름 · 비밀번호', `<div class="panel"><h3>토끼 친구 이름</h3><div class="field"><input type="text" id="bname" maxlength="8" value="${esc(S.bunnyName)}"></div><button class="btn small" data-a="savename" style="justify-self:start">이름 저장</button></div>
       <div class="panel"><h3>비밀번호 바꾸기</h3><div class="field"><input type="password" inputmode="numeric" id="newpin" maxlength="4" placeholder="숫자 4자리"></div><button class="btn small" data-a="savepin" style="justify-self:start">바꾸기</button></div>`)
       + (isInstalled() ? '' : `<button class="install-tile" data-a="installmom"><span style="font-size:30px">📲</span><span style="flex:1">이 폰에 앱 설치하기<br><span class="muted" style="font-family:var(--f-body);font-size:15px">바탕화면에 토끼 아이콘 만들기 · 그림 안내</span></span></button>`)
@@ -1392,10 +1390,10 @@ const ACT = {
   async joinrole(el){
     const v = el.dataset.v, sc = S.started ? studyScore(S) : 0;
     // 공부 기록이 있는 기기(=재윤이 태블릿일 가능성)를 엄마·오빠 기기로 고르면 한 번 더 묻는다
-    if (v !== 'kid' && sc >= 3 && (!linked() || role() === 'kid') && !confirm(`이 기기에 재윤이가 공부한 기록(스티커 ${S.stickers.length}개)이 있어요.\n재윤이 태블릿이라면 "재윤이"를 골라야 기록이 가족에게 가요.\n\n그래도 ${v === 'mom' ? '엄마' : '오빠'} 기기로 할까요?`)) return;
+    if (v !== 'kid' && sc >= 3 && (!linked() || role() === 'kid') && !confirm(`이 기기에 재윤이가 공부한 기록(별 ${S.stickers.length}개)이 있어요.\n재윤이 태블릿이라면 "재윤이"를 골라야 기록이 가족에게 가요.\n\n그래도 ${v === 'mom' ? '엄마' : '오빠'} 기기로 할까요?`)) return;
     const m = $('#joinmsg'); if (m) m.textContent = '연결하는 중이에요…'; const ok = await Sync.join(JOIN_FID, v).catch(e => { console.warn(e); return false; });
     if (!ok) { if (m) m.textContent = '연결하지 못했어요. 인터넷이 되는지, 링크가 맞는지 확인해 주세요.'; return; }
-    history.replaceState(null, '', location.pathname); toast(Sync.kept ? `가족과 연결됐어요! 이 기기 공부 기록(스티커 ${S.stickers.length}개)을 가족 기록으로 올렸어요` : '가족과 연결됐어요!'); if (el.dataset.v === 'kid') go('home'); else { S.adultTab = el.dataset.v; go('adult'); } },
+    history.replaceState(null, '', location.pathname); toast(Sync.kept ? `가족과 연결됐어요! 이 기기 공부 기록(별 ${S.stickers.length}개)을 가족 기록으로 올렸어요` : '가족과 연결됐어요!'); if (el.dataset.v === 'kid') go('home'); else { S.adultTab = el.dataset.v; go('adult'); } },
   async famcreate(el){ const m = $('#fammsg'); if (m) m.textContent = '가족방을 만드는 중이에요…'; const ok = await Sync.create(el.dataset.v).catch(e => { console.warn(e); return false; });
     if (!ok) { if (m) m.textContent = '만들지 못했어요. ' + (Sync.error || '인터넷 연결과 Firebase 보안 규칙을 확인해 주세요.'); S.local = null; saveLocal(); return; }
     toast('가족방을 만들었어요. 링크를 카톡으로 보내 주세요'); go('adult'); },
@@ -1467,7 +1465,7 @@ const ACT = {
   roomtab(el){ ROOM_TAB = el.dataset.v; go('room'); },
   equip(el){
     const it = ITEMS.find(i => i.id === el.dataset.v);
-    if (S.stickers.length < it.need) { speak(`스티커 ${it.need - S.stickers.length}개 더 모으면 받을 수 있어!`); return; }
+    if (S.stickers.length < it.need) { speak(`별 ${it.need - S.stickers.length}개 더 모으면 받을 수 있어!`); return; }
     S.equipped[it.slot] = S.equipped[it.slot] === it.id ? null : it.id; SFX.tap(); save(); go('room');
     const st = $('.dress-stage .bunny'); if (st) st.classList.add('hop');
   },

@@ -11,10 +11,10 @@ async def main():
         n = await p.locator('[data-a="ttsvoice"]').count(); s.expect(n==3, f'한국어 목소리 목록 {n}개')
         await s.click('[data-a="ttspreset"][data-v="sister"]'); await p.wait_for_timeout(200)
         await s.click('[data-a="ttsvoice"][data-v="Samsung 여성 1"]'); await p.wait_for_timeout(200)
-        await p.locator('#ttspitch').fill('1.5'); await p.wait_for_timeout(200)
+        s.expect(await p.locator('#ttspitch').count() == 0, '목소리 높이 막대가 남음 (11/11 4개 중 고르기만)')
         await s.click('[data-a="ttstest"]'); await p.wait_for_timeout(200)
         u = await s.ev('window.__u'); print(*u, sep='\n')
-        last=u[-1]; s.expect(abs(last[1]-1.5)<1e-6 and last[3]=='Samsung 여성 1', f'설정이 목소리에 반영 안 됨: {last}')
+        last=u[-1]; s.expect(abs(last[1]-1.2)<1e-6 and last[3]=='Samsung 여성 1', f'설정이 목소리에 반영 안 됨: {last}')
         # 영어는 영어 목소리로
         await s.ev("speak('apple','en-US')"); await p.wait_for_timeout(100)
         u = await s.ev('window.__u'); s.expect(u[-1][3]=='en-us-x-sfg-network', f'영어 목소리 이상: {u[-1]}')

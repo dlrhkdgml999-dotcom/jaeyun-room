@@ -87,11 +87,12 @@ async def main():
         await oppa.p.fill(f'#kqg_{ids["calc"]}', '17'); await oppa.click(f'[data-a="kqguess"][data-id="{ids["calc"]}"]'); await oppa.p.wait_for_timeout(300)
         await oppa.p.fill(f'#kqg_{ids["draw"]}', '고양이'); await oppa.p.fill(f'#kqm_{ids["draw"]}', '어렵다! 재윤이 그림 최고'); await oppa.click(f'[data-a="kqguess"][data-id="{ids["draw"]}"]'); await oppa.p.wait_for_timeout(300)
         await mom.adult('mom'); await asyncio.sleep(.5); await mom.adult('mom')
-        mom.expect(await mom.p.locator(f'#kqg_{ids["riddle"]}').count() == 1, '엄마 폰에 풀 문제가 안 보임')
-        await mom.p.fill(f'#kqg_{ids["riddle"]}', ' 별 '); await mom.click(f'[data-a="kqguess"][data-id="{ids["riddle"]}"]'); await mom.p.wait_for_timeout(300)
+        # 11/11 엄마 탭은 오늘 한눈에·받아쓰기 채점·오답노트 3가지만 → 재윤이 문제는 오빠 탭에서만 풂
+        mom.expect(await mom.p.locator(f'#kqg_{ids["riddle"]}').count() == 0, '엄마 탭에 문제 내기가 남아 있음')
+        await oppa.p.fill(f'#kqg_{ids["riddle"]}', ' 별 '); await oppa.click(f'[data-a="kqguess"][data-id="{ids["riddle"]}"]'); await oppa.p.wait_for_timeout(300)
         await asyncio.sleep(1.5)
         kqa = docs(fid, 'kqa'); print('서버 kqa:', {k: (v['guess'], v['right'], v['by']) for k, v in kqa.items()})
-        oppa.expect(len(kqa) == 3 and kqa[ids['calc']]['right'] and not kqa[ids['draw']]['right'] and kqa[ids['riddle']]['right'] and kqa[ids['riddle']]['by'] == 'mom', 'kqa 결과 이상')
+        oppa.expect(len(kqa) == 3 and kqa[ids['calc']]['right'] and not kqa[ids['draw']]['right'] and kqa[ids['riddle']]['right'] and kqa[ids['riddle']]['by'] == 'oppa', 'kqa 결과 이상')
         # E) 태블릿
         # 11/4 오후: 첫 화면 알림은 하나만 → 공부 알림 시간이 지났는데 아직 시작 안 했으면 "공부할 시간"이 먼저라 결과 알림이 그 뒤로 감
         #   (오후 4시 넘어 돌리면 그래서 실패했음) → 여기서는 공부 알림을 꺼 두고 결과 알림만 본다
@@ -103,7 +104,7 @@ async def main():
             tab.expect('재윤이 승' in await tab.p.locator('[data-a="kqseen"]').inner_text(), '알림에 "재윤이 승"이 없음')
             await tab.click('[data-a="kqseen"]'); await tab.p.wait_for_timeout(300)
         body = await tab.p.locator('section.kq').inner_text()
-        tab.expect('재윤이 승' in body and '맞혔어' in body and '엄마가 맞혔어' in body and '재윤이 그림 최고' in body, '내가 낸 문제 결과가 안 보임')
+        tab.expect('재윤이 승' in body and '맞혔어' in body and '오빠가 맞혔어' in body and '재윤이 그림 최고' in body, '내가 낸 문제 결과가 안 보임')
         sc = await tab.ev("kqScore()"); print('점수:', sc); tab.expect(sc == {'kid': 1, 'op': 2}, f'점수 이상 {sc}')
         await tab.ev("go('home')"); await tab.p.wait_for_timeout(150)
         tab.expect(await tab.p.locator('[data-a="kqseen"]').count() == 0, '본 결과 알림이 계속 뜸')

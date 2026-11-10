@@ -30,13 +30,9 @@ async def main():
         kn = await s.ev("S.kidNotes.map(n => n.text)"); print('재윤이 소식:', kn[:1])
         s.expect(any('반듯' in t for t in kn), '엄마 한마디가 재윤이에게 안 감')
         # 오빠 메뉴: 리포트 · 검토
-        await s.adult('oppa'); await s.shot('oppa_report')   # 11/5: 문제 검토는 접는 칸 안
-        await p.select_option('#revlesson', 'k4-1'); await p.wait_for_timeout(200)
-        for i in range(3): await s.click('[data-a="revnext"]'); await p.wait_for_timeout(80)
-        await p.fill('#revmemo', '보기가 헷갈려요'); await s.click('[data-a="revbad"]'); await p.wait_for_timeout(150)
-        await s.click('[data-a="revbad"]'); await p.wait_for_timeout(150)
-        t = await s.ev("reviewText()"); print('검토 내용:\n' + t)
-        s.expect(t.count('\n') == 1 and '헷갈려요' in t, '검토 목록 이상')
+        # 11/11 오빠 탭 "문제 검토"는 뺌 (문제 화면 "🙋 이 문제 이상해요"로) → 칸이 없는지만
+        await s.adult('oppa'); await s.shot('oppa_report')
+        s.expect(await p.locator('#revlesson').count() == 0, '오빠 탭에 문제 검토가 남아 있음')
         await s.overflow('오빠 메뉴'); await s.shot('oppa_review')
         # 태블릿: 펜으로 쓰기
         await p.set_viewport_size({'width': 800, 'height': 1280})

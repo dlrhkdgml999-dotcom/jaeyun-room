@@ -30,14 +30,18 @@ async def main():
             await p.set_viewport_size({'width': w, 'height': h})
             # ---- A
             await s.adult('mom'); await s.ev("MOM_OPEN.clear(); go('adult')"); await p.wait_for_timeout(150)
-            tile = await s.ev("[...document.querySelectorAll('.mom-quick .mq b')].map(x => x.textContent)")
-            print(f'[{tag}] 엄마 바로가기:', tile); s.expect('아들에게 말하기' in tile and not any('오빠' in t for t in tile), f'엄마 바로가기에 "아들에게 말하기"가 없음 {tile}')
+            # 11/11 엄마 탭 = 오늘 한눈에 · 받아쓰기 채점 · 오답노트, 맨 아래 작은 "아들에게 말하기"
+            tile = await s.ev("[...document.querySelectorAll('.mom-quick .mq b')].map(x => x.textContent)"); son = await s.ev("(document.querySelector('.son-link')||{}).textContent || ''")
+            print(f'[{tag}] 엄마 바로가기:', tile, son); s.expect(tile == ['오답노트'] and '아들에게 말하기' in son and '오빠' not in son, f'엄마 탭 바로가기 이상 {tile} {son}')
+            gl = await s.ev("document.querySelector('.glance').innerText"); s.expect('📚 진도' in gl and '%' in gl, '엄마 탭 오늘 한눈에 진도 한 줄이 없음')
+            fk = await s.ev("[...document.querySelectorAll('details.mom-fold')].map(d => d.dataset.k)"); s.expect(not ({'report', 'prog', 'cheer', 'kq'} & set(fk)), f'엄마 탭에 뺀 칸이 남음 {fk}')
             if tag == 'phone':
-                await s.click('.mq[data-a="sug"]'); await p.wait_for_timeout(200)
+                await s.click('.son-link[data-a="sug"]'); await p.wait_for_timeout(200)
                 txt = await s.ev("document.querySelector('section.sug').innerText"); print('  건의 화면:', txt[:60].replace('\n', ' '))
                 s.expect('아들에게' in txt and '오빠' not in txt, '엄마 건의 화면에 "오빠"가 남아 있음')
                 await s.ev("SUG = null; go('adult')"); await p.wait_for_timeout(150)
-            # ---- B 주간 리포트
+            # ---- B 주간 리포트 (11/11 오빠 탭에만)
+            await s.ev("MOM_OPEN.clear()"); await s.click('[data-a="atab"][data-v="oppa"]'); await p.wait_for_timeout(200)
             await s.click('details.mom-fold[data-k="report"] summary'); await p.wait_for_timeout(250)   # 11/9 바로가기 중복 없앰 → 접는 칸에서 열기
             rep = await s.ev("""(() => { const r = document.querySelector('.rep-panel'); return { nav:r.querySelector('.rep-nav b').innerText, big:r.querySelector('.rep-big').innerText,
               dots:[...r.querySelectorAll('.rep-dot')].map(d => d.className.replace('rep-dot ', '')), subj:[...r.querySelectorAll('.rep-s')].map(x => x.innerText.replace(/\\n/g, ' ')), lines:[...r.querySelectorAll('.rep-line')].map(x => x.innerText), h:r.getBoundingClientRect().height }; })()""")
@@ -53,21 +57,22 @@ async def main():
             await s.click('[data-a="repweek"][data-v="1"]'); await p.wait_for_timeout(200)
             txt = await s.ev("reportText(buildWeekReport(mondayOf(todayKey())))"); s.expect('재윤이 주간 리포트' in txt and 'undefined' not in txt, '카톡 복사 글 이상')
             # ---- C 진도
-            await s.click('details.mom-fold[data-k="prog"] > summary'); await p.wait_for_timeout(200)
+            await s.click('details.mom-fold[data-k="curr"] > summary'); await p.wait_for_timeout(200)   # 11/11 오빠 탭 "진도 옮기기" 칸
             g = await s.ev("""[...document.querySelectorAll('.prog')].map(x => ({ t:x.querySelector('.prog-top').innerText.replace(/\\n/g,' '), segs:[...x.querySelectorAll('.prog-seg small')].map(y => y.textContent), bunny:x.querySelector('.prog-bunny').style.left, now:(x.querySelector('.prog-now')||{}).innerText }))""")
             print('  진도:', g)
             s.expect(len(g) == 3 and all(len(x['segs']) >= 2 for x in g), f'진도 게이지 이상 {g}')
             s.expect(all(x['segs'][:3] == ['1', '2', '3'] for x in g), '학기 막대 칸이 단원(1·2·3…)이 아님')   # 11/5 저녁: 지금 학기 기준
             s.expect(all('2학년 2학기' not in x['t'] for x in g), '2학년 2학기 기준이 남음')
-            await p.locator('details.mom-fold[data-k="prog"] .prog-panel').screenshot(path=f'out/shots3/mom2_prog_{tag}.png')
-            s.expect(await p.locator('details.mom-fold[data-k="prog"] #cjump-math').count() == 0, '엄마 진도 칸에 오빠용 진도 옮기기가 있음')
+            await p.locator('details.mom-fold[data-k="curr"] .prog-panel').screenshot(path=f'out/shots3/mom2_prog_{tag}.png')
+            s.expect(await p.locator('details.mom-fold[data-k="curr"] #cjump-math').count() == 1 and await p.locator('details.mom-fold[data-k="curr"] #mode-math').count() == 0, '오빠 진도 옮기기 칸 이상 (옮기기만, 방식은 설정 탭)')
             if tag == 'phone':
                 p1 = await s.ev("progOf('math').allPct"); await s.ev("const c = curr('math'); c.unit = CURRS.math.units.findIndex(u => u.course.short2 === '2-1'); c.lesson = 0; c.test = false; save(); go('adult')")
                 p2 = await s.ev("progOf('math')"); print('  진도 옮김:', p1, '→', p2['allPct'], p2['cur']['co']['short2'] if 'cur' in p2 else '')
                 top = await s.ev("document.querySelector('.prog-math .prog-top').innerText.replace(/\\n/g, ' ')"); print('  2-1로 옮긴 뒤:', top)
                 s.expect(p2['coursePct'] == 0 and '2학년 1학기' in top and top.strip().endswith('0%'), '진도를 2-1로 옮겼는데 게이지가 이번 학기 기준으로 안 바뀜')
                 left = await s.ev("document.querySelector('.prog-math .prog-bunny').style.left"); s.expect(abs(float(left[:-1])) < 1.5, f'2-1 처음인데 토끼 자리 {left}')
-            # ---- D 받아쓰기
+            # ---- D 받아쓰기 (엄마 탭)
+            await s.ev("MOM_OPEN.clear()"); await s.click('[data-a="atab"][data-v="mom"]'); await p.wait_for_timeout(200)
             await s.click('details.mom-fold[data-k="dict"] > summary'); await p.wait_for_timeout(200)
             rows = await s.ev("[...document.querySelectorAll('details.mom-fold[data-k=dict] .done-row')].map(x => x.innerText.replace(/\\n/g, ' '))")
             print('  받아쓰기 줄:', rows[:3])
@@ -79,12 +84,14 @@ async def main():
             await s.click('details.mom-fold[data-k=dict] .done-row.open'); await p.wait_for_timeout(200)
             s.expect(await p.locator('details.mom-fold[data-k=dict] .grade-card').count() == 0, '다시 누르면 접히지 않음')
             # ---- E 응원 멘트
-            await s.click('details.mom-fold[data-k="cheer"] > summary'); await p.wait_for_timeout(200)
+            # ---- E 응원 멘트 (11/11 엄마 탭에서 뺌 → 오빠 탭 "깜짝 응원 · 칭찬")
+            await s.ev("MOM_OPEN.clear()"); await s.click('[data-a="atab"][data-v="oppa"]'); await p.wait_for_timeout(200)
+            await s.click('details.mom-fold[data-k="voice"] > summary'); await p.wait_for_timeout(200)
             n0 = await s.ev("cheerList().length")
-            await s.click('[data-a="cheeridea"][data-v="mom|1"]'); v = await s.ev("document.querySelector('#cheertxt_mom').value")
-            s.expect(v.startswith('틀려도 괜찮아'), f'멘트 추천을 눌러도 칸에 안 들어감 {v}')
-            await p.locator('details.mom-fold[data-k="cheer"]').screenshot(path=f'out/shots3/mom2_cheer_{tag}.png')
-            await s.click('[data-a="cheertext"][data-v="mom"]'); await p.wait_for_timeout(200)
+            await s.click('[data-a="cheeridea"][data-v="oppa|5"]'); v = await s.ev("document.querySelector('#cheertxt_oppa').value")
+            s.expect(v.startswith('천천히 해도 괜찮아'), f'멘트 추천을 눌러도 칸에 안 들어감 {v}')
+            await p.locator('details.mom-fold[data-k="voice"]').screenshot(path=f'out/shots3/mom2_cheer_{tag}.png')
+            await s.click('[data-a="cheertext"][data-v="oppa"]'); await p.wait_for_timeout(200)
             s.expect(await s.ev("cheerList().length") == n0 + 1, '추천 멘트가 응원으로 저장 안 됨')
             await s.overflow(f'엄마 탭 펼침 {tag}'); await s.shot(f'mom2_mom_{tag}')
             # ---- F 오빠 탭
@@ -93,9 +100,12 @@ async def main():
             t6 = await s.ev("[...document.querySelectorAll('.mom-quick .mq b')].map(x => x.textContent)"); print('  오빠 바로가기:', t6)
             s.expect(t6 == ['오답노트', '공부 기록'], f'오빠 바로가기 이상 {t6}')
             folds = await s.ev("[...document.querySelectorAll('details.mom-fold')].map(d => d.dataset.k)"); print('  오빠 접는 칸:', folds)
-            s.expect(len(folds) == len(set(folds)) and {'report', 'sug', 'kq', 'play'} <= set(folds), f'오빠 접는 칸 이상 {folds}')
-            await s.click('details.mom-fold[data-k="kq"] summary'); await p.wait_for_timeout(300)
-            s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=kq]').open"), '재윤이 문제 칸이 안 열림')
+            # 11/11 "더 보기" 4칸(주간 리포트·건의함·진도 옮기기·깜짝 응원) + 위 한 줄(선물, 지난 낸 문제)
+            more = [k for k in folds if k not in ('gift', 'kq')]
+            s.expect(len(folds) == len(set(folds)) and more == ['report', 'sug', 'curr', 'voice'] and 'gift' in folds, f'오빠 접는 칸 이상 {folds}')
+            if 'kq' in folds:
+                await s.click('details.mom-fold[data-k="kq"] summary'); await p.wait_for_timeout(300)
+                s.expect(await s.ev("document.querySelector('details.mom-fold[data-k=kq]').open"), '재윤이 문제 칸이 안 열림')
             await s.overflow(f'오빠 탭 {tag}'); await s.ev("scrollTo(0,0)"); await p.screenshot(path=f'out/shots3/mom2_oppatop_{tag}.png')
         # 풀 문제가 있을 때: 위에 문제 칸, 바로가기는 그 칸으로
         await p.set_viewport_size({'width': 384, 'height': 832})
