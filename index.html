@@ -943,6 +943,9 @@ section.screen{position:relative}
 .play .play-card.c-popo .popo-t{display:grid;gap:2px;text-align:left}
 @media (min-width:960px) and (orientation:landscape){ .play .play-card.c-popo{min-height:0;padding:12px 24px} .play .play-card.c-popo .pic{font-size:50px} }
 .mom-quick.two{grid-template-columns:1fr 1fr}
+/* 11/27 듣기 문제: 소리를 다 들을 때까지 보기는 흐리게·누를 수 없음 */
+.q-card .options,.q-card .tiles,.q-card .slots{transition:opacity .3s}
+.q-card.listen-wait .options,.q-card.listen-wait .tiles,.q-card.listen-wait .slots{opacity:.4;pointer-events:none}
 
 </style>
 </head>
@@ -964,7 +967,7 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-KWK0MVKZD5"
 };
 
-window.APP_VERSION = "20261111012214";
+window.APP_VERSION = "20261127030111";
 </script>
 <script>
 const RELAY_GS = "/* 재윤이 공부방 · 알림 서버 (구글 Apps Script, 무료)\n   - 재윤이 태블릿·폰에서 알림이 생기면 이 스크립트로 보내고 → 엄마·오빠 폰으로 앱 알림을 보낸다 (Firebase 클라우드 메시징)\n   - 10분마다: 공부 알림 시간이 30분 넘게 지났는데 재윤이가 아직 시작 안 했으면 → 엄마 폰으로 하루 한 번\n   - 매주 월요일 주간 리포트 메일 (메일 주소를 넣었을 때만)\n   처음 한 번: 위쪽 함수 고르는 곳에서 setup 을 고르고 ▶ 실행 → 권한 허용. 실행 로그에 \"준비 끝\"이 나오면 성공 */\nconst KEY = '{{KEY}}';\nconst TO = '{{TO}}';\nconst FID = '{{FID}}';\nconst PROJECT = 'jaeyun-room';\nconst APP_URL = 'https://dlrhkdgml999-dotcom.github.io/jaeyun-room/';\n\nfunction doPost(e) {\n  let d = {};\n  try { d = JSON.parse(e.postData.contents); } catch (x) { return out_('no'); }\n  if (d.key !== KEY) return out_('no');\n  if (d.type === 'note') {\n    if (!['mom', 'oppa'].includes(d.to) || !d.text) return out_('no');\n    if (d.at && Date.now() - d.at > 3 * 3600 * 1000) return out_('old');   // 늦게 올라온 오래된 알림은 폰으로 안 보냄\n    return out_('sent ' + pushTo_([d.to], String(d.text).slice(0, 300), tagOf_(d.text)));\n  }\n  if (!TO || !d.subject) return out_('no');\n  MailApp.sendEmail({ to: TO, subject: String(d.subject).slice(0, 100), htmlBody: String(d.html || '').slice(0, 20000) });\n  return out_('ok');\n}\nfunction out_(s) { return ContentService.createTextOutput(s); }\nfunction tagOf_(t) { return /공부를 모두 끝냈어요/.test(t) ? 'done' : /받아쓰기/.test(t) ? 'dict' : /시작했어요/.test(t) ? 'start' : ''; }\n\n/* ---------- Firestore (오빠 계정 권한으로 읽기) ---------- */\nfunction auth_() { return { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project': PROJECT }; }\nfunction fs_(path, method) {\n  const r = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + PROJECT + '/databases/(default)/documents/' + path,\n    { method: method || 'get', headers: auth_(), muteHttpExceptions: true });\n  const code = r.getResponseCode(); let json = {};\n  try { json = JSON.parse(r.getContentText() || '{}'); } catch (x) {}\n  if (code >= 400 && code !== 404) throw new Error('Firestore ' + code + ' ' + String(r.getContentText()).slice(0, 300));\n  return { code: code, json: json };\n}\n/* Firestore 값 → 보통 값 */\nfunction val_(v) {\n  if (!v) return null;\n  if ('stringValue' in v) return v.stringValue;\n  if ('integerValue' in v) return Number(v.integerValue);\n  if ('doubleValue' in v) return v.doubleValue;\n  if ('booleanValue' in v) return v.booleanValue;\n  if ('nullValue' in v) return null;\n  if ('arrayValue' in v) return (v.arrayValue.values || []).map(val_);\n  if ('mapValue' in v) { const o = {}, f = v.mapValue.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n  return null;\n}\nfunction doc_(path) { const r = fs_(path); if (r.code === 404) return null; const o = {}, f = r.json.fields || {}; for (const k in f) o[k] = val_(f[k]); return o; }\n\n/* ---------- 폰 알림 보내기 ---------- */\nfunction pushTo_(roles, body, tag) {\n  const list = (fs_('families/' + FID + '/push?pageSize=50').json.documents || [])\n    .map(function (d) { return { name: d.name, token: val_((d.fields || {}).token), roles: val_((d.fields || {}).roles) || [] }; })\n    .filter(function (d) { return d.token && d.roles.some(function (r) { return roles.indexOf(r) >= 0; }); });\n  let ok = 0;\n  list.forEach(function (d) {\n    const r = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + PROJECT + '/messages:send', {\n      method: 'post', contentType: 'application/json', headers: auth_(), muteHttpExceptions: true,\n      payload: JSON.stringify({ message: { token: d.token, data: { title: '재윤이 공부방', body: body, tag: tag || '', url: APP_URL },\n        webpush: { headers: { Urgency: 'high', TTL: '21600' } } } }) });\n    const code = r.getResponseCode();\n    if (code === 200) ok++;\n    else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.getContentText())) {   // 앱을 지웠거나 알림을 끈 폰 → 목록에서 지움\n      UrlFetchApp.fetch('https://firestore.googleapis.com/v1/' + d.name, { method: 'delete', headers: auth_(), muteHttpExceptions: true });\n    } else console.warn('FCM ' + code + ' ' + r.getContentText().slice(0, 300));\n  });\n  return ok;\n}\n\n/* ---------- 10분마다: 알림 시간 지났는데 시작 안 함 ---------- */\nfunction checkLate() {\n  const now = new Date(), key = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd');\n  const dow = Number(Utilities.formatDate(now, 'Asia/Seoul', 'u')) % 7;   // 0 = 일요일\n  const mins = Number(Utilities.formatDate(now, 'Asia/Seoul', 'H')) * 60 + Number(Utilities.formatDate(now, 'Asia/Seoul', 'm'));\n  const props = PropertiesService.getScriptProperties();\n  if (props.getProperty('late') === key) return;\n  const a = doc_('families/' + FID + '/s/alarms'), al = a && a.v;\n  if (!al || al.nudge === false || !al.on || !al.on[dow]) return;\n  const t = String((al.time || [])[dow] || '16:00').split(':'), hh = Number(t[0]), mm = Number(t[1]);\n  const late = mins - (hh * 60 + mm);\n  if (late < 30 || late > 180) return;\n  const day = doc_('families/' + FID + '/days/' + key), v = day && day.v;\n  if (v && v.boards && Object.keys(v.boards).length) return;   // 이미 시작함\n  props.setProperty('late', key);\n  pushTo_(['mom'], '⏰ ' + t[0] + ':' + t[1] + ' 공부 알림 뒤 ' + late + '분이 지났는데 재윤이가 아직 시작하지 않았어요. (태블릿이 인터넷에 연결돼 있는지도 확인해 주세요)', 'late');\n}\n\n/* ---------- 처음 한 번 실행 ---------- */\nfunction setup() {\n  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'checkLate') ScriptApp.deleteTrigger(t); });\n  ScriptApp.newTrigger('checkLate').timeBased().everyMinutes(10).create();\n  const fam = doc_('families/' + FID);\n  if (!fam) throw new Error('가족방을 못 찾았어요. 앱 설정 탭의 코드를 다시 복사해 주세요');\n  const phones = (fs_('families/' + FID + '/push?pageSize=50').json.documents || []).length;\n  console.log('준비 끝! 알림 받는 폰 ' + phones + '대' + (phones ? '' : ' (폰에서 \"알림 켜기\"를 누르면 생겨요)'));\n}\n";
@@ -1324,8 +1327,9 @@ function speak(text, lang = 'ko-KR', rate){
       const u = new SpeechSynthesisUtterance(softText(text));
       const en = lang.startsWith('en'), t = S.tts;
       u.lang = lang;
-      u.rate = en ? clamp(t.rate * .9, .6, 1.2) : clamp(t.rate * (rate ? rate / .92 : 1), .5, 1.4);
-      u.pitch = en ? clamp(t.pitch * .9, .8, 1.6) : t.pitch;
+      /* 11/27 영어는 재윤이 목소리 설정(높이 1.6)을 따르지 않고 보통 높이 1.0 · 조금 천천히(0.82) — 높은 목소리에서 a/i 모음이 뭉개졌다(실제 기록: 영어 한 번에 58%) */
+      u.rate = en ? clamp(rate || .82, .5, 1.1) : clamp(t.rate * (rate ? rate / .92 : 1), .5, 1.4);
+      u.pitch = en ? 1 : t.pitch;
       const v = pickVoice(en ? 'en' : 'ko', en ? t.enVoice : t.voice);
       if (v) { u.voice = v; u.lang = v.lang || lang; }
       let done = false; const fin = () => { if (!done) { done = true; res(); } };
@@ -1631,14 +1635,50 @@ function takeDue(list, n){
   return picked.map(w => Object.assign(JSON.parse(JSON.stringify(w.q)), { rev:w.id }));
 }
 function genReview(n){
-  const due = takeDue(dueWrong(), n);
+  /* 11/27 약한 곳 연습: 오답노트에서 많이 틀린 차시·유형을 골라 숫자·낱말만 바꾼 새 문제.
+     (실제 기록: 영어 짧은 모음 a/i, 국어 생각·느낌 문장, 수학 받아내림 뺄셈을 며칠째 반복해서 틀림)
+     밀린 오답이 많아도 늘 자리가 있게 판의 30%(10문제면 3개)는 먼저 맡아 둔다. 남는 자리는 다시 오답으로 */
+  const weak = weakQs(Math.ceil(n * .3), []);
+  const due = takeDue(dueWrong(), n - weak.length);
   const out = [...due];
+  weak.forEach(q => { if (!out.some(o => o.key === q.key)) out.push(q); });
+  const room = Math.min(n - out.length, Math.ceil(n * .4) - weak.length);
+  if (room > 0) weakQs(room, out).forEach(q => out.push(q));
   const fill = n - out.length;
   if (fill > 0) {
     const extra = [...genKor(Math.ceil(fill / 3)), ...genMath(Math.ceil(fill / 3)), ...genEng(Math.ceil(fill / 3))];
     shuffle(extra).slice(0, fill).forEach(q => { if (!out.some(o => o.key === q.key)) out.push(q); });
   }
   return shuffle(out);
+}
+/* 덧셈·뺄셈 식의 모양: 받아올림(합이 10 넘음)·받아내림(낱개끼리 못 뺌) 있는지 — 12−6을 틀렸으면 10−4 말고 13−7 같은 것으로 */
+function calcShape(q){
+  const m = String((q.vis && q.vis.html) || '').match(/^(\d+)\s*([+−-])\s*(\d+)\s*=/); if (!m) return '';
+  const a = +m[1], b = +m[3];
+  return m[2] === '+' ? (a % 10 + b % 10 >= 10 ? '+c' : '+') : (a % 10 === 0 ? '-0' : a % 10 < b % 10 ? '-b' : '-');
+}
+function weakQs(m, have){
+  if (typeof lessonById !== 'function' || typeof lessonQ !== 'function') return [];
+  const t = todayKey(), d14 = addDays(t, -14), seen = new Set(), out = [];
+  const act = S.wrong.filter(w => w.subj !== 'dict' && !w.rest && w.q && w.q.type && (w.q.lesson || (w.subj === 'math' && M[w.q.type])) && (w.last || w.added || t) >= d14)
+    .sort((a, b) => (b.misses || 0) - (a.misses || 0) || String(b.last || '').localeCompare(String(a.last || '')));
+  /* 과목을 번갈아(영어 오답이 많아도 국어·수학 약한 곳도 한 자리씩) */
+  const by = {}; act.forEach(w => (by[w.subj] = by[w.subj] || []).push(w));
+  const order = []; for (let i = 0; order.length < act.length; i++) Object.values(by).forEach(l => { if (l[i]) order.push(l[i]); });
+  for (const w of order) {
+    if (out.length >= m) break;
+    const fam = w.q.lesson + '|' + w.q.type; if (seen.has(fam)) continue; seen.add(fam);
+    const l = w.q.lesson ? lessonById(w.q.lesson) : null; if (w.q.lesson && !l) continue;
+    const make = l ? () => lessonQ(l) : () => Object.assign(M[w.q.type](), { subj:'math' });
+    let alt = null;   // 같은 발문·같은 모양(받아올림·받아내림 있음/없음)만. 못 찾으면 이 묶음은 건너뜀
+    for (let i = 0; i < 200; i++) {
+      let q; try { q = make(); } catch (e) { break; }
+      if (!q || q.type !== w.q.type || q.preview || q.key === w.q.key || [...have, ...out].some(o => o.key === q.key)) continue;
+      if ((q.prompt === w.q.prompt || (feelQ(q) && feelQ(w.q))) && calcShape(q) === calcShape(w.q)) { alt = q; break; }
+    }
+    if (alt) out.push(Object.assign(alt, { weak:true }));
+  }
+  return out;
 }
 /* soft: 힌트 보고 두 번째에 맞힌 문제 — 한 번만 더 맞히면 목록에서 빠진다 */
 function addWrong(q, soft){
@@ -1981,7 +2021,7 @@ function inputHTML(q){
 }
 VIEWS.q = () => {
   const b = RUN.b, q = b.qs[b.idx];
-  RUN.q = q; RUN.tries = 0; RUN.wrongs = []; RUN.typed = ''; RUN.built = []; RUN.t0 = Date.now(); RUN.locked = false;
+  RUN.q = q; RUN.tries = 0; RUN.wrongs = []; RUN.typed = ''; RUN.built = []; RUN.t0 = Date.now(); RUN.locked = false; RUN.replays = 0;
   const pct = Math.round(b.idx / b.qs.length * 100);
   app().innerHTML = `<section class="screen">
     <div class="q-top">
@@ -1991,7 +2031,7 @@ VIEWS.q = () => {
       <button class="sug-flag" data-a="sugq" aria-label="이 문제 이상해요 (오빠에게 말하기)">🙋<span> 이상해요</span></button>
     </div>
     ${funQHTML(b)}
-    ${q.rev ? `<span class="pill" style="align-self:flex-start">전에 틀렸던 문제</span>` : ''}${q.preview ? `<span class="pill preview-pill" style="align-self:flex-start">🔭 내일 배울 것 미리 맛보기 · 틀려도 괜찮아!</span>` : ''}
+    ${q.rev ? `<span class="pill" style="align-self:flex-start">전에 틀렸던 문제</span>` : q.weak ? `<span class="pill" style="align-self:flex-start">💪 헷갈렸던 것 한 번 더</span>` : ''}${q.preview ? `<span class="pill preview-pill" style="align-self:flex-start">🔭 내일 배울 것 미리 맛보기 · 틀려도 괜찮아!</span>` : ''}
     <div class="q-card">
       <div class="q-head"><p class="q-prompt">${esc(q.prompt)}</p><button class="speak-btn" data-a="replay" aria-label="다시 듣기">${ICON.speak}</button></div>
       ${q.vis ? `<div class="q-visual">${visHTML(q)}</div>` : ''}
@@ -2000,7 +2040,11 @@ VIEWS.q = () => {
     <div class="feedback" id="fb"></div>
   </section>`;
   funAfterQ(b);
-  sayQuestion(q);
+  /* 11/27 듣기 문제는 소리를 다 들은 뒤에 보기를 누를 수 있다 (실제 기록: 듣기 문제를 2~3초 만에 찍어 틀림). 7초 넘으면 그냥 풀림 */
+  const wait = !!q.listen && !window.__noListenWait, my = SEQ + 1;
+  RUN.listenWait = wait; if (wait) $('.q-card').classList.add('listen-wait');
+  const unlock = () => { if (!RUN || RUN.q !== q || !RUN.listenWait) return; RUN.listenWait = false; const c = $('.q-card'); if (c) c.classList.remove('listen-wait'); };
+  sayQuestion(q).then(unlock); if (wait) setTimeout(unlock, 7000);
 };
 async function sayQuestion(q){
   const my = ++SEQ;
@@ -2010,7 +2054,9 @@ async function sayQuestion(q){
 /* 노란 버튼: 처음 안내는 빼고 낱말(문장)만 다시 */
 function replayWord(q){
   ++SEQ;
-  if (q.listen) speak(q.listen, q.lang || 'ko-KR');
+  /* 영어 듣기: 노란 버튼을 두 번째 누를 때마다 천천히(0.55) */
+  if (q.listen && (q.lang || '').startsWith('en')) { RUN.replays = (RUN.replays || 0) + 1; speak(q.listen, q.lang, RUN.replays % 2 === 0 ? .55 : 0); }
+  else if (q.listen) speak(q.listen, q.lang || 'ko-KR');
   else if (q.read) speak(q.read);
   else if (q.vis && q.vis.k === 'sent') speak(`${q.vis.before}, 음음, ${q.vis.after}`);
   else speak(q.say || q.prompt);
@@ -2021,7 +2067,7 @@ function rerenderInput(){ const q = RUN.q; const card = $('.q-card'); const old 
 }
 function feedback(html, expr){ $('#fb').innerHTML = `${bunnySVG({ size:56, expr, cls: expr === 'happy' ? 'hop' : 'wiggle' })}<div class="bubble left">${html}</div>`; }
 function answer(val){
-  if (RUN.locked) return;
+  if (RUN.locked || RUN.listenWait) return;
   ++SEQ;
   const q = RUN.q, b = RUN.b, k = RUN.k;
   const right = String(val) === String(q.ans);
@@ -2044,8 +2090,11 @@ function answer(val){
   if (RUN.tries === 1) {
     if (q.input === 'numpad') { RUN.typed = ''; rerenderInput(); }
     if (q.input === 'build') { RUN.built = []; rerenderInput(); }
-    $('#fb').innerHTML = `${bunnySVG({ size:56, expr:'think', cls:'wiggle' })}<div class="hint-box" style="flex:1">${q.hintHTML || ''}<span>${esc(pick(TRY_LINES))}<br>${esc(q.hint)}</span></div>`;
-    speak(q.hint);
+    const hint = hintFor(q);
+    $('#fb').innerHTML = `${bunnySVG({ size:56, expr:'think', cls:'wiggle' })}<div class="hint-box" style="flex:1">${q.hintHTML || ''}<span>${esc(pick(TRY_LINES))}<br>${esc(hint)}</span></div>`;
+    /* 11/27 영어 듣기 힌트: 한국어 목소리가 영어 낱말을 읽지 않게 빼고, 낱말은 영어 목소리로 천천히 한 번 더 */
+    if (q.listen && (q.lang || '').startsWith('en')) { const my = SEQ; speakMixed(hint, () => my === SEQ && !!RUN && RUN.q === q).then(() => { if (my === SEQ && RUN && RUN.q === q && !RUN.locked) speak(q.listen, q.lang, .55); }); }
+    else speak(hint);
   } else {
     RUN.locked = true;
     addWrong(q);
@@ -2058,6 +2107,18 @@ function answer(val){
     speak(`정답은 ${q.eng ? '' : q.ans}. ${q.eng ? '' : '내일 다시 만나자!'}`).then(() => { if (q.eng) speak(q.ans, 'en-US'); });
   }
   save();
+}
+/* 11/27 국어 '생각이나 느낌' 문장 고르기 — 실제 기록에서 '한 일' 문장을 자꾸 고름 → 힌트를 더 또렷하게 */
+const FEEL_HINT = "'~했다', '~갔다'는 한 일이에요. 좋았다, 뿌듯했다, 무서웠다, 신났다처럼 마음이 나오는 문장을 찾아요";
+/* 영어 낱말은 영어 목소리, 나머지는 한국어 목소리로 이어 읽기 ("'cat'는 고양이예요" → cat / 는 고양이예요) */
+async function speakMixed(text, alive = () => true){
+  const parts = String(text).split(/([A-Za-z][A-Za-z']*)/).map((x, i) => ({ en:i % 2 === 1, t:i % 2 ? x : x.replace(/['"‘’-]/g, ' ').replace(/\.\.\.|…/g, ', ').trim() })).filter(x => /[A-Za-z가-힣0-9]/.test(x.t));
+  for (const x of parts) { if (!alive()) return; await speak(x.t, x.en ? 'en-US' : 'ko-KR'); }
+}
+const feelQ = q => q && q.subj === 'kor' && /생각이나 느낌|생각이 드러|느낌이 드러|마음이 드러/.test(q.prompt || '');
+function hintFor(q){
+  if (feelQ(q)) return FEEL_HINT;
+  return q.hint || '';
 }
 function markOpt(val, cls){
   const q = RUN.q; if (q.input !== 'choice') return;
@@ -2168,7 +2229,7 @@ VIEWS.reward = ({ k, st, allDone }) => {
     ${newItems.length ? `<div class="next-item" style="align-self:stretch;border-color:var(--pink);background:var(--pink-pale)"><span class="disp" style="font-size:20px">새 꾸미기 선물: ${newItems.map(i => esc(i.name)).join(', ')}!</span><button class="btn small" data-a="go" data-v="room" style="justify-self:center">지금 꾸미러 가기</button></div>` : ''}
     ${cheerRewardHTML(cheer)}
     <div class="bubble" style="display:flex;align-items:center;gap:10px"><span style="font-size:28px">💗</span><span>${esc(MOM_LINES[0].text)}</span><button class="speak-btn" style="width:48px;height:48px" data-a="mom" data-v="m1" aria-label="엄마 목소리 다시 듣기">${ICON.speak}</button></div>
-    <button class="btn big" data-a="go" data-v="${allDone ? 'alldone' : S.eyeBreak === false ? 'home' : 'eyebreak'}">${allDone ? '오빠 칭찬 들으러 가기' : '좋아!'}</button>
+    <button class="btn big" data-a="go" data-v="${allDone ? 'alldone' : 'home'}">${allDone ? '오빠 칭찬 들으러 가기' : '좋아!'}</button>
   </section>`;
   SFX.sticker(); confetti();
   setTimeout(() => { if (cheer && cheer.audio) playClip(cheer.audio); else if (cheer) speak(cheer.text); else playMom('m1'); }, 900);
@@ -2415,7 +2476,7 @@ function studySetPanels(){
   return dayGoalPanel() + levelPanel() + `<div class="panel"><h3>받아쓰기 쓰는 곳</h3><div class="field"><select id="dictmode" data-ch="dictmode" aria-label="받아쓰기 쓰는 곳">
         <option value="auto" ${(S.dictMode || 'auto') === 'auto' ? 'selected' : ''}>자동 (태블릿은 펜, 폰은 공책)</option><option value="pen" ${S.dictMode === 'pen' ? 'selected' : ''}>항상 화면에 펜으로</option><option value="paper" ${S.dictMode === 'paper' ? 'selected' : ''}>항상 공책에 쓰고 사진</option></select></div>
         <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
-<div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
+<div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">EBS 강의를 본 뒤 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
         <p class="muted" style="font-size:13px">강의를 볼 때는 "팔 길이만큼 떨어져서 보기" 안내가 먼저 나와요.</p></div>`; }
 /* 11/9 알림함을 없앤 뒤 갈 곳이 없던 "확인이 필요한 소식"(EBS 못 엶·강의 확인·다른 강의·선물 적음·쓰기 미룸)
    → 엄마·오빠 탭 "할 일"에 카드로. ✓ 확인은 이 폰에만 기억(localStorage jaeyun-notedone). 7일 지나면 저절로 안 보임 */
@@ -2583,14 +2644,14 @@ const ACT = {
   sayopt(el, ev){ ev.stopPropagation(); ++SEQ; speak(el.dataset.v, el.dataset.l || 'en-US'); },
   ans(el){ const q = RUN.q; if (el.classList.contains('wrong') || el.classList.contains('dim')) return; answer(q.opts[+el.dataset.i]); },
   num(el){
-    if (RUN.locked) return; const v = el.dataset.v; SFX.tap();
+    if (RUN.locked || RUN.listenWait) return; const v = el.dataset.v; SFX.tap();
     if (v === 'del') RUN.typed = RUN.typed.slice(0, -1);
     else if (v === 'ok') { if (RUN.typed) answer(Number(RUN.typed)); return; }
     else if (RUN.typed.length < Math.min(5, Math.max(3, String(RUN.q.ans).length + 1))) RUN.typed = (RUN.typed === '0' ? '' : RUN.typed) + v;
     rerenderInput();
   },
   tile(el){
-    if (RUN.locked) return; const i = +el.dataset.i, q = RUN.q;
+    if (RUN.locked || RUN.listenWait) return; const i = +el.dataset.i, q = RUN.q;
     if (RUN.built.includes(i) || RUN.built.length >= q.ans.length) return;
     SFX.tap(); RUN.built.push(i); rerenderInput();
     if (RUN.built.length === q.ans.length) setTimeout(() => answer(RUN.built.map(x => q.tiles[x]).join('')), 250);
@@ -5571,7 +5632,7 @@ const N3_POSE_CH = [
 ];
 const N3_DIARY = [
   { t:'10월 5일 토요일 · 날씨: 해가 쨍쨍\n오빠와 공원에서 자전거를 탔다. 처음에는 자꾸 넘어졌지만 오빠가 뒤에서 잡아 주었다. 혼자 끝까지 달렸을 때 정말 뿌듯했다.', qs:[['언제 있었던 일인가요?','10월 5일 토요일','10월 15일 일요일','11월 5일 토요일'],['날씨는 어땠나요?','해가 쨍쨍','비가 주룩주룩','눈이 펑펑'],['글쓴이의 느낌을 나타낸 말은?','뿌듯했다','자전거','공원'],['무슨 일이 있었나요?','오빠와 자전거를 탔다','엄마와 시장에 갔다','친구와 그림을 그렸다']] },
-  { t:'11월 2일 일요일 · 날씨: 바람이 쌩쌩\n엄마와 김밥을 만들었다. 김 위에 밥을 펴고 단무지와 달걀을 올려 돌돌 말았다. 내가 만든 김밥이 제일 맛있었다.', qs:[['누구와 무엇을 했나요?','엄마와 김밥을 만들었다','아빠와 축구를 했다','혼자 책을 읽었다'],['날씨는 어땠나요?','바람이 쌩쌩','비가 주룩주룩','해가 쨍쨍'],['글쓴이의 생각이나 느낌이 드러난 문장은?','내가 만든 김밥이 제일 맛있었다.','엄마와 김밥을 만들었다.','김 위에 밥을 펴고 햄과 단무지를 올렸다.']] },
+  { t:'11월 2일 일요일 · 날씨: 바람이 쌩쌩\n엄마와 김밥을 만들었다. 김 위에 밥을 펴고 단무지와 달걀을 올려 돌돌 말았다. 내가 만든 김밥이 제일 맛있었다.', qs:[['누구와 무엇을 했나요?','엄마와 김밥을 만들었다','아빠와 축구를 했다','혼자 책을 읽었다'],['날씨는 어땠나요?','바람이 쌩쌩','비가 주룩주룩','해가 쨍쨍'],['글쓴이의 생각이나 느낌이 드러난 문장은?','내가 만든 김밥이 제일 맛있었다.','엄마와 김밥을 만들었다.','김 위에 밥을 펴고 단무지와 달걀을 올려 돌돌 말았다.']] },
   { t:'9월 20일 금요일 · 날씨: 비가 주룩주룩\n학교에서 돌아오는 길에 비가 와서 신발이 다 젖었다. 집에 오니 할머니가 따뜻한 코코아를 주셨다. 몸도 마음도 따뜻해졌다.', qs:[['날씨는 어땠나요?','비가 주룩주룩','해가 쨍쨍','눈이 펑펑'],['할머니가 주신 것은?','따뜻한 코코아','차가운 우유','사탕'],['글쓴이의 마음은 어떻게 되었나요?','따뜻해졌다','무서워졌다','화가 났다']] },
   { t:'12월 1일 월요일 · 날씨: 눈이 펑펑\n아침에 일어나니 온 세상이 하얬다. 동생과 마당에서 눈사람을 만들었다. 눈사람에게 내 목도리를 둘러 주었다. 내일까지 녹지 않았으면 좋겠다.', qs:[['무엇을 만들었나요?','눈사람','모래성','종이배'],['눈사람에게 둘러 준 것은?','목도리','모자','장갑'],['글쓴이가 바라는 것은?','눈사람이 녹지 않는 것','눈이 그치고 해가 쨍쨍 나는 것','학교에 가지 않는 것']] },
 ];
@@ -5926,7 +5987,7 @@ N3_END.push(
 N3_POSE_OX.push(['발표할 때는 주머니에 손을 넣고 말해요.','X'],['발표할 때는 처음부터 끝까지 또박또박 말해요.','O'],['발표가 끝나면 "들어 주셔서 고맙습니다."라고 말할 수 있어요.','O'],['발표를 들을 때 궁금한 것은 발표가 끝난 뒤에 물어봐요.','O'],['친구가 발표를 틀리면 크게 웃어요.','X'],['발표할 때는 칠판만 보고 말해요.','X'],['발표하기 전에 할 말을 미리 생각해요.','O']);
 N3_POSE_CH.push(['발표를 잘 듣는 자세는?','발표하는 친구를 바라봐요','옆 친구와 소곤소곤 이야기해요','책상에 엎드려서 쉬어요'],['발표를 마치고 할 말로 알맞은 것은?','들어 주셔서 고맙습니다.','끝났으니까 이제 다들 저리 가.','몰라요, 이제 그만할래요.'],['경험을 발표할 때 들어갈 내용으로 알맞은 것은?','언제, 어디에서, 무슨 일, 마음','친구가 나한테만 말해 준 비밀','내일 점심에 먹고 싶은 반찬'],['발표할 때 손은 어떻게 하면 좋을까요?','자연스럽게 내려요','머리를 계속 긁어요','주머니에 넣어요'],['발표 중에 말이 막혔을 때 좋은 방법은?','숨을 한 번 쉬고 천천히 다시 말해요','울면서 교실 밖으로 뛰어나가요','생각나는 아무 말이나 크게 외쳐요']);
 N3_DIARY.push(
-  { t:'10월 18일 토요일 · 날씨: 구름이 둥실\n가족과 함께 사과 따기 체험을 갔다. 빨갛게 익은 사과를 내 손으로 땄다. 집에 와서 먹어 보니 아주 달콤했다. 다음에 또 가고 싶다.', qs:[['어디에 갔나요?','사과 따기 체험','바닷가','도서관'],['사과의 맛은 어땠나요?','달콤했다','썼다','짰다'],['글쓴이의 생각이 드러난 문장은?','다음에 또 가고 싶다.','가족과 함께 사과 따기 체험을 갔다.','빨갛게 익은 사과를 땄다.']] },
+  { t:'10월 18일 토요일 · 날씨: 구름이 둥실\n가족과 함께 사과 따기 체험을 갔다. 빨갛게 익은 사과를 내 손으로 땄다. 집에 와서 먹어 보니 아주 달콤했다. 다음에 또 가고 싶다.', qs:[['어디에 갔나요?','사과 따기 체험','바닷가','도서관'],['사과의 맛은 어땠나요?','달콤했다','썼다','짰다'],['글쓴이의 생각이 드러난 문장은?','다음에 또 가고 싶다.','가족과 함께 사과 따기 체험을 갔다.','빨갛게 익은 사과를 내 손으로 땄다.']] },
   { t:'11월 9일 일요일 · 날씨: 해가 반짝\n동생과 처음으로 종이접기를 했다. 내가 개구리를 접어 주니 동생이 깔깔 웃었다. 동생이 좋아해서 나도 기분이 좋았다.', qs:[['누구와 무엇을 했나요?','동생과 종이접기를 했다','친구와 공놀이를 했다','엄마와 요리를 했다'],['무엇을 접었나요?','개구리','비행기','배'],['글쓴이의 느낌은?','기분이 좋았다','무서웠다','슬펐다']] },
   { t:'9월 30일 화요일 · 날씨: 비가 보슬보슬\n받아쓰기에서 두 개를 틀렸다. 조금 속상했지만 틀린 낱말을 공책에 세 번씩 써 보았다. 다음에는 꼭 다 맞히고 싶다.', qs:[['무슨 일이 있었나요?','받아쓰기에서 두 개를 틀렸다','받아쓰기에서 다 맞았다','받아쓰기를 하지 않았다'],['틀린 낱말을 어떻게 했나요?','공책에 세 번씩 써 보았다','지우개로 지웠다','그냥 두었다'],['날씨는 어땠나요?','비가 보슬보슬','눈이 펑펑','해가 쨍쨍']] },
 );
@@ -8616,7 +8677,7 @@ function distanceArt(){
     <line x1="116" y1="112" x2="196" y2="112" stroke="${C.pinkD}" stroke-width="4" stroke-dasharray="6 5"/><path d="M112 104 L104 112 L112 120 M196 104 L204 112 L196 120" fill="none" stroke="${C.pinkD}" stroke-width="4" stroke-linecap="round"/>
     <text x="156" y="100" text-anchor="middle" font-family="Jua, sans-serif" font-size="15" fill="${INK}">팔 길이만큼!</text></svg>`;
 }
-/* 판 사이 · 강의 뒤 눈 쉬는 시간 (20초 동안 먼 곳 보기) */
+/* 강의 뒤 눈 쉬는 시간 (20초 동안 먼 곳 보기) — 11/27 재윤이 건의로 판 사이에서는 없앰 */
 VIEWS.eyebreak = (next) => {
   const secs = 20;
   app().innerHTML = `<section class="screen reward">
