@@ -924,3 +924,6 @@ section.screen{position:relative}
 .play .play-card.c-popo .popo-t{display:grid;gap:2px;text-align:left}
 @media (min-width:960px) and (orientation:landscape){ .play .play-card.c-popo{min-height:0;padding:12px 24px} .play .play-card.c-popo .pic{font-size:50px} }
 .mom-quick.two{grid-template-columns:1fr 1fr}
+/* 11/27 듣기 문제: 소리를 다 들을 때까지 보기는 흐리게·누를 수 없음 */
+.q-card .options,.q-card .tiles,.q-card .slots{transition:opacity .3s}
+.q-card.listen-wait .options,.q-card.listen-wait .tiles,.q-card.listen-wait .slots{opacity:.4;pointer-events:none}

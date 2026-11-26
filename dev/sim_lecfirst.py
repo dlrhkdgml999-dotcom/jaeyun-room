@@ -57,7 +57,7 @@ async def main():
         txt = await s.ev("document.querySelector('.lesson-card') ? document.querySelector('.lesson-card').innerText : ''")
         print('수학 판 안내:', txt.replace('\n', ' / '))
         if await s.ev("!!(RUN.b.waitLec)"):
-            s.expect('오늘 강의는 국어' in txt and '미리 맛보기' in txt, '연습 판에 오늘 강의 과목·미리 맛보기 안내가 안 보임')
+            s.expect('영상은 내일' in txt and '미리 맛보기' in txt, '연습 판에 오늘 강의 과목·미리 맛보기 안내가 안 보임')
             s.expect(await s.ev("RUN.b.qs.filter(q => q.preview).length") >= 3, '연습 판에 미리 맛보기 문제가 없음')
         await s.shot('math_wait')
 

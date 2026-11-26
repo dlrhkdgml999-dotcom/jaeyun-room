@@ -112,8 +112,9 @@ function speak(text, lang = 'ko-KR', rate){
       const u = new SpeechSynthesisUtterance(softText(text));
       const en = lang.startsWith('en'), t = S.tts;
       u.lang = lang;
-      u.rate = en ? clamp(t.rate * .9, .6, 1.2) : clamp(t.rate * (rate ? rate / .92 : 1), .5, 1.4);
-      u.pitch = en ? clamp(t.pitch * .9, .8, 1.6) : t.pitch;
+      /* 11/27 영어는 재윤이 목소리 설정(높이 1.6)을 따르지 않고 보통 높이 1.0 · 조금 천천히(0.82) — 높은 목소리에서 a/i 모음이 뭉개졌다(실제 기록: 영어 한 번에 58%) */
+      u.rate = en ? clamp(rate || .82, .5, 1.1) : clamp(t.rate * (rate ? rate / .92 : 1), .5, 1.4);
+      u.pitch = en ? 1 : t.pitch;
       const v = pickVoice(en ? 'en' : 'ko', en ? t.enVoice : t.voice);
       if (v) { u.voice = v; u.lang = v.lang || lang; }
       let done = false; const fin = () => { if (!done) { done = true; res(); } };
@@ -419,14 +420,50 @@ function takeDue(list, n){
   return picked.map(w => Object.assign(JSON.parse(JSON.stringify(w.q)), { rev:w.id }));
 }
 function genReview(n){
-  const due = takeDue(dueWrong(), n);
+  /* 11/27 약한 곳 연습: 오답노트에서 많이 틀린 차시·유형을 골라 숫자·낱말만 바꾼 새 문제.
+     (실제 기록: 영어 짧은 모음 a/i, 국어 생각·느낌 문장, 수학 받아내림 뺄셈을 며칠째 반복해서 틀림)
+     밀린 오답이 많아도 늘 자리가 있게 판의 30%(10문제면 3개)는 먼저 맡아 둔다. 남는 자리는 다시 오답으로 */
+  const weak = weakQs(Math.ceil(n * .3), []);
+  const due = takeDue(dueWrong(), n - weak.length);
   const out = [...due];
+  weak.forEach(q => { if (!out.some(o => o.key === q.key)) out.push(q); });
+  const room = Math.min(n - out.length, Math.ceil(n * .4) - weak.length);
+  if (room > 0) weakQs(room, out).forEach(q => out.push(q));
   const fill = n - out.length;
   if (fill > 0) {
     const extra = [...genKor(Math.ceil(fill / 3)), ...genMath(Math.ceil(fill / 3)), ...genEng(Math.ceil(fill / 3))];
     shuffle(extra).slice(0, fill).forEach(q => { if (!out.some(o => o.key === q.key)) out.push(q); });
   }
   return shuffle(out);
+}
+/* 덧셈·뺄셈 식의 모양: 받아올림(합이 10 넘음)·받아내림(낱개끼리 못 뺌) 있는지 — 12−6을 틀렸으면 10−4 말고 13−7 같은 것으로 */
+function calcShape(q){
+  const m = String((q.vis && q.vis.html) || '').match(/^(\d+)\s*([+−-])\s*(\d+)\s*=/); if (!m) return '';
+  const a = +m[1], b = +m[3];
+  return m[2] === '+' ? (a % 10 + b % 10 >= 10 ? '+c' : '+') : (a % 10 === 0 ? '-0' : a % 10 < b % 10 ? '-b' : '-');
+}
+function weakQs(m, have){
+  if (typeof lessonById !== 'function' || typeof lessonQ !== 'function') return [];
+  const t = todayKey(), d14 = addDays(t, -14), seen = new Set(), out = [];
+  const act = S.wrong.filter(w => w.subj !== 'dict' && !w.rest && w.q && w.q.type && (w.q.lesson || (w.subj === 'math' && M[w.q.type])) && (w.last || w.added || t) >= d14)
+    .sort((a, b) => (b.misses || 0) - (a.misses || 0) || String(b.last || '').localeCompare(String(a.last || '')));
+  /* 과목을 번갈아(영어 오답이 많아도 국어·수학 약한 곳도 한 자리씩) */
+  const by = {}; act.forEach(w => (by[w.subj] = by[w.subj] || []).push(w));
+  const order = []; for (let i = 0; order.length < act.length; i++) Object.values(by).forEach(l => { if (l[i]) order.push(l[i]); });
+  for (const w of order) {
+    if (out.length >= m) break;
+    const fam = w.q.lesson + '|' + w.q.type; if (seen.has(fam)) continue; seen.add(fam);
+    const l = w.q.lesson ? lessonById(w.q.lesson) : null; if (w.q.lesson && !l) continue;
+    const make = l ? () => lessonQ(l) : () => Object.assign(M[w.q.type](), { subj:'math' });
+    let alt = null;   // 같은 발문·같은 모양(받아올림·받아내림 있음/없음)만. 못 찾으면 이 묶음은 건너뜀
+    for (let i = 0; i < 200; i++) {
+      let q; try { q = make(); } catch (e) { break; }
+      if (!q || q.type !== w.q.type || q.preview || q.key === w.q.key || [...have, ...out].some(o => o.key === q.key)) continue;
+      if ((q.prompt === w.q.prompt || (feelQ(q) && feelQ(w.q))) && calcShape(q) === calcShape(w.q)) { alt = q; break; }
+    }
+    if (alt) out.push(Object.assign(alt, { weak:true }));
+  }
+  return out;
 }
 /* soft: 힌트 보고 두 번째에 맞힌 문제 — 한 번만 더 맞히면 목록에서 빠진다 */
 function addWrong(q, soft){
@@ -769,7 +806,7 @@ function inputHTML(q){
 }
 VIEWS.q = () => {
   const b = RUN.b, q = b.qs[b.idx];
-  RUN.q = q; RUN.tries = 0; RUN.wrongs = []; RUN.typed = ''; RUN.built = []; RUN.t0 = Date.now(); RUN.locked = false;
+  RUN.q = q; RUN.tries = 0; RUN.wrongs = []; RUN.typed = ''; RUN.built = []; RUN.t0 = Date.now(); RUN.locked = false; RUN.replays = 0;
   const pct = Math.round(b.idx / b.qs.length * 100);
   app().innerHTML = `<section class="screen">
     <div class="q-top">
@@ -779,7 +816,7 @@ VIEWS.q = () => {
       <button class="sug-flag" data-a="sugq" aria-label="이 문제 이상해요 (오빠에게 말하기)">🙋<span> 이상해요</span></button>
     </div>
     ${funQHTML(b)}
-    ${q.rev ? `<span class="pill" style="align-self:flex-start">전에 틀렸던 문제</span>` : ''}${q.preview ? `<span class="pill preview-pill" style="align-self:flex-start">🔭 내일 배울 것 미리 맛보기 · 틀려도 괜찮아!</span>` : ''}
+    ${q.rev ? `<span class="pill" style="align-self:flex-start">전에 틀렸던 문제</span>` : q.weak ? `<span class="pill" style="align-self:flex-start">💪 헷갈렸던 것 한 번 더</span>` : ''}${q.preview ? `<span class="pill preview-pill" style="align-self:flex-start">🔭 내일 배울 것 미리 맛보기 · 틀려도 괜찮아!</span>` : ''}
     <div class="q-card">
       <div class="q-head"><p class="q-prompt">${esc(q.prompt)}</p><button class="speak-btn" data-a="replay" aria-label="다시 듣기">${ICON.speak}</button></div>
       ${q.vis ? `<div class="q-visual">${visHTML(q)}</div>` : ''}
@@ -788,7 +825,11 @@ VIEWS.q = () => {
     <div class="feedback" id="fb"></div>
   </section>`;
   funAfterQ(b);
-  sayQuestion(q);
+  /* 11/27 듣기 문제는 소리를 다 들은 뒤에 보기를 누를 수 있다 (실제 기록: 듣기 문제를 2~3초 만에 찍어 틀림). 7초 넘으면 그냥 풀림 */
+  const wait = !!q.listen && !window.__noListenWait, my = SEQ + 1;
+  RUN.listenWait = wait; if (wait) $('.q-card').classList.add('listen-wait');
+  const unlock = () => { if (!RUN || RUN.q !== q || !RUN.listenWait) return; RUN.listenWait = false; const c = $('.q-card'); if (c) c.classList.remove('listen-wait'); };
+  sayQuestion(q).then(unlock); if (wait) setTimeout(unlock, 7000);
 };
 async function sayQuestion(q){
   const my = ++SEQ;
@@ -798,7 +839,9 @@ async function sayQuestion(q){
 /* 노란 버튼: 처음 안내는 빼고 낱말(문장)만 다시 */
 function replayWord(q){
   ++SEQ;
-  if (q.listen) speak(q.listen, q.lang || 'ko-KR');
+  /* 영어 듣기: 노란 버튼을 두 번째 누를 때마다 천천히(0.55) */
+  if (q.listen && (q.lang || '').startsWith('en')) { RUN.replays = (RUN.replays || 0) + 1; speak(q.listen, q.lang, RUN.replays % 2 === 0 ? .55 : 0); }
+  else if (q.listen) speak(q.listen, q.lang || 'ko-KR');
   else if (q.read) speak(q.read);
   else if (q.vis && q.vis.k === 'sent') speak(`${q.vis.before}, 음음, ${q.vis.after}`);
   else speak(q.say || q.prompt);
@@ -809,7 +852,7 @@ function rerenderInput(){ const q = RUN.q; const card = $('.q-card'); const old 
 }
 function feedback(html, expr){ $('#fb').innerHTML = `${bunnySVG({ size:56, expr, cls: expr === 'happy' ? 'hop' : 'wiggle' })}<div class="bubble left">${html}</div>`; }
 function answer(val){
-  if (RUN.locked) return;
+  if (RUN.locked || RUN.listenWait) return;
   ++SEQ;
   const q = RUN.q, b = RUN.b, k = RUN.k;
   const right = String(val) === String(q.ans);
@@ -832,8 +875,11 @@ function answer(val){
   if (RUN.tries === 1) {
     if (q.input === 'numpad') { RUN.typed = ''; rerenderInput(); }
     if (q.input === 'build') { RUN.built = []; rerenderInput(); }
-    $('#fb').innerHTML = `${bunnySVG({ size:56, expr:'think', cls:'wiggle' })}<div class="hint-box" style="flex:1">${q.hintHTML || ''}<span>${esc(pick(TRY_LINES))}<br>${esc(q.hint)}</span></div>`;
-    speak(q.hint);
+    const hint = hintFor(q);
+    $('#fb').innerHTML = `${bunnySVG({ size:56, expr:'think', cls:'wiggle' })}<div class="hint-box" style="flex:1">${q.hintHTML || ''}<span>${esc(pick(TRY_LINES))}<br>${esc(hint)}</span></div>`;
+    /* 11/27 영어 듣기 힌트: 한국어 목소리가 영어 낱말을 읽지 않게 빼고, 낱말은 영어 목소리로 천천히 한 번 더 */
+    if (q.listen && (q.lang || '').startsWith('en')) { const my = SEQ; speakMixed(hint, () => my === SEQ && !!RUN && RUN.q === q).then(() => { if (my === SEQ && RUN && RUN.q === q && !RUN.locked) speak(q.listen, q.lang, .55); }); }
+    else speak(hint);
   } else {
     RUN.locked = true;
     addWrong(q);
@@ -846,6 +892,18 @@ function answer(val){
     speak(`정답은 ${q.eng ? '' : q.ans}. ${q.eng ? '' : '내일 다시 만나자!'}`).then(() => { if (q.eng) speak(q.ans, 'en-US'); });
   }
   save();
+}
+/* 11/27 국어 '생각이나 느낌' 문장 고르기 — 실제 기록에서 '한 일' 문장을 자꾸 고름 → 힌트를 더 또렷하게 */
+const FEEL_HINT = "'~했다', '~갔다'는 한 일이에요. 좋았다, 뿌듯했다, 무서웠다, 신났다처럼 마음이 나오는 문장을 찾아요";
+/* 영어 낱말은 영어 목소리, 나머지는 한국어 목소리로 이어 읽기 ("'cat'는 고양이예요" → cat / 는 고양이예요) */
+async function speakMixed(text, alive = () => true){
+  const parts = String(text).split(/([A-Za-z][A-Za-z']*)/).map((x, i) => ({ en:i % 2 === 1, t:i % 2 ? x : x.replace(/['"‘’-]/g, ' ').replace(/\.\.\.|…/g, ', ').trim() })).filter(x => /[A-Za-z가-힣0-9]/.test(x.t));
+  for (const x of parts) { if (!alive()) return; await speak(x.t, x.en ? 'en-US' : 'ko-KR'); }
+}
+const feelQ = q => q && q.subj === 'kor' && /생각이나 느낌|생각이 드러|느낌이 드러|마음이 드러/.test(q.prompt || '');
+function hintFor(q){
+  if (feelQ(q)) return FEEL_HINT;
+  return q.hint || '';
 }
 function markOpt(val, cls){
   const q = RUN.q; if (q.input !== 'choice') return;
@@ -956,7 +1014,7 @@ VIEWS.reward = ({ k, st, allDone }) => {
     ${newItems.length ? `<div class="next-item" style="align-self:stretch;border-color:var(--pink);background:var(--pink-pale)"><span class="disp" style="font-size:20px">새 꾸미기 선물: ${newItems.map(i => esc(i.name)).join(', ')}!</span><button class="btn small" data-a="go" data-v="room" style="justify-self:center">지금 꾸미러 가기</button></div>` : ''}
     ${cheerRewardHTML(cheer)}
     <div class="bubble" style="display:flex;align-items:center;gap:10px"><span style="font-size:28px">💗</span><span>${esc(MOM_LINES[0].text)}</span><button class="speak-btn" style="width:48px;height:48px" data-a="mom" data-v="m1" aria-label="엄마 목소리 다시 듣기">${ICON.speak}</button></div>
-    <button class="btn big" data-a="go" data-v="${allDone ? 'alldone' : S.eyeBreak === false ? 'home' : 'eyebreak'}">${allDone ? '오빠 칭찬 들으러 가기' : '좋아!'}</button>
+    <button class="btn big" data-a="go" data-v="${allDone ? 'alldone' : 'home'}">${allDone ? '오빠 칭찬 들으러 가기' : '좋아!'}</button>
   </section>`;
   SFX.sticker(); confetti();
   setTimeout(() => { if (cheer && cheer.audio) playClip(cheer.audio); else if (cheer) speak(cheer.text); else playMom('m1'); }, 900);
@@ -1203,7 +1261,7 @@ function studySetPanels(){
   return dayGoalPanel() + levelPanel() + `<div class="panel"><h3>받아쓰기 쓰는 곳</h3><div class="field"><select id="dictmode" data-ch="dictmode" aria-label="받아쓰기 쓰는 곳">
         <option value="auto" ${(S.dictMode || 'auto') === 'auto' ? 'selected' : ''}>자동 (태블릿은 펜, 폰은 공책)</option><option value="pen" ${S.dictMode === 'pen' ? 'selected' : ''}>항상 화면에 펜으로</option><option value="paper" ${S.dictMode === 'paper' ? 'selected' : ''}>항상 공책에 쓰고 사진</option></select></div>
         <p class="muted" style="font-size:13px">펜으로 쓰면 10개를 한 장으로 모아서 엄마에게 보내요. 연필로 쓰는 연습도 중요하니 가끔은 공책을 써 보세요.</p></div>
-<div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">판이 끝날 때마다 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
+<div class="panel"><h3>눈 건강</h3><div class="row"><span style="flex:1">EBS 강의를 본 뒤 20초 눈 쉬는 시간</span><button class="switch ${S.eyeBreak === false ? '' : 'on'}" data-a="eyetoggle" aria-label="눈 쉬는 시간"></button></div>
         <p class="muted" style="font-size:13px">강의를 볼 때는 "팔 길이만큼 떨어져서 보기" 안내가 먼저 나와요.</p></div>`; }
 /* 11/9 알림함을 없앤 뒤 갈 곳이 없던 "확인이 필요한 소식"(EBS 못 엶·강의 확인·다른 강의·선물 적음·쓰기 미룸)
    → 엄마·오빠 탭 "할 일"에 카드로. ✓ 확인은 이 폰에만 기억(localStorage jaeyun-notedone). 7일 지나면 저절로 안 보임 */
@@ -1371,14 +1429,14 @@ const ACT = {
   sayopt(el, ev){ ev.stopPropagation(); ++SEQ; speak(el.dataset.v, el.dataset.l || 'en-US'); },
   ans(el){ const q = RUN.q; if (el.classList.contains('wrong') || el.classList.contains('dim')) return; answer(q.opts[+el.dataset.i]); },
   num(el){
-    if (RUN.locked) return; const v = el.dataset.v; SFX.tap();
+    if (RUN.locked || RUN.listenWait) return; const v = el.dataset.v; SFX.tap();
     if (v === 'del') RUN.typed = RUN.typed.slice(0, -1);
     else if (v === 'ok') { if (RUN.typed) answer(Number(RUN.typed)); return; }
     else if (RUN.typed.length < Math.min(5, Math.max(3, String(RUN.q.ans).length + 1))) RUN.typed = (RUN.typed === '0' ? '' : RUN.typed) + v;
     rerenderInput();
   },
   tile(el){
-    if (RUN.locked) return; const i = +el.dataset.i, q = RUN.q;
+    if (RUN.locked || RUN.listenWait) return; const i = +el.dataset.i, q = RUN.q;
     if (RUN.built.includes(i) || RUN.built.length >= q.ans.length) return;
     SFX.tap(); RUN.built.push(i); rerenderInput();
     if (RUN.built.length === q.ans.length) setTimeout(() => answer(RUN.built.map(x => q.tiles[x]).join('')), 250);

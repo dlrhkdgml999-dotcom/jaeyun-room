@@ -237,7 +237,7 @@ function distanceArt(){
     <line x1="116" y1="112" x2="196" y2="112" stroke="${C.pinkD}" stroke-width="4" stroke-dasharray="6 5"/><path d="M112 104 L104 112 L112 120 M196 104 L204 112 L196 120" fill="none" stroke="${C.pinkD}" stroke-width="4" stroke-linecap="round"/>
     <text x="156" y="100" text-anchor="middle" font-family="Jua, sans-serif" font-size="15" fill="${INK}">팔 길이만큼!</text></svg>`;
 }
-/* 판 사이 · 강의 뒤 눈 쉬는 시간 (20초 동안 먼 곳 보기) */
+/* 강의 뒤 눈 쉬는 시간 (20초 동안 먼 곳 보기) — 11/27 재윤이 건의로 판 사이에서는 없앰 */
 VIEWS.eyebreak = (next) => {
   const secs = 20;
   app().innerHTML = `<section class="screen reward">
